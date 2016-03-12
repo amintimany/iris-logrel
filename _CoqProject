@@ -11,4 +11,8 @@ F_mu/typing.v
 F_mu/rules.v
 F_mu/logrel.v
 F_mu/fundamental.v
-F_mu_ref.v
+F_mu_ref/lang.v
+F_mu_ref/typing.v
+F_mu_ref/rules.v
+F_mu_ref/logrel.v
+F_mu_ref/fundamental.v
