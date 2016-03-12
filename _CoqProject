@@ -1,5 +1,9 @@
 -Q . ""
-stlc.v
+stlc/lang.v
+stlc/typing.v
+stlc/rules.v
+stlc/logrel.v
+stlc/fundamental.v
 Vlist.v
 F_mu.v
 F_mu_ref.v
