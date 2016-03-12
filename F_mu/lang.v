@@ -16,7 +16,13 @@ Module lang.
   (* Sums *)
   | InjL (e : expr)
   | InjR (e : expr)
-  | Case (e0 : expr) (e1 : {bind expr}) (e2 : {bind expr}).
+  | Case (e0 : expr) (e1 : {bind expr}) (e2 : {bind expr})
+  (* Recursive Types *)
+  | Fold (e : expr)
+  | Unfold (e : expr)
+  (* Polymorphic Types *)
+  | TLam (e : expr)
+  | TApp (e : expr).
 
   Instance Ids_expr : Ids expr. derive. Defined.
   Instance Rename_expr : Rename expr. derive. Defined.
@@ -25,26 +31,32 @@ Module lang.
 
   Inductive val :=
   | LamV (e : {bind 1 of expr})
+  | TLamV (e : {bind 1 of expr})
   | UnitV
   | PairV (v1 v2 : val)
   | InjLV (v : val)
-  | InjRV (v : val).
+  | InjRV (v : val)
+  | FoldV (e : expr).
 
   Fixpoint of_val (v : val) : expr :=
     match v with
     | LamV e => Lam e
+    | TLamV e => TLam e
     | UnitV => Unit
     | PairV v1 v2 => Pair (of_val v1) (of_val v2)
     | InjLV v => InjL (of_val v)
     | InjRV v => InjR (of_val v)
+    | FoldV e => Fold e
     end.
   Fixpoint to_val (e : expr) : option val :=
     match e with
     | Lam e => Some (LamV e)
+    | TLam e => Some (TLamV e)
     | Unit => Some UnitV
     | Pair e1 e2 => v1 ← to_val e1; v2 ← to_val e2; Some (PairV v1 v2)
     | InjL e => InjLV <$> to_val e
     | InjR e => InjRV <$> to_val e
+    | Fold e => Some (FoldV e)
     | _ => None
     end.
 
@@ -52,13 +64,15 @@ Module lang.
   Inductive ectx_item :=
   | AppLCtx (e2 : expr)
   | AppRCtx (v1 : val)
+  | TAppCtx
   | PairLCtx (e2 : expr)
   | PairRCtx (v1 : val)
   | FstCtx
   | SndCtx
   | InjLCtx
   | InjRCtx
-  | CaseCtx (e1 : {bind expr}) (e2 : {bind expr}).
+  | CaseCtx (e1 : {bind expr}) (e2 : {bind expr})
+  | UnfoldCtx.
 
   Notation ectx := (list ectx_item).
 
@@ -66,6 +80,7 @@ Module lang.
     match Ki with
     | AppLCtx e2 => App e e2
     | AppRCtx v1 => App (of_val v1) e
+    | TAppCtx => TApp e
     | PairLCtx e2 => Pair e e2
     | PairRCtx v1 => Pair (of_val v1) e
     | FstCtx => Fst e
@@ -73,27 +88,37 @@ Module lang.
     | InjLCtx => InjL e
     | InjRCtx => InjR e
     | CaseCtx e1 e2 => Case e e1 e2
+    | UnfoldCtx => Unfold e
     end.
   Definition fill (K : ectx) (e : expr) : expr := fold_right fill_item e K.
 
   Definition state : Type := ().
 
   Inductive head_step : expr -> state -> expr -> state -> option expr -> Prop :=
+  (* β *)
   | BetaS e1 e2 v2 σ :
       to_val e2 = Some v2 →
       head_step (App (Lam e1) e2) σ e1.[e2/] σ None
+  (* Products *)
   | FstS e1 v1 e2 v2 σ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
       head_step (Fst (Pair e1 e2)) σ e1 σ None
   | SndS e1 v1 e2 v2 σ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
       head_step (Snd (Pair e1 e2)) σ e2 σ None
+  (* Sums *)
   | CaseLS e0 v0 e1 e2 σ :
       to_val e0 = Some v0 →
       head_step (Case (InjL e0) e1 e2) σ e1.[e0/] σ None
   | CaseRS e0 v0 e1 e2 σ :
       to_val e0 = Some v0 →
-      head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None.
+      head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
+  (* Recursive Types *)
+  | Unfold_Fold e σ :
+      head_step (Unfold (Fold e)) σ e σ None
+  (* Polymorphic Types *)
+  | TBeta e σ :
+      head_step (TApp (TLam e)) σ e σ None.
 
   (** Atomic expressions: we don't consider any atomic operations. *)
   Definition atomic (e: expr) := False.
