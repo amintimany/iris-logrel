@@ -1,11 +1,11 @@
 -Q . ""
 prelude/base.v
+prelude/Vlist.v
 stlc/lang.v
 stlc/typing.v
 stlc/rules.v
 stlc/logrel.v
 stlc/fundamental.v
-Vlist.v
 F_mu/lang.v
 F_mu/typing.v
 F_mu/rules.v

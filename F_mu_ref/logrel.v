@@ -6,7 +6,7 @@ From iris.program_logic Require Export lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Export invariants ghost_ownership.
 From iris.program_logic Require Import ownership auth.
-Require Import Vlist.
+Require Import prelude.Vlist.
 Import uPred.
 
 (** interp : is a unary logical relation. *)

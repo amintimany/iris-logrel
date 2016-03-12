@@ -2,7 +2,7 @@ Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import F_mu.lang F_mu.typing F_mu.rules.
-Require Import Vlist.
+Require Import prelude.Vlist.
 Import uPred.
 
 (** interp : is a unary logical relation. *)
