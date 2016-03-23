@@ -115,9 +115,8 @@ Section logrel.
     intros τ τ' H1 v; cbn.
     apply exist_ne => e; apply and_ne; auto.
     apply forall_ne => τ'i.
-    apply always_ne, later_contractive =>i Hi.
-    apply wp_ne=>w. eapply dist_le.
-    rewrite H1; trivial. auto with omega.
+    apply always_ne, (contractive_ne _), wp_ne=>w.
+    rewrite H1; trivial.
   Qed.
 
   Definition interp_rec_pre
@@ -140,11 +139,8 @@ Section logrel.
   Proof.
     intros τ1 τ1' H1 τ2 τ2' H2 w.
     apply always_ne; apply exist_ne=>e; apply and_ne; trivial.
-    apply later_contractive =>i Hi.
-    apply wp_ne=>v.
-    eapply dist_le.
+    apply (contractive_ne _); apply wp_ne=>v.
     rewrite H1 H2; trivial.
-    auto with omega.
   Qed.
   
   Global Instance interp_rec_pre_contr
@@ -208,17 +204,16 @@ Section logrel.
     intros τ τ' H1 v; cbn.
     apply exist_proper => e; apply and_proper; auto.
     apply exist_proper => l; apply and_proper; auto.
-    apply ownI_proper; rewrite H1; trivial.
+    apply (contractive_proper _).
+    rewrite H1; trivial.
   Qed.
     
   Global Instance interp_ref_ne n : Proper (dist n ==> dist n) interp_ref.
   Proof.
     intros τ τ' H1 v; cbn.
     apply exist_ne => e; apply and_ne; auto.
-    apply exist_ne => l; apply and_ne; auto.
-    apply ownI_contractive => j H2.
-    eapply dist_le.
-    rewrite H1; trivial. auto with omega.
+    apply (contractive_ne _).
+    rewrite H1; trivial.
   Qed.
   
   Program Fixpoint interp
@@ -275,21 +270,21 @@ Section logrel.
     let rec tac :=
         match goal with
         | |- (∃ _, _)%I ≡ (∃ _, _)%I =>
-          progress repeat let w := fresh "w" in apply exist_proper => w; tac
-        | |- (_ ∧ _)%I ≡ (_ ∧ _)%I => progress repeat apply and_proper; tac
-        | |- (_ ★ _)%I ≡ (_ ★ _)%I => progress repeat apply sep_proper; tac
-        | |- (_ ∨ _)%I ≡ (_ ∨ _)%I => progress repeat apply or_proper; tac
-        | |- (▷ _)%I ≡ (▷ _)%I => progress repeat apply later_proper; tac
+          let w := fresh "w" in apply exist_proper => w; tac
+        | |- (_ ∧ _)%I ≡ (_ ∧ _)%I => apply and_proper; tac
+        | |- (_ ★ _)%I ≡ (_ ★ _)%I => apply sep_proper; tac
+        | |- (_ ∨ _)%I ≡ (_ ∨ _)%I => apply or_proper; tac
+        | |- (▷ _)%I ≡ (▷ _)%I => apply later_proper; tac
         | |- (∀ _, _)%I ≡ (∀ _, _)%I =>
-          progress repeat let w := fresh "w" in apply forall_proper => w; tac
-        | |- (□ _)%I ≡ (□ _)%I => progress repeat apply always_proper; tac
-        | |- (_ → _)%I ≡ (_ → _)%I => progress repeat apply impl_proper; tac
+          let w := fresh "w" in apply forall_proper => w; tac
+        | |- (□ _)%I ≡ (□ _)%I => apply always_proper; tac
+        | |- (_ → _)%I ≡ (_ → _)%I => apply impl_proper; tac
         | |- (WP _ @ _ {{_}})%I ≡ (WP _ @ _ {{_}})%I =>
-          progress repeat apply wp_proper; try intros ?; tac
-        | |- (ownI _ _)%I ≡ (ownI _ _)%I =>
-          progress repeat apply ownI_proper; try intros ?; tac
-        | _ => unfold interp_rec; rewrite fixpoint_proper; eauto;
-              intros ? ?; unfold interp_rec_pre; cbn; tac
+          apply wp_proper; try intros ?; tac
+        | |- (inv _ _)%I ≡ (inv _ _)%I => apply (contractive_proper _); tac
+        | |- (_ (interp_rec _) _ ≡ _ (interp_rec _) _) => unfold interp_rec;
+            rewrite fixpoint_proper; eauto; intros ? ?; unfold interp_rec_pre; cbn; tac
+        | |- (interp_ref_pred _ _ ≡ interp_ref_pred _ _) => apply (interp_ref_pred_proper) => ?; tac
         | _ => auto
         end
     in tac.
@@ -459,7 +454,7 @@ Section logrel.
       apply IHτ.
     - apply exist_proper =>w1; apply and_proper; auto.
       apply exist_proper => l; apply and_proper; auto.
-      apply ownI_proper; rewrite interp_ref_pred_proper; trivial.
+      apply (contractive_proper _); rewrite interp_ref_pred_proper; trivial.
   Qed.
 
   Lemma interp_ren_S (k : nat) (τ : type)
@@ -538,7 +533,7 @@ Section logrel.
       apply IHτ.
     - apply exist_proper =>w1; apply and_proper; auto.
       apply exist_proper => l; apply and_proper; auto.
-      apply ownI_proper; rewrite interp_ref_pred_proper; trivial.
+      apply (contractive_proper _); rewrite interp_ref_pred_proper; trivial.
   Qed.
 
   Lemma interp_subst

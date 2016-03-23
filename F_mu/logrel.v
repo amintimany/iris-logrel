@@ -115,9 +115,8 @@ Section logrel.
     intros τ τ' H1 v; cbn.
     apply exist_ne => e; apply and_ne; auto.
     apply forall_ne => τ'i.
-    apply always_ne, later_contractive =>i Hi.
-    apply wp_ne=>w. eapply dist_le.
-    rewrite H1; trivial. auto with omega.
+    apply always_ne, (contractive_ne _), wp_ne=>w.
+    rewrite H1; trivial.
   Qed.
 
   Definition interp_rec_pre
@@ -140,11 +139,8 @@ Section logrel.
   Proof.
     intros τ1 τ1' H1 τ2 τ2' H2 w.
     apply always_ne; apply exist_ne=>e; apply and_ne; trivial.
-    apply later_contractive =>i Hi.
-    apply wp_ne=>v.
-    eapply dist_le.
+    apply (contractive_ne _), wp_ne=>v.
     rewrite H1 H2; trivial.
-    auto with omega.
   Qed.
   
   Global Instance interp_rec_pre_contr
