@@ -17,7 +17,7 @@ Section logrel.
 
   
   Class Val_to_IProp_AlwaysStable (f : leibniz_val -n> iProp lang Σ) :=
-    val_to_iprop_always_stable : ∀ v : val, Persistent ((cofe_mor_car _ _ f) v).
+    val_to_iprop_always_stable : ∀ v : val, PersistentP ((cofe_mor_car _ _ f) v).
 
   Arguments val_to_iprop_always_stable /.
   
@@ -242,12 +242,21 @@ Section logrel.
         let H := fresh "H" in intros H; inversion H; congruence
       end.
   Qed.
+
+  Lemma interp_closed_irrel_turnstile
+        (k : nat) (τ : type) (HC HC': closed_type k τ)
+        (Δ : Vlist (leibniz_val -n> iProp lang Σ) k)
+        (v : val)
+    : interp k τ HC Δ v ⊢ interp k τ HC' Δ v.
+  Proof.
+    rewrite interp_closed_irrel; trivial.
+  Qed.
     
   Definition env_subst (vs : list val) (x : var) : expr :=
     from_option (Var x) (of_val <$> vs !! x).
   
   Lemma typed_subst_head_simpl k Δ τ e w ws :
-    typed k Δ e τ -> length Δ = S (length ws) →
+    typed k Δ e τ -> List.length Δ = S (List.length ws) →
     e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
   .
   Proof.
@@ -264,7 +273,7 @@ Section logrel.
            (f : leibniz_val -n> iProp lang Σ)
            {Hf : Val_to_IProp_AlwaysStable f}
            (v : val)
-    : Persistent (f v).
+    : PersistentP (f v).
   Proof. apply Hf. Qed.
     
   Global Instance interp_always_stable
@@ -273,11 +282,11 @@ Section logrel.
     : Val_to_IProp_AlwaysStable (interp k τ H Δ).
   Proof.
     induction τ; cbn; intros v; try apply _.
-  - rewrite /interp_rec /Persistent fixpoint_unfold /interp_rec_pre.
+  - rewrite /interp_rec /PersistentP fixpoint_unfold /interp_rec_pre.
     apply always_intro'; trivial.
   - apply (@force_lookup_Forall
              _ _
-             (λ f : leibniz_val -n> iProp lang Σ, Persistent (f v))).
+             (λ f : leibniz_val -n> iProp lang Σ, PersistentP (f v))).
     apply Forall_forall => f H1.
     eapply Forall_forall in HΔ; [apply HΔ|trivial].
   Qed.
@@ -285,7 +294,7 @@ Section logrel.
   Global Instance alwyas_stable_Δ k Δ Γ vs
            (Hctx : closed_ctx k Γ)
            {HΔ : VlistAlwaysStable Δ}
-    : Persistent (Π∧ zip_with (λ τ v, interp k (` τ) (proj2_sig τ) Δ v) (closed_ctx_list _ Γ Hctx) vs)%I.
+    : PersistentP (Π∧ zip_with (λ τ v, interp k (` τ) (proj2_sig τ) Δ v) (closed_ctx_list _ Γ Hctx) vs)%I.
   Proof. typeclasses eauto. Qed.
 
   Global Instance alwyas_stable_Vlist_cons k f Δ
@@ -316,6 +325,25 @@ Section logrel.
     apply and_proper.
     - apply interp_closed_irrel.
     - apply IHΓ.
+  Qed.
+
+  Lemma type_context_closed_irrel_turnstile
+        (k : nat) (Δ : Vlist (leibniz_val -n> iProp lang Σ) k) (Γ : list type)
+        (vs : list leibniz_val)
+        (Hctx Hctx' : closed_ctx k Γ) :
+    (Π∧ zip_with
+          (λ (τ : {τ : type | closed_type k τ}) (v0 : leibniz_val),
+           ((interp k (` τ) (proj2_sig τ)) Δ) v0)
+          (closed_ctx_list k Γ Hctx)
+          vs)%I
+      ⊢
+      (Π∧ zip_with
+           (λ (τ : {τ : type | closed_type k τ}) (v : leibniz_val),
+            ((interp k (` τ) (proj2_sig τ)) Δ) v)
+           (closed_ctx_list k Γ Hctx')
+           vs)%I.
+  Proof.
+    rewrite type_context_closed_irrel; trivial.
   Qed.
 
   Local Ltac ipropsimpl :=
