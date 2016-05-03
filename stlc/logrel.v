@@ -19,11 +19,11 @@ Fixpoint interp (τ : type) (w : val) : iProp lang Σ :=
      □ ∀ v, ▷ interp τ1 v → wp ⊤ (App (of_val w) (of_val v)) (interp τ2)
   end%I.
 
-Global Instance interp_always_stable τ v : Persistent (interp τ v).
+Global Instance interp_always_stable τ v : PersistentP (interp τ v).
 Proof. revert v; induction τ=> v /=; apply _. Qed.
 
 Lemma typed_subst_invariant Γ e τ s1 s2 :
-  typed Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
+  typed Γ e τ → (∀ x, x < List.length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
   assert (∀ s1 s2 x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
@@ -35,7 +35,7 @@ Definition env_subst (vs : list val) (x : var) : expr :=
   from_option (Var x) (of_val <$> vs !! x).
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
-  typed Δ e τ -> length Δ = S (length ws) →
+  typed Δ e τ -> List.length Δ = S (List.length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
 .
 Proof.

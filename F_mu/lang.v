@@ -36,7 +36,7 @@ Module lang.
   | PairV (v1 v2 : val)
   | InjLV (v : val)
   | InjRV (v : val)
-  | FoldV (e : expr).
+  | FoldV (v : val).
 
   Fixpoint of_val (v : val) : expr :=
     match v with
@@ -46,7 +46,7 @@ Module lang.
     | PairV v1 v2 => Pair (of_val v1) (of_val v2)
     | InjLV v => InjL (of_val v)
     | InjRV v => InjR (of_val v)
-    | FoldV e => Fold e
+    | FoldV v => Fold (of_val v)
     end.
   Fixpoint to_val (e : expr) : option val :=
     match e with
@@ -56,7 +56,7 @@ Module lang.
     | Pair e1 e2 => v1 ← to_val e1; v2 ← to_val e2; Some (PairV v1 v2)
     | InjL e => InjLV <$> to_val e
     | InjR e => InjRV <$> to_val e
-    | Fold e => Some (FoldV e)
+    | Fold e => v ← to_val e; Some (FoldV v)
     | _ => None
     end.
 
@@ -72,6 +72,7 @@ Module lang.
   | InjLCtx
   | InjRCtx
   | CaseCtx (e1 : {bind expr}) (e2 : {bind expr})
+  | FoldCtx
   | UnfoldCtx.
 
   Notation ectx := (list ectx_item).
@@ -88,6 +89,7 @@ Module lang.
     | InjLCtx => InjL e
     | InjRCtx => InjR e
     | CaseCtx e1 e2 => Case e e1 e2
+    | FoldCtx => Fold e
     | UnfoldCtx => Unfold e
     end.
   Definition fill (K : ectx) (e : expr) : expr := fold_right fill_item e K.
@@ -114,14 +116,15 @@ Module lang.
       to_val e0 = Some v0 →
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
   (* Recursive Types *)
-  | Unfold_Fold e σ :
+  | Unfold_Fold e v σ :
+      to_val e = Some v →
       head_step (Unfold (Fold e)) σ e σ None
   (* Polymorphic Types *)
   | TBeta e σ :
       head_step (TApp (TLam e)) σ e σ None.
 
   (** Atomic expressions: we don't consider any atomic operations. *)
-  Definition atomic (e: expr) := False.
+  Definition atomic (e: expr) := false.
 
   (** Close reduction under evaluation contexts.
 We could potentially make this a generic construction. *)

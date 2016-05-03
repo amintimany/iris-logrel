@@ -334,7 +334,7 @@ Next Obligation.
 Proof. repeat intros ?; constructor; trivial. Qed.
 Next Obligation.
 Proof.
-  repeat intros?; constructor; trivial; apply Forall2_Forall, Forall_forall; trivial.
+  repeat intros?; constructor; trivial. apply Forall_Forall2, Forall_forall; trivial.
 Qed.
 
 Program Definition Vlist_cons_apply {A : cofeT} {k}

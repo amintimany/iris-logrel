@@ -96,7 +96,7 @@ Module lang.
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None.
 
   (** Atomic expressions: we don't consider any atomic operations. *)
-  Definition atomic (e: expr) := False.
+  Definition atomic (e: expr) := false.
 
   (** Close reduction under evaluation contexts.
 We could potentially make this a generic construction. *)

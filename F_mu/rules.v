@@ -94,11 +94,13 @@ Section lang_rules.
     - by rewrite right_id.
   Qed.
 
-  Lemma wp_Fold E e Q :
-    ▷ wp E e Q ⊢ wp E (Unfold (Fold e)) Q.
+  Lemma wp_Fold E e v Q :
+    to_val e = Some v →
+    ▷ Q v ⊢ wp E (Unfold (Fold e)) Q.
   Proof.
-    rewrite -(wp_lift_pure_det_step (Unfold _) e None) //=; auto.
-    - by rewrite right_id.
+    intros <-%of_to_val.
+    rewrite -(wp_lift_pure_det_step (Unfold _) (of_val v) None) //=; auto.
+    - rewrite right_id; auto using uPred.later_mono, wp_value'.
   Qed.
   
   Lemma wp_fst E e1 v1 e2 v2 Q :
