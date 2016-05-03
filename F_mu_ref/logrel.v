@@ -18,7 +18,7 @@ Section logrel.
   Canonical Structure leibniz_val := leibnizC val.
   
   Class Val_to_IProp_AlwaysStable (f : leibniz_val -n> iPropG lang Σ) :=
-    val_to_iprop_always_stable : ∀ v : val, Persistent ((cofe_mor_car _ _ f) v).
+    val_to_iprop_always_stable : ∀ v : val, PersistentP ((cofe_mor_car _ _ f) v).
 
   Arguments val_to_iprop_always_stable /.
 
@@ -124,14 +124,14 @@ Section logrel.
              (rec_apr : (leibniz_val -n> iPropG lang Σ))
     : (leibniz_val -n> iPropG lang Σ) :=
     {|
-      cofe_mor_car := λ w, (□ (∃ e, w = FoldV e ∧ ▷ WP e @ ⊤ {{ λ v, τi rec_apr v}}))%I
+      cofe_mor_car := λ w, (□ (∃ v, w = FoldV v ∧ ▷ τi rec_apr v))%I
     |}.
 
   Global Instance interp_rec_pre_proper : Proper ((≡) ==> (≡) ==> (≡)) interp_rec_pre.
   Proof.
     intros τ1 τ1' H1 τ2 τ2' H2 w.
     apply always_proper; apply exist_proper=>e; apply and_proper; trivial.
-    apply later_proper, wp_proper=>v.
+    apply later_proper.
     rewrite H1 H2; trivial.
   Qed.
   
@@ -139,7 +139,7 @@ Section logrel.
   Proof.
     intros τ1 τ1' H1 τ2 τ2' H2 w.
     apply always_ne; apply exist_ne=>e; apply and_ne; trivial.
-    apply (contractive_ne _); apply wp_ne=>v.
+    apply (contractive_ne _).
     rewrite H1 H2; trivial.
   Qed.
   
@@ -151,7 +151,7 @@ Section logrel.
     intros n f g H w; cbn.
     apply always_ne;apply exist_ne; intros e; apply and_ne; trivial.
     apply later_contractive =>i Hi.
-    apply wp_ne; intros v; rewrite H; trivial.
+    rewrite H; trivial.
   Qed.
   
   Definition interp_rec (τi : (leibniz_val -n> iPropG lang Σ) -n> (leibniz_val -n> iPropG lang Σ))
@@ -295,12 +295,21 @@ Section logrel.
         let H := fresh "H" in intros H; inversion H; congruence
       end.
   Qed.
+
+  Lemma interp_closed_irrel_turnstile
+        (k : nat) (τ : type) (HC HC': closed_type k τ)
+        (Δ : Vlist (leibniz_val -n> iPropG lang Σ) k)
+        (v : val)
+    : interp k τ HC Δ v ⊢ interp k τ HC' Δ v.
+  Proof.
+    rewrite interp_closed_irrel; trivial.
+  Qed.
     
   Definition env_subst (vs : list val) (x : var) : expr :=
     from_option (Var x) (of_val <$> vs !! x).
   
   Lemma typed_subst_head_simpl k Δ τ e w ws :
-    typed k Δ e τ -> length Δ = S (length ws) →
+    typed k Δ e τ -> List.length Δ = S (List.length ws) →
     e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
   .
   Proof.
@@ -317,7 +326,7 @@ Section logrel.
            (f : leibniz_val -n> iPropG lang Σ)
            {Hf : Val_to_IProp_AlwaysStable f}
            (v : val)
-    : Persistent (f v).
+    : PersistentP (f v).
   Proof. apply Hf. Qed.
     
   Global Instance interp_always_stable
@@ -326,11 +335,11 @@ Section logrel.
     : Val_to_IProp_AlwaysStable (interp k τ H Δ).
   Proof.
     induction τ; cbn; intros v; try apply _.
-  - rewrite /interp_rec /Persistent fixpoint_unfold /interp_rec_pre.
+  - rewrite /interp_rec /PersistentP fixpoint_unfold /interp_rec_pre.
     apply always_intro'; trivial.
   - apply (@force_lookup_Forall
              _ _
-             (λ f : leibniz_val -n> iPropG lang Σ, Persistent (f v))).
+             (λ f : leibniz_val -n> iPropG lang Σ, PersistentP (f v))).
     apply Forall_forall => f H1.
     eapply Forall_forall in HΔ; [apply HΔ|trivial].
   Qed.
@@ -338,7 +347,7 @@ Section logrel.
   Global Instance alwyas_stable_Δ k Δ Γ vs
            (Hctx : closed_ctx k Γ)
            {HΔ : VlistAlwaysStable Δ}
-    : Persistent (Π∧ zip_with (λ τ v, interp k (` τ) (proj2_sig τ) Δ v) (closed_ctx_list _ Γ Hctx) vs)%I.
+    : PersistentP (Π∧ zip_with (λ τ v, interp k (` τ) (proj2_sig τ) Δ v) (closed_ctx_list _ Γ Hctx) vs)%I.
   Proof. typeclasses eauto. Qed.
 
   Global Instance alwyas_stable_Vlist_cons k f Δ
@@ -369,7 +378,26 @@ Section logrel.
     apply and_proper.
     - apply interp_closed_irrel.
     - apply IHΓ.
-  Qed.    
+  Qed.
+
+  Lemma type_context_closed_irrel_turnstile
+        (k : nat) (Δ : Vlist (leibniz_val -n> iPropG lang Σ) k) (Γ : list type)
+        (vs : list leibniz_val)
+        (Hctx Hctx' : closed_ctx k Γ) :
+    (Π∧ zip_with
+          (λ (τ : {τ : type | closed_type k τ}) (v0 : leibniz_val),
+           ((interp k (` τ) (proj2_sig τ)) Δ) v0)
+          (closed_ctx_list k Γ Hctx)
+          vs)%I
+      ⊢
+      (Π∧ zip_with
+           (λ (τ : {τ : type | closed_type k τ}) (v : leibniz_val),
+            ((interp k (` τ) (proj2_sig τ)) Δ) v)
+           (closed_ctx_list k Γ Hctx')
+           vs)%I.
+  Proof.
+    rewrite type_context_closed_irrel; trivial.
+  Qed.
 
   Local Ltac ipropsimpl :=
     repeat

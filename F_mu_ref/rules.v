@@ -8,7 +8,7 @@ From iris.program_logic Require Import ownership auth.
 Import uPred.
 
 Section lang_rules.
-  Definition heapR : cmraT := mapR loc (fracR (dec_agreeR val)).
+  Definition heapR : cmraT := gmapR loc (fracR (dec_agreeR val)).
 
   (** The CMRA we need. *)
   Class heapG Σ :=
@@ -35,7 +35,7 @@ Section lang_rules.
 
     Global Instance heap_inv_proper : Proper ((≡) ==> (≡)) heap_inv.
     Proof. solve_proper. Qed.
-    Global Instance heap_ctx_always_stable N : Persistent (heap_ctx N).
+    Global Instance heap_ctx_always_stable N : PersistentP (heap_ctx N).
     Proof. apply _. Qed.
   End definitions.
   Typeclasses Opaque heap_ctx heap_mapsto.
@@ -186,7 +186,7 @@ Section lang_rules.
       induction σ as [|l v σ Hl IH] using map_ind.
       { rewrite big_sepM_empty; apply True_intro. }
       rewrite to_heap_insert big_sepM_insert //.
-      rewrite (map_insert_singleton_op (to_heap σ));
+      rewrite (insert_singleton_op (to_heap σ));
         last rewrite lookup_fmap Hl; auto.
         (* FIXME: investigate why we have to unfold auth_own here. *)
         by rewrite auth_own_op IH. 
@@ -197,16 +197,16 @@ Section lang_rules.
     (** General properties of mapsto *)
     Lemma heap_mapsto_op_eq l q1 q2 v :
       (l ↦{q1} v ★ l ↦{q2} v)%I ≡ (l ↦{q1+q2} v)%I.
-    Proof. by rewrite -auth_own_op map_op_singleton Frac_op dec_agree_idemp. Qed.
+    Proof. by rewrite -auth_own_op op_singleton Frac_op dec_agree_idemp. Qed.
 
     Lemma heap_mapsto_op l q1 q2 v1 v2 :
       (l ↦{q1} v1 ★ l ↦{q2} v2)%I ≡ (v1 = v2 ∧ l ↦{q1+q2} v1)%I.
     Proof.
       destruct (decide (v1 = v2)) as [->|].
       { by rewrite heap_mapsto_op_eq const_equiv // left_id. }
-      rewrite -auth_own_op map_op_singleton Frac_op dec_agree_ne //.
+      rewrite -auth_own_op op_singleton Frac_op dec_agree_ne //.
       apply (anti_symm (⊢)); last by apply const_elim_l.
-      rewrite auth_own_valid map_validI (forall_elim l) lookup_singleton.
+      rewrite auth_own_valid gmap_validI (forall_elim l) lookup_singleton.
       rewrite option_validI frac_validI discrete_valid. by apply const_elim_r.
     Qed.
 
@@ -231,7 +231,7 @@ Section lang_rules.
       cbn; rewrite to_of_val.
       apply const_elim_l=>-[l [-> [-Heq [-> ?]]]]; inversion Heq; subst.
         by rewrite (forall_elim l) right_id const_equiv // left_id wand_elim_r.
-        cbn; eauto.
+        cbn; rewrite H; eauto.
     Qed.
 
     Lemma wp_load_pst E σ l v Φ :
@@ -250,6 +250,7 @@ Section lang_rules.
     Proof.
       intros. rewrite -(wp_lift_atomic_det_step σ (UnitV) (<[l:=v]>σ) None)
                          ?right_id //; cbn; eauto.
+      rewrite H; auto.
         by intros; inv_step; eauto.
     Qed.
 
@@ -260,11 +261,11 @@ Section lang_rules.
       P ⊢ (▷ ∀ l, l ↦ v -★ Φ (LocV l)) →
       P ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> ??? HP.
+      rewrite /heap_ctx /heap_inv=> H ?? HP.
       trans (|={E}=> auth_own heap_name ∅ ★ P)%I.
       { by rewrite -pvs_frame_r -(auth_empty _ E) left_id. }
       apply wp_strip_pvs, (auth_fsa heap_inv (wp_fsa (Alloc e)))
-      with N heap_name ∅; simpl; eauto with I.
+      with N heap_name ∅; simpl; eauto with I; [rewrite H; auto|].
       rewrite -later_intro. apply sep_mono_r,forall_intro=> h; apply wand_intro_l.
       rewrite -assoc left_id; apply const_elim_sep_l=> ?.
       rewrite -(wp_alloc_pst _ (of_heap h)) //.
@@ -275,8 +276,8 @@ Section lang_rules.
       repeat erewrite <-exist_intro by apply _; simpl.
       rewrite -of_heap_insert left_id right_id.
       rewrite /heap_mapsto. ecancel [_ -★ Φ _]%I.
-      rewrite -(map_insert_singleton_op h); last by apply of_heap_None.
-      rewrite const_equiv; last by apply (map_insert_valid h).
+      rewrite -(insert_singleton_op h); last by apply of_heap_None.
+      rewrite const_equiv; last by apply (insert_valid h).
         by rewrite left_id -later_intro.
     Qed.
 
@@ -302,9 +303,10 @@ Section lang_rules.
       P ⊢ (▷ l ↦ v' ★ ▷ (l ↦ v -★ Φ UnitV)) →
       P ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> ??? HPΦ.
+      rewrite /heap_ctx /heap_inv=> H ?? HPΦ.
       apply (auth_fsa' heap_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v)) l))
-      with N heap_name {[ l := Frac 1 (DecAgree v') ]}; simpl; eauto with I.
+      with N heap_name {[ l := Frac 1 (DecAgree v') ]}; simpl; eauto with I;
+        [rewrite H; auto|].
       rewrite HPΦ{HPΦ}; apply sep_mono_r, forall_intro=> h; apply wand_intro_l.
       rewrite -assoc; apply const_elim_sep_l=> ?.
       rewrite -(wp_store_pst _ (<[l:=v']>(of_heap h))) ?lookup_insert //.
@@ -332,11 +334,13 @@ Section lang_rules.
       - intros. inv_step; auto.
     Qed.
 
-    Lemma wp_Fold E e Φ :
-      ▷ WP e @ E {{Φ}} ⊢ WP (Unfold (Fold e)) @ E {{Φ}}.
+    Lemma wp_Fold E e v Φ :
+      to_val e = Some v →
+      ▷ Φ v ⊢ WP (Unfold (Fold e)) @ E {{Φ}}.
     Proof.
-      rewrite -(wp_lift_pure_det_step (Unfold _) e None) //=.
-      - by rewrite right_id.
+      intros <-%of_to_val.
+      rewrite -(wp_lift_pure_det_step (Unfold _) (of_val v) None) //=; auto.
+      - rewrite right_id; auto using uPred.later_mono, wp_value'.
       - intros. inv_step; auto.
     Qed.
     

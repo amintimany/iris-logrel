@@ -335,3 +335,13 @@ Proof.
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
   induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega typed_subst_invariant.
 Qed.
+
+Lemma closed_ctx_map_S_back (k : nat) (Γ : list type) (e : expr) (τ : type) :
+  closed_ctx k Γ →
+  closed_ctx (S k) (map (λ t : type, t.[ren (+1)]) Γ).
+Proof.
+  intros H.
+  eapply closed_ctx_map; [eassumption|].
+  clear; intros τ' H'.
+  set (HW := closed_type_S_ren2 τ' 1 0); cbn in HW; apply HW; trivial.
+Qed.

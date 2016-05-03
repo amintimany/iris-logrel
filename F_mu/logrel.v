@@ -21,7 +21,6 @@ Section logrel.
 
   Arguments val_to_iprop_always_stable /.
   
-  
   Definition interp_unit : leibniz_val -n> iProp lang Σ :=
     {|
       cofe_mor_car := λ w, (w = UnitV)%I
@@ -124,22 +123,22 @@ Section logrel.
              (rec_apr : (leibniz_val -n> iProp lang Σ))
     : (leibniz_val -n> iProp lang Σ) :=
     {|
-      cofe_mor_car := λ w, (□ (∃ e, w = FoldV e ∧ ▷ WP e @ ⊤ {{ λ v, τi rec_apr v}}))%I
+      cofe_mor_car := λ w, (□ (∃ v, w = FoldV v ∧ ▷ (τi rec_apr v)))%I
     |}.
 
   Global Instance interp_rec_pre_proper : Proper ((≡) ==> (≡) ==> (≡)) interp_rec_pre.
   Proof.
     intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply always_proper; apply exist_proper=>e; apply and_proper; trivial.
-    apply later_proper, wp_proper=>v.
+    apply always_proper, exist_proper=>e; apply and_proper; trivial.
+    apply later_proper.
     rewrite H1 H2; trivial.
   Qed.
   
   Global Instance interp_rec_pre_ne n : Proper (dist n ==> dist n ==> dist n) interp_rec_pre.
   Proof.
     intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply always_ne; apply exist_ne=>e; apply and_ne; trivial.
-    apply (contractive_ne _), wp_ne=>v.
+    apply always_ne, exist_ne=>e; apply and_ne; trivial.
+    apply (contractive_ne _).
     rewrite H1 H2; trivial.
   Qed.
   
@@ -149,9 +148,9 @@ Section logrel.
       Contractive (interp_rec_pre τi).
   Proof.
     intros n f g H w; cbn.
-    apply always_ne;apply exist_ne; intros e; apply and_ne; trivial.
+    apply always_ne, exist_ne; intros e; apply and_ne; trivial.
     apply later_contractive =>i Hi.
-    apply wp_ne; intros v; rewrite H; trivial.
+    rewrite H; trivial.
   Qed.
   
   Definition interp_rec (τi : (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ))
@@ -281,14 +280,15 @@ Section logrel.
            {HΔ : VlistAlwaysStable Δ}
     : Val_to_IProp_AlwaysStable (interp k τ H Δ).
   Proof.
-    induction τ; cbn; intros v; try apply _.
-  - rewrite /interp_rec /PersistentP fixpoint_unfold /interp_rec_pre.
-    apply always_intro'; trivial.
-  - apply (@force_lookup_Forall
-             _ _
-             (λ f : leibniz_val -n> iProp lang Σ, PersistentP (f v))).
-    apply Forall_forall => f H1.
-    eapply Forall_forall in HΔ; [apply HΔ|trivial].
+    revert k H Δ HΔ.
+    induction τ; cbn; intros k H Δ HΔ v; try apply _.
+    - rewrite /PersistentP /interp_rec fixpoint_unfold /interp_rec_pre; cbn.
+      apply always_intro'; trivial.
+    - apply (@force_lookup_Forall
+               _ _
+               (λ f : leibniz_val -n> iProp lang Σ, PersistentP (f v))).
+      apply Forall_forall => f H1.
+      eapply Forall_forall in HΔ; [apply HΔ|trivial].
   Qed.
 
   Global Instance alwyas_stable_Δ k Δ Γ vs

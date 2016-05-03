@@ -53,7 +53,7 @@ Module lang.
   | PairV (v1 v2 : val)
   | InjLV (v : val)
   | InjRV (v : val)
-  | FoldV (e : expr)
+  | FoldV (v : val)
   | LocV (l : loc).
 
   Global Instance val_dec_eq (v v' : val) : Decision (v = v').
@@ -72,7 +72,7 @@ Module lang.
     | PairV v1 v2 => Pair (of_val v1) (of_val v2)
     | InjLV v => InjL (of_val v)
     | InjRV v => InjR (of_val v)
-    | FoldV e => Fold e
+    | FoldV v => Fold (of_val v)
     | LocV l => Loc l
     end.
   
@@ -84,7 +84,7 @@ Module lang.
     | Pair e1 e2 => v1 ← to_val e1; v2 ← to_val e2; Some (PairV v1 v2)
     | InjL e => InjLV <$> to_val e
     | InjR e => InjRV <$> to_val e
-    | Fold e => Some (FoldV e)
+    | Fold e => v ← to_val e; Some (FoldV v)
     | Loc l => Some (LocV l)
     | _ => None
     end.
@@ -101,6 +101,7 @@ Module lang.
   | InjLCtx
   | InjRCtx
   | CaseCtx (e1 : {bind expr}) (e2 : {bind expr})
+  | FoldCtx
   | UnfoldCtx
   | AllocCtx
   | LoadCtx
@@ -121,6 +122,7 @@ Module lang.
     | InjLCtx => InjL e
     | InjRCtx => InjR e
     | CaseCtx e1 e2 => Case e e1 e2
+    | FoldCtx => Fold e
     | UnfoldCtx => Unfold e
     | AllocCtx => Alloc e
     | LoadCtx => Load e
@@ -152,7 +154,8 @@ Module lang.
       to_val e0 = Some v0 →
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
   (* Recursive Types *)
-  | Unfold_Fold e σ :
+  | Unfold_Fold e v σ :
+      to_val e = Some v →
       head_step (Unfold (Fold e)) σ e σ None
   (* Polymorphic Types *)
   | TBeta e σ :
@@ -171,10 +174,13 @@ Module lang.
   (** Atomic expressions: we don't consider any atomic operations. *)
   Definition atomic (e: expr) :=
     match e with
-    | Alloc e => is_Some (to_val e)
-    | Load e => is_Some (to_val e)
-    | Store e1 e2 => is_Some (to_val e1) ∧ is_Some (to_val e2)
-    | _ => False
+    | Alloc e => match (to_val e) with | Some _ => true | None => false end
+    | Load e =>  match (to_val e) with | Some _ => true | None => false end
+    | Store e1 e2 =>
+      andb
+        match (to_val e1) with | Some _ => true | None => false end
+        match (to_val e2) with | Some _ => true | None => false end
+    | _ => false
     end.
 
   (** Close reduction under evaluation contexts.
@@ -226,7 +232,7 @@ We could potentially make this a generic construction. *)
   Proof. destruct e; cbn; intuition auto. Qed.
 
   Lemma atomic_fill_item Ki e : atomic (fill_item Ki e) → is_Some (to_val e).
-  Proof. destruct Ki; cbn; intuition. Qed.
+  Proof. destruct Ki; cbn; repeat destruct (to_val _); cbn; intuition eauto. Qed.
   
   Lemma atomic_fill K e : atomic (fill K e) → to_val e = None → K = [].
   Proof.
@@ -240,8 +246,9 @@ We could potentially make this a generic construction. *)
     atomic e1 → head_step e1 σ1 e2 σ2 ef → is_Some (to_val e2).
   Proof.
     intros H1 H2.
-    destruct e1; inversion H1; inversion H2; subst;
-    try rewrite to_of_val; eauto using mk_is_Some.
+    destruct e1; cbn in *; inversion H2;
+      try destruct (to_val e1); cbn in *; try inversion H1;
+        eauto 2 using to_of_val.
   Qed.
 
   Lemma atomic_step e1 σ1 e2 σ2 ef :
