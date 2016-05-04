@@ -64,6 +64,14 @@ Section typed_interp.
     |-
     (_
        --------------------------------------□
+       □ _) => eapply (@always_intro _ _ _ _)
+  end : itauto.
+  
+  Local Hint Extern 1 =>
+  match goal with
+    |-
+    (_
+       --------------------------------------□
        (_ ∧ _)) => iSplit
   end : itauto.
   
@@ -79,21 +87,17 @@ Section typed_interp.
 
   Lemma typed_interp k Δ Γ vs e τ
         (Htyped : typed k Γ e τ)
-        (Hctx : closed_ctx k Γ)
-        (HC : closed_type k τ)
-        (HΔ : VlistAlwaysStable Δ)
+        (HΔ : context_interp_Persistent Δ)
     : List.length Γ = List.length vs →
-      Π∧ zip_with (λ τ v, interp k (` τ) (proj2_sig τ) Δ v) (closed_ctx_list _ Γ Hctx) vs ⊢
-                  WP (e.[env_subst vs]) @ ⊤ {{ λ v, (@interp Σ) k τ HC Δ v }}.
+      Π∧ zip_with (λ τ v, interp τ Δ v) Γ vs ⊢
+                  WP (e.[env_subst vs]) @ ⊤ {{ λ v, (@interp Σ) τ Δ v }}.
   Proof.
-    revert Hctx HC HΔ vs.
-    induction Htyped; intros Hctx HC HΔ vs Hlen; iIntros "#HΓ"; cbn.
+    revert Δ HΔ vs.
+    induction Htyped; intros Δ HΔ vs Hlen; iIntros "#HΓ"; cbn.
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst Hv; value_case.
-      edestruct (zipwith_Forall_lookup _ Hctx) as [Hτ' Hτ'eq]; eauto.
-      iApply interp_closed_irrel_turnstile.
       iApply big_and_elem_of "HΓ"; eauto.
       apply elem_of_list_lookup_2 with x.
       rewrite lookup_zip_with; simplify_option_eq; trivial.
@@ -107,13 +111,11 @@ Section typed_interp.
       iApply double_exists; [|trivial].
       intros w w'; cbn; iIntros "#[% [H2 H3]]"; rewrite H; cbn.
       iApply wp_fst; eauto using to_of_val; cbn.
-      iNext; iApply interp_closed_irrel_turnstile; trivial.
     - (* snd *)
       smart_wp_bind (SndCtx) v "# Hv" IHHtyped; cbn.
       iApply double_exists; [|trivial].
       intros w w'; cbn; iIntros "#[% [H2 H3]]"; rewrite H.
       iApply wp_snd; eauto using to_of_val.
-      iNext; iApply interp_closed_irrel_turnstile; trivial.
     - (* injl *)
       smart_wp_bind (InjLCtx) v "# Hv" IHHtyped; cbn.
       value_case; iLeft; auto with itauto.
@@ -128,25 +130,19 @@ Section typed_interp.
             [iApply wp_case_inl|iApply wp_case_inr];
             auto 1 using to_of_val;
             asimpl;
-            [specialize (IHHtyped2 Δ (typed_closed_ctx _ _ _ _ Htyped2) HC HΔ (w::vs)) |
-             specialize (IHHtyped3 Δ (typed_closed_ctx _ _ _ _ Htyped3) HC HΔ (w::vs))];
+            [specialize (IHHtyped2 Δ HΔ (w::vs)) |
+             specialize (IHHtyped3 Δ HΔ (w::vs))];
               erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto); iNext;
-                [iApply IHHtyped2 | iApply IHHtyped3]; cbn; auto;
-                  (iSplit; [iApply interp_closed_irrel_turnstile|
-                            iApply type_context_closed_irrel_turnstile]; trivial).
+                [iApply IHHtyped2 | iApply IHHtyped3]; cbn; auto with itauto.
     - (* lam *)
       value_case; apply (always_intro _ _); iIntros {w} "#Hw".
       iApply wp_lam; auto 1 using to_of_val.
       asimpl; erewrite typed_subst_head_simpl; [|eauto|cbn]; eauto.
-      iNext; iApply (IHHtyped Δ (typed_closed_ctx _ _ _ _ Htyped) (closed_type_arrow_2 HC)
-                              HΔ (w :: vs)); cbn; auto.
-      (iSplit; [iApply interp_closed_irrel_turnstile|
-                iApply type_context_closed_irrel_turnstile]; trivial).
+      iNext; iApply (IHHtyped Δ HΔ (w :: vs)); cbn; auto with itauto.
     - (* app *)
       smart_wp_bind (AppLCtx (e2.[env_subst vs])) v "#Hv" IHHtyped1.
       smart_wp_bind (AppRCtx v) w "#Hw" IHHtyped2.
-      iApply wp_mono; [|iApply "Hv"; auto with itauto].
-      intros; apply interp_closed_irrel_turnstile.
+      iApply wp_mono; [|iApply "Hv"]; auto with itauto.
     - (* TLam *)
       value_case; iApply exist_intro; iSplit; trivial.
       iIntros {τi}; destruct τi as [τi τiPr].
@@ -154,43 +150,50 @@ Section typed_interp.
       iIntros "#HΓ"; iNext.
       iApply IHHtyped; [rewrite map_length|]; trivial.
       iRevert "HΓ".
-      rewrite zip_with_closed_ctx_list_subst.
-      iIntros "#HΓ"; trivial.
+      admit.
+(*      rewrite zip_with_closed_ctx_list_subst.
+      iIntros "#HΓ"; trivial. *)
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
       iApply exist_elim; [|iExact "Hv"]; cbn.
       iIntros {e'} "[% #He']"; rewrite H0.
       iApply wp_TLam.
-      iSpecialize "He'" {((interp k τ' H Δ) ↾ _)}; cbn.
+      iSpecialize "He'" {((interp τ' Δ) ↾ _)}; cbn.
       iApply always_elim. iApply always_mono; [|trivial].
       iIntros "He'"; iNext.
       iApply wp_mono; [|trivial].
-      intros w; rewrite interp_subst; trivial.
+      admit. (*intros w; rewrite interp_subst; trivial.*)
     - (* Fold *)
       rewrite map_length in IHHtyped.
-      iApply (@wp_bind _ _ _ [FoldCtx]);
-        iApply wp_impl_l;
+      iApply (@wp_bind _ _ _ [FoldCtx]).
+        iApply wp_impl_l.
         iSplit; [eapply (@always_intro _ _ _ _)|
-                 iApply (IHHtyped _ _ (closed_type_rec HC)); trivial]; cbn.
+                 iApply (IHHtyped (extend_context_interp ((interp (TRec τ)) Δ) Δ));
+                 trivial].
       + iIntros {v} "#Hv".
-        value_case. rewrite /interp_rec fixpoint_unfold. unfold interp_rec_pre at 1; cbn.
-        eapply (@always_intro _ _ _ _).
-        iApply exist_intro; iSplit; trivial.
-        iNext.
-        change (fixpoint (interp_rec_pre
-                            (Vlist_cons_apply Δ (interp (S k) τ (closed_type_rec HC)))))
-        with ((interp k (TRec τ) HC) Δ); trivial.
-      + iRevert "HΓ"; rewrite zip_with_closed_ctx_list_subst; iIntros "#HΓ"; trivial.
+        value_case.
+        change (fixpoint _) with (interp (TRec τ) Δ) at 1; trivial.
+        rewrite fixpoint_unfold; cbn.
+        auto with itauto.
+      + admit. (*iRevert "HΓ"; rewrite zip_with_closed_ctx_list_subst; iIntros "#HΓ"; trivial. *)
     - (* Unfold *)
       iApply (@wp_bind _ _ _ [UnfoldCtx]);
         iApply wp_impl_l;
         iSplit; [eapply (@always_intro _ _ _ _)|
-                 iApply (IHHtyped _ _ (typed_closed_type _ _ _ _ Htyped)); trivial]; cbn.
+                 iApply IHHtyped;
+                 trivial].
       iIntros {v}.
-      rewrite /interp_rec fixpoint_unfold. unfold interp_rec_pre at 1; cbn.
-      iIntros "#Hv".
+      cbn [interp interp_rec cofe_mor_car].
+      rewrite fixpoint_unfold.
+      iIntros "#Hv"; cbn.
       iApply exist_elim; [|iAssumption].
-      iIntros {w}; cbn.
+      iIntros {w}; hnf.
+      change (fixpoint _) with (interp (TRec τ) Δ).
+      iIntros "[% #Hw]"; rewrite H.
+      iApply wp_Fold; cbn; auto using to_of_val.
+      change (fixpoint _) with (interp (TRec τ) Δ); trivial.
+      admit.
+(*
       change (fixpoint (interp_rec_pre
                           (Vlist_cons_apply
                              Δ
@@ -202,6 +205,7 @@ Section typed_interp.
       iIntros "[% #Hw]"; rewrite H.
       iApply wp_Fold; cbn; auto using to_of_val.
       iRevert "Hw". rewrite -interp_subst. iIntros "#Hw". trivial.
+*)
       (* unshelving *)
       Unshelve.
       all: cbn; solve [eauto 2 using closed_ctx_map_S_back,
