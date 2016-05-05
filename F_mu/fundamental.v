@@ -89,16 +89,15 @@ Section typed_interp.
       value_case; iRight; auto with itauto.
     - (* case *)
       smart_wp_bind (CaseCtx _ _) v "#Hv" IHHtyped1; cbn.
-      iDestruct "Hv" as "[Hv|Hv]"; eauto; iRevert "HΓ";
-        iApply exist_elim; eauto; cbn;
-          iIntros {w} "#[% Hw2] #HΓ"; rewrite H; cbn;
-            [iApply wp_case_inl|iApply wp_case_inr];
-            auto 1 using to_of_val;
-            asimpl;
-            [specialize (IHHtyped2 Δ HΔ (w::vs)) |
-             specialize (IHHtyped3 Δ HΔ (w::vs))];
-              erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto); iNext;
-                [iApply IHHtyped2 | iApply IHHtyped3]; cbn; auto with itauto.
+      iDestruct "Hv" as "[Hv|Hv]";
+      iDestruct "Hv" as {w} "[% Hw]"; rewrite H;
+        [iApply wp_case_inl|iApply wp_case_inr];
+        auto 1 using to_of_val;
+        asimpl;
+        [specialize (IHHtyped2 Δ HΔ (w::vs)) |
+         specialize (IHHtyped3 Δ HΔ (w::vs))];
+        erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto); iNext;
+          [iApply IHHtyped2 | iApply IHHtyped3]; cbn; auto with itauto.
     - (* lam *)
       value_case; apply (always_intro _ _); iIntros {w} "#Hw".
       iApply wp_lam; auto 1 using to_of_val.
@@ -119,8 +118,7 @@ Section typed_interp.
       iIntros "#HΓ"; trivial.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
-      iApply exist_elim; [|iExact "Hv"]; cbn.
-      iIntros {e'} "[% #He']"; rewrite H.
+      iDestruct "Hv" as {e'} "[% He']"; rewrite H.
       iApply wp_TLam.
       iSpecialize "He'" {((interp τ' Δ) ↾ _)}; cbn.
       iApply always_elim. iApply always_mono; [|trivial].
@@ -150,12 +148,9 @@ Section typed_interp.
       cbn [interp interp_rec cofe_mor_car].
       rewrite fixpoint_unfold.
       iIntros "#Hv"; cbn.
-      iApply exist_elim; [|iAssumption].
-      iIntros {w}; hnf.
       change (fixpoint _) with (interp (TRec τ) Δ).
-      iIntros "[% #Hw]"; rewrite H.
+      iDestruct "Hv" as {w} "[% #Hw]"; rewrite H.
       iApply wp_Fold; cbn; auto using to_of_val.
-      change (fixpoint _) with (interp (TRec τ) Δ); trivial.
       rewrite -interp_subst; trivial.
       (* unshelving *)
       Unshelve.

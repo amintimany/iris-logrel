@@ -2,7 +2,6 @@ Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import F_mu.lang F_mu.typing F_mu.rules.
-Require Import prelude.Vlist.
 Import uPred.
 
 (** interp : is a unary logical relation. *)
@@ -20,12 +19,6 @@ Section logrel.
 
   Arguments Val_to_IProp_Persistent /.
 
-  (** The empty interpretation used, e.g., in weakening proof *)
-  Definition empty_interp : leibniz_val -n> iProp lang Σ :=
-    {|
-      cofe_mor_car := λ x, False%I
-    |}.
-  
   (** Just to get nicer closed forms, we define extend_context_interp in three steps. *)
   Program Definition extend_context_interp_fun1
     (τi : leibniz_val -n> iProp lang Σ)
@@ -58,17 +51,6 @@ Section logrel.
     |}.
   Next Obligation.
   Proof. intros n g h H Δ x y. destruct x; cbn; auto. Qed.
- 
-  
-(*
-  Global Instance extend_context_interp_proper :
-    Proper ((≡) ==> (≡)) extend_context_interp.
-  Proof. intros τ τ' H Δ x; destruct x; cbn; trivial. Qed.
-    
-  Global Instance extend_context_interp_ne n :
-    Proper (dist n ==> dist n) extend_context_interp.
-  Proof. intros τ τ' H Δ x; cbn; destruct x; trivial. Qed.
-*)  
     
   Program Definition extend_context_interp_apply :
     ((leibniz_var -n> leibniz_val -n> iProp lang Σ)) -n>
@@ -122,21 +104,6 @@ Section logrel.
   repeat intros ?; cbn;
     repeat apply exist_ne =>?;
         try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
-
-(*  Global Instance interp_prod_proper : Proper ((≡) ==> (≡) ==> (≡)) interp_prod.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply exist_proper =>v. apply exist_proper=> v'.
-    repeat apply and_proper; trivial; first [rewrite H1|rewrite H2]; trivial.
-  Qed.
-  
-  Global Instance interp_prod_ne n : Proper (dist n ==> dist n ==> dist n) interp_prod.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply exist_ne =>v. apply exist_ne=> v'.
-    repeat apply and_ne; trivial; first [rewrite H1|rewrite H2]; trivial.
-  Qed.
-*)
   
   Program Definition interp_sum :
     (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) -n>
@@ -158,22 +125,7 @@ Section logrel.
   repeat intros ?; cbn; try apply or_ne;
     try apply exist_ne =>?;
         try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
-  
-  (*
-  Global Instance interp_sum_proper : Proper ((≡) ==> (≡) ==> (≡)) interp_sum.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply or_proper; apply exist_proper =>v;
-      apply and_proper; try rewrite H1; try rewrite H2; auto.
-  Qed.
-  
-  Global Instance interp_sum_ne n : Proper (dist n ==> dist n ==> dist n) interp_sum.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply or_ne; apply exist_ne =>v;
-      apply and_ne; try rewrite H1; try rewrite H2; auto.
-  Qed.
-*)
+
   Program Definition interp_arrow :
     (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) -n>
     leibniz_val -n> iProp lang Σ :=
@@ -195,23 +147,7 @@ Section logrel.
     try apply forall_ne=>?; try apply impl_ne; trivial;
       try apply wp_ne =>?;
           try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
-(*    
-  Global Instance interp_arrow_proper : Proper ((≡) ==> (≡) ==> (≡)) interp_arrow.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply always_proper, forall_proper=> v;
-      apply impl_proper;
-      [rewrite H1; auto| apply wp_proper; auto].
-  Qed.
-  
-  Global Instance interp_arrow_ne n : Proper (dist n ==> dist n ==> dist n) interp_arrow.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply always_ne, forall_ne=> v;
-      apply impl_ne;
-      [rewrite H1; auto| apply wp_ne; auto].
-  Qed.
-*)  
+
   Program Definition interp_forall :
     ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
     leibniz_val -n> iProp lang Σ :=
@@ -238,25 +174,7 @@ Section logrel.
     apply always_ne, (contractive_ne _), wp_ne => w.
     rewrite Hfg; trivial.
   Qed.    
-(*    
-  Global Instance interp_forall_proper : Proper ((≡) ==> (≡)) interp_forall.
-  Proof.
-    intros τ τ' H1 v; cbn.
-    apply exist_proper => e; apply and_proper; auto.
-    apply forall_proper => τ'i.
-    apply always_proper, later_proper, wp_proper =>v'.
-    rewrite H1; trivial.
-  Qed.
-    
-  Global Instance interp_forall_ne n : Proper (dist n ==> dist n) interp_forall.
-  Proof.
-    intros τ τ' H1 v; cbn.
-    apply exist_ne => e; apply and_ne; auto.
-    apply forall_ne => τ'i.
-    apply always_ne, (contractive_ne _), wp_ne=>w.
-    rewrite H1; trivial.
-  Qed.
-*)
+
   Program Definition interp_rec_pre :
     ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
     (leibniz_val -n> iProp lang Σ) -n>
@@ -286,22 +204,6 @@ Section logrel.
     apply always_ne, exist_ne =>w; rewrite Hτi; trivial.
   Qed.
 
-  (*
-  Global Instance interp_rec_pre_proper : Proper ((≡) ==> (≡) ==> (≡)) interp_rec_pre.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply always_proper, exist_proper=>e; apply and_proper; trivial.
-    apply later_proper.
-    rewrite H1 H2; trivial.
-  Qed.
-  
-  Global Instance interp_rec_pre_ne n : Proper (dist n ==> dist n ==> dist n) interp_rec_pre.
-  Proof.
-    intros τ1 τ1' H1 τ2 τ2' H2 w.
-    apply always_ne, exist_ne=>e; apply and_ne; trivial.
-    apply (contractive_ne _).
-    rewrite H1 H2; trivial.
-  Qed. *)
   Global Instance interp_rec_pre_contr
            (τi : (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ))
     :
@@ -323,24 +225,6 @@ Section logrel.
   Next Obligation.
   Proof. intros n f g H; apply fixpoint_ne => z; rewrite H; trivial. Qed.
     
-
-  (*
-  Global Instance interp_rec_proper : Proper ((≡) ==> (≡)) interp_rec.
-  Proof.
-    intros τ τ' H1.
-    unfold interp_rec.
-    rewrite fixpoint_proper; eauto=>f.
-    rewrite H1; trivial.
-  Qed.
-    
-  Global Instance interp_rec_ne n : Proper (dist n ==> dist n) interp_rec.
-  Proof.
-    intros τ τ' H1.
-    unfold interp_rec.
-    rewrite fixpoint_ne; eauto=>f.
-    rewrite H1; trivial.
-  Qed.
-*)
   Program Fixpoint interp (τ : type) {struct τ}
     : (leibniz_var -n> (leibniz_val -n> iProp lang Σ)) -n> leibniz_val -n> iProp lang Σ
     :=
@@ -361,60 +245,6 @@ Section logrel.
         end%I.
   Solve Obligations with
   repeat intros ?; match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
-(*    
-  Lemma interp_closed_irrel
-        (k : nat) (τ : type) (HC HC': closed_type k τ)
-        (Δ : Vlist (leibniz_val -n> iProp lang Σ) k)
-        (v : val)
-    : interp k τ HC Δ v ≡ interp k τ HC' Δ v.
-  Proof.
-    revert k HC HC' Δ v.
-    induction τ; intros k HC HC' Δ v; cbn;
-    let rec tac :=
-        match goal with
-        | _ => progress repeat let w := fresh "w" in apply exist_proper => w; tac
-        | _ => progress repeat apply and_proper; tac
-        | _ => progress repeat apply or_proper; tac
-        | _ => progress repeat apply later_proper; tac
-        | _ => progress repeat let w := fresh "w" in apply forall_proper => w; tac
-        | _ => progress repeat apply always_proper; tac
-        | _ => progress repeat apply impl_proper; tac
-        | _ => progress repeat apply wp_proper; try intros ?; tac
-        | _ => unfold interp_rec; rewrite fixpoint_proper; eauto;
-              intros ? ?; unfold interp_rec_pre; cbn; tac
-        | _ => auto
-        end
-    in tac.
-    - unfold force_lookup.
-      match goal with
-        [|- _ (match ?A with |Some _ => _ |None => _ end ?B) _ ≡ _ (match ?A with |Some _ => _ |None => _ end ?C) _] => 
-        generalize B; generalize C; destruct A; auto;
-        let H := fresh "H" in intros H; inversion H; congruence
-      end.
-  Qed.
-
-  Lemma interp_closed_irrel_turnstile
-        (k : nat) (τ : type) (HC HC': closed_type k τ)
-        (Δ : Vlist (leibniz_val -n> iProp lang Σ) k)
-        (v : val)
-    : interp k τ HC Δ v ⊢ interp k τ HC' Δ v.
-  Proof.
-    rewrite interp_closed_irrel; trivial.
-  Qed.
-*)    
-  Definition env_subst (vs : list val) (x : var) : expr :=
-    from_option (Var x) (of_val <$> vs !! x).
-  
-  Lemma typed_subst_head_simpl Δ τ e w ws :
-    typed Δ e τ -> List.length Δ = S (List.length ws) →
-    e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
-  .
-  Proof.
-    intros H1 H2.
-    rewrite /env_subst. eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
-    destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
-      by rewrite Hv.
-  Qed.
 
   Class context_interp_Persistent (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
     contextinterppersistent : ∀ v : var, Val_to_IProp_Persistent (Δ v).
@@ -451,79 +281,6 @@ Section logrel.
     intros f Δ Hf HΔ v w; destruct v; cbn; trivial.
     apply HΔ.
   Qed.
-(*
-  Lemma type_context_closed_irrel
-        (k : nat) (Δ : Vlist (leibniz_val -n> iProp lang Σ) k) (Γ : list type)
-        (vs : list leibniz_val)
-        (Hctx Hctx' : closed_ctx k Γ) :
-    (Π∧ zip_with
-          (λ (τ : {τ : type | closed_type k τ}) (v0 : leibniz_val),
-           ((interp k (` τ) (proj2_sig τ)) Δ) v0)
-          (closed_ctx_list k Γ Hctx)
-          vs)%I
-      ≡
-      (Π∧ zip_with
-           (λ (τ : {τ : type | closed_type k τ}) (v : leibniz_val),
-            ((interp k (` τ) (proj2_sig τ)) Δ) v)
-           (closed_ctx_list k Γ Hctx')
-           vs)%I.
-  Proof.
-    revert vs.
-    induction Γ; cbn; auto.
-    destruct vs; cbn; auto.
-    apply and_proper.
-    - apply interp_closed_irrel.
-    - apply IHΓ.
-  Qed.
-
-  Lemma type_context_closed_irrel_turnstile
-        (k : nat) (Δ : Vlist (leibniz_val -n> iProp lang Σ) k) (Γ : list type)
-        (vs : list leibniz_val)
-        (Hctx Hctx' : closed_ctx k Γ) :
-    (Π∧ zip_with
-          (λ (τ : {τ : type | closed_type k τ}) (v0 : leibniz_val),
-           ((interp k (` τ) (proj2_sig τ)) Δ) v0)
-          (closed_ctx_list k Γ Hctx)
-          vs)%I
-      ⊢
-      (Π∧ zip_with
-           (λ (τ : {τ : type | closed_type k τ}) (v : leibniz_val),
-            ((interp k (` τ) (proj2_sig τ)) Δ) v)
-           (closed_ctx_list k Γ Hctx')
-           vs)%I.
-  Proof.
-    rewrite type_context_closed_irrel; trivial.
-  Qed.
- *)
-  (*
-  Local Ltac ipropsimpl :=
-    repeat
-      match goal with
-      | [|- (_ ⊢ (_ ∧ _))%I] => eapply and_intro
-      | [|- (▷ _ ⊢ ▷ _)%I] => apply later_mono
-      | [|- (_ ⊢ ∃ _, _)%I] => rewrite -exist_intro
-      | [|- ((∃ _, _) ⊢ _)%I] => let v := fresh "v" in rewrite exist_elim; [|intros v]
-      end.
-
-  Local Hint Extern 1 => progress ipropsimpl.
-
-  Local Tactic Notation "smart_wp_bind" uconstr(ctx) uconstr(t) ident(v) :=
-    rewrite -(@wp_bind _ _ _ [ctx]) /= -wp_impl_l; apply and_intro; [
-    apply (@always_intro _ _ _ t), forall_intro=> v /=; apply impl_intro_l| eauto with itauto].
-
-  Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) :=
-    rewrite -(@wp_bind _ _ _ [ctx]) /= -wp_mono; eauto; intros v; cbn.
-
-  Create HintDb itauto.
-
-  Local Hint Extern 3 ((_ ∧ _) ⊢ _)%I => rewrite and_elim_r : itauto.
-  Local Hint Extern 3 ((_ ∧ _) ⊢ _)%I => rewrite and_elim_l : itauto.
-  Local Hint Extern 3 (_ ⊢ (_ ∨ _))%I => rewrite -or_intro_l : itauto.
-  Local Hint Extern 3 (_ ⊢ (_ ∨ _))%I => rewrite -or_intro_r : itauto.
-  Local Hint Extern 2 (_ ⊢ ▷ _)%I => etransitivity; [|rewrite -later_intro] : itauto.
-  
-  Local Ltac value_case := rewrite -wp_value/= ?to_of_val //; auto 2.
-   *)
 
   Local Ltac properness :=
     repeat
@@ -585,7 +342,6 @@ Section logrel.
           replace (n + x) with k in HΔ by omega; trivial.
       }
   Qed.
-      
 
   Program Definition hop_context_interp (m n : nat) :
     (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
@@ -725,7 +481,7 @@ Section logrel.
     destruct v; cbn; auto with omega.
   Qed.
 
-  Lemma iter_uo_subst_type (m : nat) (τ : type) (x : var)
+  Lemma iter_up_subst_type (m : nat) (τ : type) (x : var)
     :
       (iter m up (τ .: ids) x) =
       if lt_dec x m then ids x else
@@ -767,7 +523,7 @@ Section logrel.
       rewrite -IHτ.
       replace (τ'.[ren (+S m)]) with ((τ'.[ren (+m)]).[ren (+1)]) by (asimpl; trivial).
       rewrite -interp_ren_S; trivial.
-    - rewrite iter_uo_subst_type.
+    - rewrite iter_up_subst_type.
       repeat destruct lt_dec; repeat destruct eq_nat_dec;
         unfold ids; asimpl; trivial.
     - properness; trivial.
