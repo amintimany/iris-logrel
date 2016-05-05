@@ -14,7 +14,7 @@ Instance Ids_type : Ids type. derive. Defined.
 Instance Rename_type : Rename type. derive. Defined.
 Instance Subst_type : Subst type. derive. Defined.
 Instance SubstLemmas_typer : SubstLemmas type. derive. Qed.
-
+(*
 Inductive closed_type (k : nat) : type → Prop :=
 | CLT_TUnit : closed_type k TUnit
 | CLT_TProd t t' : closed_type k t → closed_type k t' → closed_type k (TProd t t')
@@ -113,7 +113,37 @@ Qed.
   
 Definition closed_ctx_list (k : nat) (Γ : list type) (H : closed_ctx k Γ) :
   list ({τ : type | closed_type k τ}) := zipwith_Forall Γ H.
+ *)
 
+Inductive typed (Γ : list type) : expr → type → Prop :=
+| Var_typed x τ : Γ !! x = Some τ → typed Γ (Var x) τ
+| Unit_typed : typed Γ Unit TUnit
+| Pair_typed e1 e2 τ1 τ2 :
+    typed Γ e1 τ1 → typed Γ e2 τ2 → typed Γ (Pair e1 e2) (TProd τ1 τ2)
+| Fst_typed e τ1 τ2 : typed Γ e (TProd τ1 τ2) → typed Γ (Fst e) τ1
+| Snd_typed e τ1 τ2 : typed Γ e (TProd τ1 τ2) → typed Γ (Snd e) τ2
+| InjL_typed e τ1 τ2 : typed Γ e τ1 → typed Γ (InjL e) (TSum τ1 τ2)
+| InjR_typed e τ1 τ2 : typed Γ e τ2 → typed Γ (InjR e) (TSum τ1 τ2)
+| Case_typed e0 e1 e2 τ1 τ2 ρ :
+    typed Γ e0 (TSum τ1 τ2) →
+    typed (τ1 :: Γ) e1 ρ → typed (τ2 :: Γ) e2 ρ →
+    typed Γ (Case e0 e1 e2) ρ
+| Lam_typed e τ1 τ2 :
+    typed (τ1 :: Γ) e τ2 → typed Γ (Lam e) (TArrow τ1 τ2)
+| App_typed e1 e2 τ1 τ2 :
+    typed Γ e1 (TArrow τ1 τ2) → typed Γ e2 τ1 → typed Γ (App e1 e2) τ2
+| TLam_typed e τ :
+    typed (map (λ t, t.[ren (+1)]) Γ) e τ →
+    typed Γ (TLam e) (TForall τ)
+| TApp_typed e τ τ':
+    typed Γ e (TForall τ) → typed Γ (TApp e) (τ.[τ'/])
+| TFold e τ :
+    typed (map (λ t, t.[ren (+1)]) Γ) e τ →
+    typed Γ (Fold e) (TRec τ)
+| TUnfold e τ : typed Γ e (TRec τ) → typed Γ (Unfold e) (τ.[(TRec τ)/])
+.
+
+(*
 Inductive typed (k : nat) (Γ : list type) : expr → type → Prop :=
 | Var_typed x τ : (closed_ctx k Γ) → Γ !! x = Some τ → typed k Γ (Var x) τ
 | Unit_typed : closed_ctx k Γ → typed k Γ Unit TUnit
@@ -140,8 +170,8 @@ Inductive typed (k : nat) (Γ : list type) : expr → type → Prop :=
     typed (S k) (map (λ t, t.[ren (+1)]) Γ) e τ →
     typed k Γ (Fold e) (TRec τ)
 | TUnfold e τ : typed k Γ e (TRec τ) → typed k Γ (Unfold e) (τ.[(TRec τ)/])
-.
-
+. *)
+(*
 Lemma closed_type_subst_invariant k τ s1 s2 :
   closed_type k τ → (∀ x, x < k → s1 x = s2 x) → τ.[s1] = τ.[s2].
 Proof.
@@ -151,13 +181,13 @@ Proof.
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
   induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega.
 Qed.
-
+*)
 Fixpoint iter (n : nat) `(f : A → A) :=
   match n with
   | O => λ x, x
   | S n' => λ x, f (iter n' f x)
   end.
-
+(*
 Lemma iter_S (n : nat) `(f : A → A) (x : A) : iter (S n) f x = iter n f (f x).
 Proof.
   induction n; cbn; trivial.
@@ -170,7 +200,7 @@ Proof.
   intros x; destruct x; cbn; trivial.
   rewrite IHm; repeat destruct lt_dec; auto with omega.  
 Qed.
-  
+ *)
 Lemma iter_up (m x : nat) (f : var → type) : iter m up f x = if lt_dec x m then ids x else rename (+m) (f (x - m)).
 Proof.
   revert x; induction m; cbn; auto with omega.
@@ -179,7 +209,7 @@ Proof.
   rewrite IHm; repeat destruct lt_dec; auto with omega.
   asimpl; trivial.
 Qed.
-
+(*
 Lemma closed_type_S_ren1:
   ∀ (τ : type) (n m : nat) (k : nat) (Hle : m ≤ k),
     (closed_type (n + k) τ.[ren ((iter m upren) (+n))] → closed_type k τ).
@@ -321,13 +351,13 @@ Proof. apply typed_closed_ctx_closed_type. Qed.
 Lemma typed_closed_type (k : nat) (Γ : list type) (e : expr) (τ : type) :
   typed k Γ e τ → closed_type k τ.
 Proof. apply typed_closed_ctx_closed_type. Qed.
-
+*)
 Local Hint Extern 1 =>
 match goal with [H : context [length (map _ _)] |- _] => rewrite map_length in H end
 : typed_subst_invariant.
 
-Lemma typed_subst_invariant k Γ e τ s1 s2 :
-  typed k Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
+Lemma typed_subst_invariant Γ e τ s1 s2 :
+  typed Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
   assert (∀ {A} `{Ids A} `{Rename A}
@@ -335,7 +365,7 @@ Proof.
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
   induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega typed_subst_invariant.
 Qed.
-
+(*
 Lemma closed_ctx_map_S_back (k : nat) (Γ : list type) (e : expr) (τ : type) :
   closed_ctx k Γ →
   closed_ctx (S k) (map (λ t : type, t.[ren (+1)]) Γ).
@@ -345,3 +375,4 @@ Proof.
   clear; intros τ' H'.
   set (HW := closed_type_S_ren2 τ' 1 0); cbn in HW; apply HW; trivial.
 Qed.
+*)

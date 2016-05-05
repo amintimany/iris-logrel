@@ -7,41 +7,6 @@ Import uPred.
 
 Section typed_interp.
   Context {Σ : iFunctor}.
-  Implicit Types P Q R : iProp lang Σ.
-  Notation "# v" := (of_val v) (at level 20).
-
-  Canonical Structure leibniz_val := leibnizC val.
-
-  Canonical Structure leibniz_le n m := leibnizC (n ≤ m).
-(*
-  Ltac ipropsimpl :=
-    repeat
-      match goal with
-      | [|- (_ ⊢ (_ ∧ _))%I] => eapply and_intro
-      | [|- (▷ _ ⊢ ▷ _)%I] => apply later_mono
-      | [|- (_ ⊢ ∃ _, _)%I] => rewrite -exist_intro
-      | [|- ((∃ _, _) ⊢ _)%I] => let v := fresh "v" in rewrite exist_elim; [|intros v]
-      end.
-
-  Local Hint Extern 1 => progress ipropsimpl.
-
-  Local Tactic Notation "smart_wp_bind" uconstr(ctx) uconstr(t) ident(v) :=
-    rewrite -(@wp_bind _ _ _ [ctx]) /= -wp_impl_l; apply and_intro; [
-    apply (@always_intro _ _ _ t), forall_intro=> v /=; apply impl_intro_l| eauto with itauto].
-
-  Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) :=
-    rewrite -(@wp_bind _ _ _ [ctx]) /= -wp_mono; eauto; intros v; cbn.
-
-  Create HintDb itauto.
-
-  Local Hint Extern 3 ((_ ∧ _) ⊢ _)%I => rewrite and_elim_r : itauto.
-  Local Hint Extern 3 ((_ ∧ _) ⊢ _)%I => rewrite and_elim_l : itauto.
-  Local Hint Extern 3 (_ ⊢ (_ ∨ _))%I => rewrite -or_intro_l : itauto.
-  Local Hint Extern 3 (_ ⊢ (_ ∨ _))%I => rewrite -or_intro_r : itauto.
-  Local Hint Extern 2 (_ ⊢ ▷ _)%I => etransitivity; [|rewrite -later_intro] : itauto.
-
-  Local Ltac value_case := rewrite -wp_value/= ?to_of_val //; auto 2.
- *)
 
   Local Hint Extern 1 =>
   match goal with
@@ -85,8 +50,8 @@ Section typed_interp.
               
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
-  Lemma typed_interp k Δ Γ vs e τ
-        (Htyped : typed k Γ e τ)
+  Lemma typed_interp Δ Γ vs e τ
+        (Htyped : typed Γ e τ)
         (HΔ : context_interp_Persistent Δ)
     : List.length Γ = List.length vs →
       Π∧ zip_with (λ τ v, interp τ Δ v) Γ vs ⊢
@@ -150,19 +115,18 @@ Section typed_interp.
       iIntros "#HΓ"; iNext.
       iApply IHHtyped; [rewrite map_length|]; trivial.
       iRevert "HΓ".
-      admit.
-(*      rewrite zip_with_closed_ctx_list_subst.
-      iIntros "#HΓ"; trivial. *)
+      rewrite zip_with_context_interp_subst.
+      iIntros "#HΓ"; trivial.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
       iApply exist_elim; [|iExact "Hv"]; cbn.
-      iIntros {e'} "[% #He']"; rewrite H0.
+      iIntros {e'} "[% #He']"; rewrite H.
       iApply wp_TLam.
       iSpecialize "He'" {((interp τ' Δ) ↾ _)}; cbn.
       iApply always_elim. iApply always_mono; [|trivial].
       iIntros "He'"; iNext.
       iApply wp_mono; [|trivial].
-      admit. (*intros w; rewrite interp_subst; trivial.*)
+      intros w; rewrite interp_subst; trivial.
     - (* Fold *)
       rewrite map_length in IHHtyped.
       iApply (@wp_bind _ _ _ [FoldCtx]).
@@ -175,7 +139,7 @@ Section typed_interp.
         change (fixpoint _) with (interp (TRec τ) Δ) at 1; trivial.
         rewrite fixpoint_unfold; cbn.
         auto with itauto.
-      + admit. (*iRevert "HΓ"; rewrite zip_with_closed_ctx_list_subst; iIntros "#HΓ"; trivial. *)
+      + iRevert "HΓ"; rewrite zip_with_context_interp_subst; iIntros "#HΓ"; trivial.
     - (* Unfold *)
       iApply (@wp_bind _ _ _ [UnfoldCtx]);
         iApply wp_impl_l;
@@ -192,24 +156,10 @@ Section typed_interp.
       iIntros "[% #Hw]"; rewrite H.
       iApply wp_Fold; cbn; auto using to_of_val.
       change (fixpoint _) with (interp (TRec τ) Δ); trivial.
-      admit.
-(*
-      change (fixpoint (interp_rec_pre
-                          (Vlist_cons_apply
-                             Δ
-                             (interp
-                                (S k) τ
-                                (closed_type_rec
-                                   (typed_closed_type k Γ e (TRec τ) Htyped))))))
-      with ((interp k (TRec τ) (typed_closed_type k Γ e (TRec τ) Htyped)) Δ); trivial.
-      iIntros "[% #Hw]"; rewrite H.
-      iApply wp_Fold; cbn; auto using to_of_val.
-      iRevert "Hw". rewrite -interp_subst. iIntros "#Hw". trivial.
-*)
+      rewrite -interp_subst; trivial.
       (* unshelving *)
       Unshelve.
-      all: cbn; solve [eauto 2 using closed_ctx_map_S_back,
-                       typed_closed_type | try typeclasses eauto].
+      cbn; typeclasses eauto.
   Qed.
   
 End typed_interp.

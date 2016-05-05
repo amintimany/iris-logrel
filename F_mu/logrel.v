@@ -405,8 +405,8 @@ Section logrel.
   Definition env_subst (vs : list val) (x : var) : expr :=
     from_option (Var x) (of_val <$> vs !! x).
   
-  Lemma typed_subst_head_simpl k Δ τ e w ws :
-    typed k Δ e τ -> List.length Δ = S (List.length ws) →
+  Lemma typed_subst_head_simpl Δ τ e w ws :
+    typed Δ e τ -> List.length Δ = S (List.length ws) →
     e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
   .
   Proof.
@@ -587,25 +587,37 @@ Section logrel.
   Qed.
       
 
-  Program Definition hop_context_interp (m n : nat)
-    (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ) :
+  Program Definition hop_context_interp (m n : nat) :
+    (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
     (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
-    {| cofe_mor_car := λ v, if lt_dec v m then Δ v else Δ (v - n) |}.
+    {| cofe_mor_car :=
+         λ Δ,
+         {| cofe_mor_car := λ v, if lt_dec v m then Δ v else Δ (v - n) |}
+    |}.
+  Next Obligation.
+  Proof. intros ?????? Hxy; destruct Hxy; trivial. Qed.
+  Next Obligation.
+  Proof.
+    intros ????? Hfg ?; cbn. destruct lt_dec; rewrite Hfg; trivial.
+  Qed.
 
   Lemma extend_bofore_hop_context_interp (m n : nat)
         (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
         (τi : leibniz_val -n> iProp lang Σ)
         (v : var)
-        (Hv : v > n)
     :
-      (extend_context_interp τi (hop_context_interp m n Δ) v)
-        ≡ (hop_context_interp (S m) n (extend_context_interp τi Δ) v).
-  Proof.      
-    revert τi Δ n v Hv.
-    induction m; intros τi Δ n v Hv; destruct v; cbn; trivial.
-    replace (S v - n) with (S (v - n)) by omega; trivial.
-    repeat destruct lt_dec; auto with omega.
-    replace (S v - n) with (S (v - n)) by omega; trivial.
+      (extend_context_interp τi (hop_context_interp m n Δ)
+                             (if lt_dec v (S m) then v else n + v))
+        ≡ (hop_context_interp (S m) n (extend_context_interp τi Δ)
+                              (if lt_dec v (S m) then v else n + v)).
+  Proof.
+    destruct v; cbn; trivial.
+    repeat (destruct lt_dec; cbn); auto with omega.
+    destruct (n + S v - n) eqn:Heq1;
+      destruct (n + S v) eqn:Heq2; try destruct lt_dec; auto with omega.
+    match goal with
+      [ |- _ _ _ Δ ?a ≡ _ _ _ Δ ?b] => assert (Heq : a = b) by omega; rewrite Heq; trivial
+    end.
   Qed.
   
   Lemma interp_subst_weaken
@@ -628,15 +640,7 @@ Section logrel.
       rewrite IHτ.
       change (up (iter m up (ren (+n)))) with (iter (S m) up (ren (+n))).
       apply interp_unused_contex_irrel.
-      {
-      clear. intros [|v]; cbn; trivial.
-      repeat (destruct lt_dec; cbn); auto with omega.
-      destruct (n + S v - n) eqn:Heq1;
-        destruct (n + S v) eqn:Heq2; try destruct lt_dec; auto with omega.
-      match goal with
-        [ |- _ _ _ Δ ?a ≡ _ _ _ Δ ?b] => assert (Heq : a = b) by omega; rewrite Heq; trivial
-      end.
-      }
+      intros w; rewrite extend_bofore_hop_context_interp; trivial.
     - rewrite iter_up.
       asimpl; unfold ids; cbn; destruct lt_dec; cbn; destruct lt_dec; auto with omega.
       replace (m + n + (x - m)) with (x + n) by omega.
@@ -651,38 +655,101 @@ Section logrel.
       change (up (iter m up (ren (+n)))) with (iter (S m) up (ren (+n))).
       rewrite IHτ.
       apply interp_unused_contex_irrel.
-      {
-        clear. intros [|v]; cbn; trivial.
-        repeat (destruct lt_dec; cbn); auto with omega.
-        destruct (n + S v - n) eqn:Heq1;
-          destruct (n + S v) eqn:Heq2; try destruct lt_dec; auto with omega.
-        match goal with
-          [ |- _ _ _ Δ ?a ≡ _ _ _ Δ ?b] => assert (Heq : a = b) by omega; rewrite Heq; trivial
-        end.
-      }
+      intros w; rewrite extend_bofore_hop_context_interp; trivial.
   Qed.
 
-  Lemma interp_ren_S (k : nat) (τ : type)
+  Lemma interp_ren_S (τ : type)
         (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
         (τi : leibniz_val -n> iProp lang Σ)
-        (v : leibniz_val)
-    : interp τ Δ v ≡ interp τ.[ren (+1)] (extend_context_interp τi Δ) v.
+    : interp τ Δ ≡ interp τ.[ren (+1)] (extend_context_interp τi Δ).
   Proof.
     rewrite (interp_subst_weaken 0 1).
     apply interp_unused_contex_irrel.
     { clear. intros [|v]; cbn; trivial. }
   Qed.
 
+  Local Opaque eq_nat_dec.
+  
+  Program Definition context_interp_insert (m : nat) :
+    (leibniz_val -n> iProp lang Σ) -n>
+    (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
+    (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+    {| cofe_mor_car :=
+         λ τi,
+         {| cofe_mor_car :=
+              λ Δ,
+              {| cofe_mor_car :=
+                   λ v, if lt_dec v m then Δ v else
+                          if eq_nat_dec v m then τi else Δ (v - 1)
+              |}
+         |}
+    |}.
+  Next Obligation.
+  Proof. intros m τi Δ n x y Hxy; destruct Hxy; trivial. Qed.
+  Next Obligation.
+  Proof.
+    intros m τi n Δ Δ' HΔ x; cbn;
+      destruct lt_dec; try destruct eq_nat_dec; auto.
+  Qed.
+  Next Obligation.
+  Proof.
+    intros m n f g Hfg F Δ x; cbn;
+      destruct lt_dec; try destruct eq_nat_dec; auto.
+  Qed.
+  
+  Lemma extend_context_interp_insert (m : nat)
+        (τi : leibniz_val -n> iProp lang Σ)
+        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (Ti : leibniz_val -n> iProp lang Σ)
+    :
+      (extend_context_interp Ti (context_interp_insert m τi Δ))
+        ≡ (context_interp_insert (S m) τi (extend_context_interp Ti Δ)).
+  Proof.
+    intros [|v]; cbn; trivial.
+    repeat destruct lt_dec; trivial;
+      repeat destruct eq_nat_dec; cbn; auto with omega.
+    destruct v; cbn; auto with omega.
+    replace (v - 0) with v by omega; trivial.
+  Qed.
+
+  Lemma context_interp_insert_O_extend
+        (τi : leibniz_val -n> iProp lang Σ)
+        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+    :
+      (context_interp_insert O τi Δ)
+        ≡ (extend_context_interp τi Δ).
+  Proof.
+    intros [|v]; cbn; trivial.
+    repeat destruct lt_dec; trivial;
+      repeat destruct eq_nat_dec; cbn; auto with omega.
+    destruct v; cbn; auto with omega.
+  Qed.
+
+  Lemma iter_uo_subst_type (m : nat) (τ : type) (x : var)
+    :
+      (iter m up (τ .: ids) x) =
+      if lt_dec x m then ids x else
+        if eq_nat_dec x m then τ.[ren (+m)] else ids (x - 1).
+  Proof.
+    revert x τ.
+    induction m; intros x τ; cbn.
+    - destruct x; cbn.
+      + destruct eq_nat_dec; auto with omega.
+        asimpl; trivial.
+      + destruct eq_nat_dec; auto with omega.
+    - destruct x; asimpl; trivial.
+      rewrite IHm.
+      repeat destruct lt_dec; repeat destruct eq_nat_dec;
+        asimpl; auto with omega.
+  Qed.      
+    
   Lemma interp_subst_iter_up
         (m : nat)
         (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
         (τ : type)
         (τ' : type)
-    : interp τ
-             (iter m (extend_context_interp empty_interp)
-                   (extend_context_interp (interp τ' Δ) Δ))
-             ≡ interp τ.[iter m up (τ' .: ids)] 
-                          (iter m (extend_context_interp empty_interp) Δ).
+    : interp τ (context_interp_insert m (interp τ'.[ren (+m)] Δ) Δ)
+             ≡ interp τ.[iter m up (τ' .: ids)] Δ.
   Proof.
     revert m Δ.
     induction τ; intros m Δ v; cbn -[extend_context_interp]; auto.
@@ -695,144 +762,46 @@ Section logrel.
       end.
       apply fixpoint_proper => ??; cbn -[extend_context_interp].
       properness; trivial.
-      
-      rewrite IHτ.
-      change (up (iter m up (ren (+n)))) with (iter (S m) up (ren (+n))).
-      apply interp_unused_contex_irrel.
-      {
-      clear. intros [|v]; cbn; trivial.
-      repeat (destruct lt_dec; cbn); auto with omega.
-      destruct (n + S v - n) eqn:Heq1;
-        destruct (n + S v) eqn:Heq2; try destruct lt_dec; auto with omega.
-      match goal with
-        [ |- _ _ _ Δ ?a ≡ _ _ _ Δ ?b] => assert (Heq : a = b) by omega; rewrite Heq; trivial
-      end.
-      }
-    - rewrite iter_up.
-      asimpl; unfold ids; cbn; destruct lt_dec; cbn; destruct lt_dec; auto with omega.
-      replace (m + n + (x - m)) with (x + n) by omega.
-      replace (x + n - n) with x; trivial.
-      { (** An incompleteness in omega and lia! *)
-        clear.
-        replace (x + n) with (n + x) by omega.
-        induction n; cbn; auto with omega.
-        induction x; cbn; trivial.
-      }      
+      rewrite extend_context_interp_insert.
+      change (up (iter m up (τ' .: ids))) with (iter (S m) up (τ' .: ids)).
+      rewrite -IHτ.
+      replace (τ'.[ren (+S m)]) with ((τ'.[ren (+m)]).[ren (+1)]) by (asimpl; trivial).
+      rewrite -interp_ren_S; trivial.
+    - rewrite iter_uo_subst_type.
+      repeat destruct lt_dec; repeat destruct eq_nat_dec;
+        unfold ids; asimpl; trivial.
     - properness; trivial.
-      change (up (iter m up (ren (+n)))) with (iter (S m) up (ren (+n))).
-      rewrite IHτ.
-      apply interp_unused_contex_irrel.
-      {
-        clear. intros [|v]; cbn; trivial.
-        repeat (destruct lt_dec; cbn); auto with omega.
-        destruct (n + S v - n) eqn:Heq1;
-          destruct (n + S v) eqn:Heq2; try destruct lt_dec; auto with omega.
-        match goal with
-          [ |- _ _ _ Δ ?a ≡ _ _ _ Δ ?b] => assert (Heq : a = b) by omega; rewrite Heq; trivial
-        end.
-      }
-    
-
-
-    
-  Lemma interp_subst_iter_up
-        (k m : nat)
-        (Δ : Vlist (leibniz_val -n> iProp lang Σ) k)
-        (Ξ : Vlist (leibniz_val -n> iProp lang Σ) m)
-        (τ : type)
-        (τ' : type) (HC' : closed_type k τ')
-        (HC : closed_type (m + S k) τ)
-        (HC'' : closed_type (m + k) τ.[iter m up (τ' .: ids)])
-    : interp (m + S k) τ HC (Vlist_app Ξ (Vlist_cons (interp k τ' HC' Δ) Δ))
-             ≡ interp (m + k) τ.[iter m up (τ' .: ids)] HC'' (Vlist_app Ξ Δ).
-  Proof.
-    revert k m Δ Ξ τ' HC' HC HC''.
-    induction τ; intros k m Δ Ξ τ' HC' HC HC'' w; cbn; auto.
-    - apply exist_proper =>w1; apply exist_proper =>w2;
-        repeat apply and_proper; try apply later_proper;
-        solve [trivial|apply IHτ1|apply IHτ2].
-    - apply or_proper; apply exist_proper =>w1;
-        repeat apply and_proper; try apply later_proper;
-        solve [trivial|apply IHτ1|apply IHτ2].
-    - apply always_proper, forall_proper => w1;
-        apply impl_proper; try apply later_proper; try apply wp_proper;
-        solve [apply IHτ1|apply IHτ2].
-    - apply interp_rec_proper =>f; cbn.
-      change (S (m + S k)) with (S m + S k).
-      change (S (m + k)) with (S m + k).
+      rewrite extend_context_interp_insert.
       change (up (iter m up (τ' .: ids))) with (iter (S m) up (τ' .: ids)).
-      rewrite !Vlist_app_cons.
-      apply IHτ.
-    - asimpl in *.
-      revert HC''; rewrite iter_up; intros HC''.
-      destruct lt_dec.
-      + unfold ids, Ids_type; cbn.
-        rewrite !force_lookup_l; trivial.
-      + remember (x - m) as u.
-        destruct (nat_eq_dec x m); try lia.
-        * revert HC''; replace u with 0 by lia; asimpl; intros HC''.
-          rewrite force_lookup_r; try lia; rewrite -Hequ; intros HC3.
-          destruct u; try lia; cbn.
-          rewrite -(Vlist_nil_app (Vlist_app Ξ Δ)).
-          rewrite -(interp_subst_weaken _ 0 m).
-          rewrite Vlist_nil_app; trivial.
-        * destruct u; try lia; destruct x; try lia.
-          revert HC''; asimpl; intros HC''; inversion HC''.
-          unfold ids, Ids_type; cbn.
-          rewrite !force_lookup_r; try lia; rewrite -Hequ; intros HC3 HC4.
-          rewrite force_lookup_Vlist_cons; try lia; intros HC5.
-          revert HC3.
-          match goal with
-            [|- ∀ _, _ (force_lookup _ ?A _) _ ≡ _ (force_lookup _ ?B _) _] =>
-            replace B with A by lia; intros HC3
-          end.
-          rewrite force_lookup_proper; eauto.
-    - apply exist_proper =>w1; apply and_proper; auto.
-      apply forall_proper; intros [f Hf].
-      apply always_proper, later_proper, wp_proper => w2.
-      cbn.
-      change (S (m + S k)) with (S m + S k).
-      change (S (m + k)) with (S m + k).
-      change (up (iter m up (τ' .: ids))) with (iter (S m) up (τ' .: ids)).
-      rewrite !Vlist_app_cons.
-      apply IHτ.
+      rewrite -IHτ.
+      replace (τ'.[ren (+S m)]) with ((τ'.[ren (+m)]).[ren (+1)]) by (asimpl; trivial).
+      rewrite -interp_ren_S; trivial.
   Qed.
 
   Lemma interp_subst
-    (k : nat)
-    (Δ : Vlist (leibniz_val -n> iProp lang Σ) k)
-    (τ : type)
-    (τ' : type) (HC' : closed_type k τ')
-    (HC : closed_type (S k) τ)
-    (HC'' : closed_type k τ.[τ'/])
-    : interp (S k) τ HC (Vlist_cons (interp k τ' HC' Δ) Δ)
-             ≡ interp k τ.[τ'/] HC'' Δ.
+        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (τ : type)
+        (τ' : type)
+    : interp τ (extend_context_interp (interp τ' Δ) Δ) ≡ interp τ.[τ'/] Δ.
   Proof.
-    rewrite <- (Vlist_nil_app Δ) at 3.
-    rewrite <- (Vlist_nil_app (Vlist_cons ((interp k τ' HC') Δ) Δ)).
-    apply (interp_subst_iter_up k 0 Δ Vlist_nil τ τ' HC' HC HC'').
+    rewrite -(interp_subst_iter_up O Δ τ τ').
+    rewrite context_interp_insert_O_extend.
+    asimpl; trivial.
   Qed.
 
-  Lemma zip_with_closed_ctx_list_subst
-        (k : nat) (Δ : Vlist (leibniz_val -n> iProp lang Σ) k) (Γ : list type) 
-        (Hctx : closed_ctx k Γ)
-        (Hctx' : closed_ctx (S k) (map (λ t : type, t.[ren (+1)]) Γ))
-        (vs : list leibniz_val) (τi : leibniz_val -n> iProp lang Σ)
-    : ((Π∧ zip_with
-             (λ (τ : {τ : type | closed_type k τ}) (v : leibniz_val),
-              ((interp k (` τ) (proj2_sig τ)) Δ) v)
-             (closed_ctx_list k Γ Hctx) vs)%I)
-        ≡ (Π∧ zip_with
-                (λ (τ : {τ : type | closed_type (S k) τ}) (v : leibniz_val),
-                 ((interp (S k) (` τ) (proj2_sig τ)) (Vlist_cons τi Δ)) v)
-                (closed_ctx_list (S k) (map (λ t : type, t.[ren (+1)]) Γ) Hctx') vs)%I.
+  Lemma zip_with_context_interp_subst
+        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ) (Γ : list type)
+        (vs : list leibniz_val) (τi : leibniz_val -n> iProp lang Σ) :
+    ((Π∧ zip_with (λ τ v, interp τ Δ v) Γ vs)%I)
+      ≡ (Π∧ zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
+                    (map (λ t : type, t.[ren (+1)]) Γ) vs)%I.
   Proof.
-    revert k Δ Hctx Hctx' vs τi.
-    induction Γ as [|τ Γ]; intros k Δ Hctx Hctx' vs τi; cbn; trivial.
+    revert Δ vs τi.
+    induction Γ as [|Γ]; intros Δ vs τi; cbn; trivial.
     destruct vs; cbn; trivial.
     apply and_proper.
     - apply interp_ren_S.
-    - apply IHΓ.
+    - apply IHΓ.   
   Qed.
-*)
+
 End logrel.
