@@ -148,6 +148,8 @@ Module lang.
       and its terms *)
   Notation TRUE := (InjL Unit).
   Notation FALSE := (InjR Unit).
+  Notation TRUEV := (InjLV UnitV).
+  Notation FALSEV := (InjRV UnitV).
 
   Inductive head_step : expr -> state -> expr -> state -> option expr -> Prop :=
   (* β *)
