@@ -2,7 +2,6 @@ Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import F_mu.lang F_mu.typing F_mu.rules F_mu.logrel.
-Require Import prelude.Vlist.
 Import uPred.
 
 Section typed_interp.
