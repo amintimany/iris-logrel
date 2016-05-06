@@ -7,13 +7,11 @@ Import uPred.
 (** interp : is a unary logical relation. *)
 Section logrel.
   Context {Σ : iFunctor}.
-  Implicit Types P Q R : iProp lang Σ.
   Notation "# v" := (of_val v) (at level 20).
 
   Canonical Structure leibniz_val := leibnizC val.
   Canonical Structure leibniz_var := leibnizC var.
 
-  
   Class Val_to_IProp_Persistent (f : leibniz_val -n> iProp lang Σ) :=
     val_to_iprop_persistent : ∀ v : val, PersistentP ((cofe_mor_car _ _ f) v).
 
@@ -31,7 +29,7 @@ Section logrel.
          | S x' => f x'
          end
     |}.
-  
+
   Program Definition extend_context_interp_fun2
     (τi : leibniz_val -n> iProp lang Σ) :
     (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
@@ -51,7 +49,7 @@ Section logrel.
     |}.
   Next Obligation.
   Proof. intros n g h H Δ x y. destruct x; cbn; auto. Qed.
-    
+
   Program Definition extend_context_interp_apply :
     ((leibniz_var -n> leibniz_val -n> iProp lang Σ)) -n>
     ((leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
@@ -78,7 +76,7 @@ Section logrel.
     end.
     apply cofe_mor_car_ne; trivial. intros y. cbn.
     destruct y; trivial.
-  Qed.    
+  Qed.
 
   Definition interp_unit : leibniz_val -n> iProp lang Σ :=
     {|
@@ -104,7 +102,7 @@ Section logrel.
   repeat intros ?; cbn;
     repeat apply exist_ne =>?;
         try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
-  
+
   Program Definition interp_sum :
     (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) -n>
     leibniz_val -n> iProp lang Σ :=
@@ -173,7 +171,7 @@ Section logrel.
     apply forall_ne=> P.
     apply always_ne, (contractive_ne _), wp_ne => w.
     rewrite Hfg; trivial.
-  Qed.    
+  Qed.
 
   Program Definition interp_rec_pre :
     ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
@@ -192,7 +190,7 @@ Section logrel.
   Next Obligation.
   Proof.
     intros τi rec_appr n x y Hxy; rewrite Hxy; trivial.
-  Qed.    
+  Qed.
   Next Obligation.
   Proof.
     intros τi n f g Hfg x. cbn.
@@ -214,7 +212,7 @@ Section logrel.
     apply later_contractive =>i Hi.
     rewrite H; trivial.
   Qed.
-  
+
   Program Definition interp_rec :
     ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
     (leibniz_val -n> iProp lang Σ)
@@ -224,7 +222,7 @@ Section logrel.
       |}.
   Next Obligation.
   Proof. intros n f g H; apply fixpoint_ne => z; rewrite H; trivial. Qed.
-    
+
   Program Fixpoint interp (τ : type) {struct τ}
     : (leibniz_var -n> (leibniz_val -n> iProp lang Σ)) -n> leibniz_val -n> iProp lang Σ
     :=
@@ -255,7 +253,7 @@ Section logrel.
            (v : val)
     : PersistentP (f v).
   Proof. apply Hf. Qed.
-    
+
   Global Instance interp_Persistent
          τ (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
          {HΔ : context_interp_Persistent Δ}
@@ -375,7 +373,7 @@ Section logrel.
       [ |- _ _ _ Δ ?a ≡ _ _ _ Δ ?b] => assert (Heq : a = b) by omega; rewrite Heq; trivial
     end.
   Qed.
-  
+
   Lemma interp_subst_weaken
         (m n : nat)
         (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
@@ -406,7 +404,7 @@ Section logrel.
         replace (x + n) with (n + x) by omega.
         induction n; cbn; auto with omega.
         induction x; cbn; trivial.
-      }      
+      }
     - properness; trivial.
       change (up (iter m up (ren (+n)))) with (iter (S m) up (ren (+n))).
       rewrite IHτ.
@@ -425,7 +423,7 @@ Section logrel.
   Qed.
 
   Local Opaque eq_nat_dec.
-  
+
   Program Definition context_interp_insert (m : nat) :
     (leibniz_val -n> iProp lang Σ) -n>
     (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
@@ -452,7 +450,7 @@ Section logrel.
     intros m n f g Hfg F Δ x; cbn;
       destruct lt_dec; try destruct eq_nat_dec; auto.
   Qed.
-  
+
   Lemma extend_context_interp_insert (m : nat)
         (τi : leibniz_val -n> iProp lang Σ)
         (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
@@ -497,8 +495,8 @@ Section logrel.
       rewrite IHm.
       repeat destruct lt_dec; repeat destruct eq_nat_dec;
         asimpl; auto with omega.
-  Qed.      
-    
+  Qed.
+
   Lemma interp_subst_iter_up
         (m : nat)
         (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
@@ -557,7 +555,7 @@ Section logrel.
     destruct vs; cbn; trivial.
     apply and_proper.
     - apply interp_ren_S.
-    - apply IHΓ.   
+    - apply IHΓ.
   Qed.
 
 End logrel.

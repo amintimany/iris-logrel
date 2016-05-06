@@ -31,7 +31,7 @@ Section typed_interp.
        --------------------------------------□
        □ _) => eapply (@always_intro _ _ _ _)
   end : itauto.
-  
+
   Local Hint Extern 1 =>
   match goal with
     |-
@@ -39,15 +39,14 @@ Section typed_interp.
        --------------------------------------□
        (_ ∧ _)) => iSplit
   end : itauto.
-  
-  
+
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) uconstr(Hp) :=
     iApply (@wp_bind _ _ _ [ctx]);
     iApply wp_impl_l;
     iSplit; [| iApply Hp; trivial]; cbn;
     eapply (@always_intro _ _ _ _);
     iIntros {v} Hv.
-              
+
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
   Lemma typed_interp Δ Γ vs e τ
@@ -156,5 +155,5 @@ Section typed_interp.
       Unshelve.
       cbn; typeclasses eauto.
   Qed.
-  
+
 End typed_interp.

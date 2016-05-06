@@ -1,4 +1,4 @@
-Require Import iris.prelude.base.
+Require Import prelude.base.
 Require Import F_mu.lang.
 
 Inductive type :=
