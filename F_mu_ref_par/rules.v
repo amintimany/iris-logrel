@@ -10,39 +10,78 @@ Import uPred.
 Section lang_rules.
   Definition heapR : cmraT := gmapR loc (fracR (dec_agreeR val)).
 
-  (** The CMRA we need. *)
-  Class heapG Σ :=
-    HeapG {
-        heap_inG :> authG lang Σ heapR;
-        heap_name : gname
+  (** The CMRA for the heap of the implementation. This is linked to the physical heap. *)
+  Class heapIG Σ :=
+    HeapIG {
+        heapI_inG :> authG lang Σ heapR;
+        heapI_name : gname
       }.
-  (** The Functor we need. *)
-  Definition heapGF : gFunctor := authGF heapR.
 
   Definition to_heap : state → heapR := fmap (λ v, Frac 1 (DecAgree v)).
   Definition of_heap : heapR → state :=
     omap (mbind (maybe DecAgree ∘ snd) ∘ maybe2 Frac).
 
-  Section definitions.
-    Context `{i : heapG Σ}.
+  (** The CMRA for the heap of the specification. *)
+  Class heapSG Σ :=
+    HeapSG {
+        heapS_inG :> authG lang Σ heapR;
+        heapS_name : gname
+      }.
 
-    Definition heap_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
-      auth_own heap_name {[ l := Frac q (DecAgree v) ]}.
-    Definition heap_inv (h : heapR) : iPropG lang Σ :=
+  Definition tpoolR : cmraT := gmapR loc (fracR (dec_agreeR expr)).
+
+  (** The CMRA for the thread pool. *)
+  Class tpoolG Σ :=
+    TpoolSG {
+        tpool_inG :> authG lang Σ tpoolR;
+        tpool_name : gname
+      }.
+
+  Section definitionsI.
+    Context `{iI : heapIG Σ}.
+
+    Definition heapI_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
+      auth_own heapI_name {[ l := Frac q (DecAgree v) ]}.
+    Definition heapI_inv (h : heapR) : iPropG lang Σ :=
       ownP (of_heap h).
-    Definition heap_ctx (N : namespace) : iPropG lang Σ :=
-      auth_ctx heap_name N heap_inv.
+    Definition heapI_ctx (N : namespace) : iPropG lang Σ :=
+      auth_ctx heapI_name N heapI_inv.
 
-    Global Instance heap_inv_proper : Proper ((≡) ==> (≡)) heap_inv.
+    Global Instance heapI_inv_proper : Proper ((≡) ==> (≡)) heapI_inv.
     Proof. solve_proper. Qed.
-    Global Instance heap_ctx_always_stable N : PersistentP (heap_ctx N).
+    Global Instance heapI_ctx_persistent N : PersistentP (heapI_ctx N).
     Proof. apply _. Qed.
-  End definitions.
-  Typeclasses Opaque heap_ctx heap_mapsto.
+  End definitionsI.
+  Typeclasses Opaque heapI_ctx heapI_mapsto.
 
-  Notation "l ↦{ q } v" := (heap_mapsto l q v)
-    (at level 20, q at level 50, format "l  ↦{ q }  v") : uPred_scope.
-  Notation "l ↦ v" := (heap_mapsto l 1 v) (at level 20) : uPred_scope.
+  Notation "l ↦ᵢ{ q } v" := (heapI_mapsto l q v)
+    (at level 20, q at level 50, format "l  ↦ᵢ{ q }  v") : uPred_scope.
+  Notation "l ↦ᵢ v" := (heapI_mapsto l 1 v) (at level 20) : uPred_scope.
+
+  Section definitionsS.
+    Context `{iS : heapSG Σ}
+            `{iT : tpoolG Σ}.
+
+    Definition heapS_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
+      auth_own heapS_name {[ l := Frac q (DecAgree v) ]}.
+
+    Definition tpool_mapsto (l : loc) (q : Qp) (e: expr) : iPropG lang Σ :=
+      auth_own tpool_name {[ l := Frac q (DecAgree e) ]}.
+
+    Definition Spec_ctx (S : namespace) : iPropG lang Σ :=
+      inv S (∃ h, ∃ T, (ghost_ownership.own heapS_name(● h))
+                                         ★ (ghost_ownership.own tpool_name (● T)))%I.
+  End definitionsS.
+  Typeclasses Opaque heapS_mapsto tpool_mapsto.
+
+  Notation "l ↦ₛ{ q } v" := (heapS_mapsto l q v)
+    (at level 20, q at level 50, format "l  ↦ₛ{ q }  v") : uPred_scope.
+  Notation "l ↦ₛ v" := (heapS_mapsto l 1 v) (at level 20) : uPred_scope.
+
+  Notation "j ⤇{ q } e" :=
+    (tpool_mapsto j q e)
+      (at level 20, q at level 50, format "j  ⤇{ q }  e") : uPred_scope.
+  Notation "j ⤇ e" := (tpool_mapsto j 1 e) (at level 20) : uPred_scope.
 
   Section heap.
     Context {Σ : gFunctors}.
@@ -180,18 +219,20 @@ Section lang_rules.
     Qed.
     Hint Resolve heap_store_valid.
 
+    Context `{HIGΣ : heapIG Σ}.
+
     (** Allocation *)
     Lemma heap_alloc N E σ :
       authG lang Σ heapR → nclose N ⊆ E →
-      ownP σ ⊢ (|={E}=> ∃ _ : heapG Σ, heap_ctx N ∧ Π★{map σ} (λ l v, l ↦ v)).
+      ownP σ ⊢ (|={E}=> ∃ _ : heapIG Σ, heapI_ctx N ∧ Π★{map σ} (λ l v, l ↦ᵢ v)).
     Proof.
       intros. rewrite -{1}(from_to_heap σ). etrans.
       { rewrite [ownP _]later_intro.
         apply (auth_alloc (ownP ∘ of_heap) N E (to_heap σ)); last done.
         apply to_heap_valid. }
       apply pvs_mono, exist_elim=> γ.
-      rewrite -(exist_intro (HeapG _ _ γ)) /heap_ctx; apply and_mono_r.
-      rewrite /heap_mapsto /heap_name.
+      rewrite -(exist_intro (HeapIG _ _ γ)) /heapI_ctx; apply and_mono_r.
+      rewrite /heapI_mapsto /heapI_name.
       induction σ as [|l v σ Hl IH] using map_ind.
       { rewrite big_sepM_empty; apply True_intro. }
       rewrite to_heap_insert big_sepM_insert //.
@@ -201,15 +242,13 @@ Section lang_rules.
         by rewrite auth_own_op IH.
     Qed.
 
-    Context `{HGΣ : heapG Σ}.
-
     (** General properties of mapsto *)
     Lemma heap_mapsto_op_eq l q1 q2 v :
-      (l ↦{q1} v ★ l ↦{q2} v)%I ≡ (l ↦{q1+q2} v)%I.
+      (l ↦ᵢ{q1} v ★ l ↦ᵢ{q2} v)%I ≡ (l ↦ᵢ{q1+q2} v)%I.
     Proof. by rewrite -auth_own_op op_singleton Frac_op dec_agree_idemp. Qed.
 
     Lemma heap_mapsto_op l q1 q2 v1 v2 :
-      (l ↦{q1} v1 ★ l ↦{q2} v2)%I ≡ (v1 = v2 ∧ l ↦{q1+q2} v1)%I.
+      (l ↦ᵢ{q1} v1 ★ l ↦ᵢ{q2} v2)%I ≡ (v1 = v2 ∧ l ↦ᵢ{q1+q2} v1)%I.
     Proof.
       destruct (decide (v1 = v2)) as [->|].
       { by rewrite heap_mapsto_op_eq const_equiv // left_id. }
@@ -220,7 +259,7 @@ Section lang_rules.
     Qed.
 
     Lemma heap_mapsto_op_split l q v :
-      (l ↦{q} v)%I ≡ (l ↦{q/2} v ★ l ↦{q/2} v)%I.
+      (l ↦ᵢ{q} v)%I ≡ (l ↦ᵢ{q/2} v ★ l ↦ᵢ{q/2} v)%I.
     Proof. by rewrite heap_mapsto_op_eq Qp_div_2. Qed.
 
     (** Base axioms for core primitives of the language: Stateful reductions. *)
@@ -266,15 +305,15 @@ Section lang_rules.
     (** Weakest precondition *)
     Lemma wp_alloc N E e v P Φ :
       to_val e = Some v →
-      P ⊢ heap_ctx N → nclose N ⊆ E →
-      P ⊢ (▷ ∀ l, l ↦ v -★ Φ (LocV l)) →
+      P ⊢ heapI_ctx N → nclose N ⊆ E →
+      P ⊢ (▷ ∀ l, l ↦ᵢ v -★ Φ (LocV l)) →
       P ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> H ?? HP.
-      trans (|={E}=> auth_own heap_name ∅ ★ P)%I.
+      rewrite /heapI_ctx /heapI_inv=> H ?? HP.
+      trans (|={E}=> auth_own heapI_name ∅ ★ P)%I.
       { by rewrite -pvs_frame_r -(auth_empty _ E) left_id. }
-      apply wp_strip_pvs, (auth_fsa heap_inv (wp_fsa (Alloc e)))
-      with N heap_name ∅; simpl; eauto with I.
+      apply wp_strip_pvs, (auth_fsa heapI_inv (wp_fsa (Alloc e)))
+      with N heapI_name ∅; simpl; eauto with I.
       rewrite -later_intro. apply sep_mono_r,forall_intro=> h; apply wand_intro_l.
       rewrite -assoc left_id; apply const_elim_sep_l=> ?.
       rewrite -(wp_alloc_pst _ (of_heap h)) //.
@@ -284,41 +323,41 @@ Section lang_rules.
       rewrite -(exist_intro (op {[ l := Frac 1 (DecAgree v) ]})).
       repeat erewrite <-exist_intro by apply _; simpl.
       rewrite -of_heap_insert left_id right_id.
-      rewrite /heap_mapsto. ecancel [_ -★ Φ _]%I.
+      rewrite /heapI_mapsto. ecancel [_ -★ Φ _]%I.
       rewrite -(insert_singleton_op h); last by apply of_heap_None.
       rewrite const_equiv; last by apply (insert_valid h).
         by rewrite left_id -later_intro.
     Qed.
 
     Lemma wp_load N E l q v P Φ :
-      P ⊢ heap_ctx N → nclose N ⊆ E →
-      P ⊢ (▷ l ↦{q} v ★ ▷ (l ↦{q} v -★ Φ v)) →
+      P ⊢ heapI_ctx N → nclose N ⊆ E →
+      P ⊢ (▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v -★ Φ v)) →
       P ⊢ WP Load (Loc l) @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> ?? HPΦ.
-      apply (auth_fsa' heap_inv (wp_fsa _) id)
-      with N heap_name {[ l := Frac q (DecAgree v) ]}; simpl; eauto with I.
+      rewrite /heapI_ctx /heapI_inv=> ?? HPΦ.
+      apply (auth_fsa' heapI_inv (wp_fsa _) id)
+      with N heapI_name {[ l := Frac q (DecAgree v) ]}; simpl; eauto with I.
       rewrite HPΦ{HPΦ}; apply sep_mono_r, forall_intro=> h; apply wand_intro_l.
       rewrite -assoc; apply const_elim_sep_l=> ?.
       rewrite -(wp_load_pst _ (<[l:=v]>(of_heap h))) ?lookup_insert //.
       rewrite const_equiv // left_id.
-      rewrite /heap_inv of_heap_singleton_op //.
+      rewrite /heapI_inv of_heap_singleton_op //.
       apply sep_mono_r, later_mono, wand_intro_l. by rewrite -later_intro.
     Qed.
 
     Lemma wp_store N E l v' e v P Φ :
       to_val e = Some v →
-      P ⊢ heap_ctx N → nclose N ⊆ E →
-      P ⊢ (▷ l ↦ v' ★ ▷ (l ↦ v -★ Φ UnitV)) →
+      P ⊢ heapI_ctx N → nclose N ⊆ E →
+      P ⊢ (▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v -★ Φ UnitV)) →
       P ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> H ?? HPΦ.
-      apply (auth_fsa' heap_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v)) l))
-      with N heap_name {[ l := Frac 1 (DecAgree v') ]}; simpl; eauto with I; auto.
+      rewrite /heapI_ctx /heapI_inv=> H ?? HPΦ.
+      apply (auth_fsa' heapI_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v)) l))
+      with N heapI_name {[ l := Frac 1 (DecAgree v') ]}; simpl; eauto with I; auto.
       rewrite HPΦ{HPΦ}; apply sep_mono_r, forall_intro=> h; apply wand_intro_l.
       rewrite -assoc; apply const_elim_sep_l=> ?.
       rewrite -(wp_store_pst _ (<[l:=v']>(of_heap h))) ?lookup_insert //.
-      rewrite /heap_inv alter_singleton insert_insert !of_heap_singleton_op; eauto.
+      rewrite /heapI_inv alter_singleton insert_insert !of_heap_singleton_op; eauto.
       rewrite const_equiv; last naive_solver.
       apply sep_mono_r, later_mono, wand_intro_l. by rewrite left_id -later_intro.
     Qed.
@@ -405,17 +444,17 @@ Section lang_rules.
 
     Lemma wp_cas_fail N E σ l e1 v1 e2 v2 v' P Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 →
-      P ⊢ heap_ctx N → nclose N ⊆ E →
-      P ⊢ (▷ l ↦ v' ★ ▷ (l ↦ v' -★ Φ FALSEV)) →
+      P ⊢ heapI_ctx N → nclose N ⊆ E →
+      P ⊢ (▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v' -★ Φ FALSEV)) →
       P ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> H1 H2 H3 H4 H5 HPΦ.
-      apply (auth_fsa' heap_inv (wp_fsa _) id)
-      with N heap_name {[ l := Frac 1 (DecAgree v') ]}; simpl; eauto 10 with I.
+      rewrite /heapI_ctx /heapI_inv=> H1 H2 H3 H4 H5 HPΦ.
+      apply (auth_fsa' heapI_inv (wp_fsa _) id)
+      with N heapI_name {[ l := Frac 1 (DecAgree v') ]}; simpl; eauto 10 with I.
       rewrite HPΦ{HPΦ}; apply sep_mono_r, forall_intro=> h; apply wand_intro_l.
       rewrite -assoc; apply const_elim_sep_l=> ?.
       rewrite -(wp_cas_fail_pst _ (<[l:=v']>(of_heap h))) ?lookup_insert //.
-      rewrite /heap_inv !of_heap_singleton_op; eauto.
+      rewrite /heapI_inv !of_heap_singleton_op; eauto.
       rewrite const_equiv; last naive_solver.
       apply sep_mono_r, later_mono, wand_intro_l. by rewrite left_id -later_intro.
     Qed.
@@ -433,18 +472,18 @@ Section lang_rules.
 
     Lemma wp_cas_suc N E σ l e1 v1 e2 v2 P Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      P ⊢ heap_ctx N → nclose N ⊆ E →
-      P ⊢ (▷ l ↦ v1 ★ ▷ (l ↦ v2 -★ Φ TRUEV)) →
+      P ⊢ heapI_ctx N → nclose N ⊆ E →
+      P ⊢ (▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 -★ Φ TRUEV)) →
       P ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
     Proof.
-      rewrite /heap_ctx /heap_inv=> ???? HPΦ.
-      apply (auth_fsa' heap_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v2)) l))
-      with N heap_name {[ l := Frac 1 (DecAgree v1) ]}; simpl; eauto 10 with I.
+      rewrite /heapI_ctx /heapI_inv=> ???? HPΦ.
+      apply (auth_fsa' heapI_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v2)) l))
+      with N heapI_name {[ l := Frac 1 (DecAgree v1) ]}; simpl; eauto 10 with I.
       rewrite HPΦ{HPΦ}; apply sep_mono_r, forall_intro=> h; apply wand_intro_l.
       rewrite -assoc; apply const_elim_sep_l=> ?.
       (rewrite -(wp_cas_suc_pst _ (<[l:=v1]>(of_heap h))) //);
         last by rewrite lookup_insert.
-      rewrite /heap_inv alter_singleton insert_insert !of_heap_singleton_op; eauto.
+      rewrite /heapI_inv alter_singleton insert_insert !of_heap_singleton_op; eauto.
       rewrite lookup_insert const_equiv; last naive_solver.
       apply sep_mono_r, later_mono, wand_intro_l. by rewrite left_id -later_intro.
     Qed.
@@ -461,6 +500,6 @@ Section lang_rules.
 
 End lang_rules.
 
-Notation "l ↦{ q } v" := (heap_mapsto l q v)
-  (at level 20, q at level 50, format "l  ↦{ q }  v") : uPred_scope.
-Notation "l ↦ v" := (heap_mapsto l 1 v) (at level 20) : uPred_scope.
+Notation "l ↦ᵢ{ q } v" := (heapI_mapsto l q v)
+  (at level 20, q at level 50, format "l  ↦ᵢ{ q }  v") : uPred_scope.
+Notation "l ↦ᵢ v" := (heapI_mapsto l 1 v) (at level 20) : uPred_scope.
