@@ -7,7 +7,7 @@ Module lang.
   Definition loc := positive.
 
   Global Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
-    
+
   Inductive expr :=
   | Var (x : var)
   | Lam (e : {bind 1 of expr})
@@ -45,7 +45,7 @@ Module lang.
     unfold Decision.
     decide equality; [apply eq_nat_dec | apply loc_dec_eq].
   Defined.
-  
+
   Inductive val :=
   | LamV (e : {bind 1 of expr})
   | TLamV (e : {bind 1 of expr})
@@ -75,7 +75,7 @@ Module lang.
     | FoldV v => Fold (of_val v)
     | LocV l => Loc l
     end.
-  
+
   Fixpoint to_val (e : expr) : option val :=
     match e with
     | Lam e => Some (LamV e)
@@ -88,7 +88,7 @@ Module lang.
     | Loc l => Some (LocV l)
     | _ => None
     end.
-  
+
   (** Evaluation contexts *)
   Inductive ectx_item :=
   | AppLCtx (e2 : expr)
@@ -129,9 +129,9 @@ Module lang.
     | StoreLCtx e2 => Store e e2
     | StoreRCtx v1 => Store (of_val v1) e
     end.
-  
+
   Definition fill (K : ectx) (e : expr) : expr := fold_right fill_item e K.
-  
+
   Definition state : Type := gmap loc val.
 
   Inductive head_step : expr -> state -> expr -> state -> option expr -> Prop :=
@@ -174,12 +174,9 @@ Module lang.
   (** Atomic expressions: we don't consider any atomic operations. *)
   Definition atomic (e: expr) :=
     match e with
-    | Alloc e => match (to_val e) with | Some _ => true | None => false end
-    | Load e =>  match (to_val e) with | Some _ => true | None => false end
-    | Store e1 e2 =>
-      andb
-        match (to_val e1) with | Some _ => true | None => false end
-        match (to_val e2) with | Some _ => true | None => false end
+    | Alloc e => bool_decide (is_Some (to_val e))
+    | Load e =>  bool_decide (is_Some (to_val e))
+    | Store e1 e2 => bool_decide (is_Some (to_val e1) ∧ is_Some (to_val e2))
     | _ => false
     end.
 

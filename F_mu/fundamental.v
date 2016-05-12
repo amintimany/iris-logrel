@@ -61,7 +61,7 @@ Section typed_interp.
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst Hv; value_case.
-      iApply big_and_elem_of "HΓ"; eauto.
+      iApply (big_and_elem_of with "HΓ").
       apply elem_of_list_lookup_2 with x.
       rewrite lookup_zip_with; simplify_option_eq; trivial.
     - (* unit *) value_case.
@@ -108,7 +108,7 @@ Section typed_interp.
     - (* TLam *)
       value_case; iApply exist_intro; iSplit; trivial.
       iIntros {τi}; destruct τi as [τi τiPr].
-      iPoseProof always_intro "HΓ" as "HP"; try typeclasses eauto; try iExact "HP".
+      iPoseProof (always_intro with "HΓ") as "HP"; try typeclasses eauto; try iExact "HP".
       iIntros "#HΓ"; iNext.
       iApply IHHtyped; [rewrite map_length|]; trivial.
       iRevert "HΓ".
@@ -118,7 +118,7 @@ Section typed_interp.
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
       iDestruct "Hv" as {e'} "[% He']"; rewrite H.
       iApply wp_TLam.
-      iSpecialize "He'" {((interp τ' Δ) ↾ _)}; cbn.
+      iSpecialize ("He'" $! ((interp τ' Δ) ↾ _)); cbn.
       iApply always_elim. iApply always_mono; [|trivial].
       iIntros "He'"; iNext.
       iApply wp_mono; [|trivial].

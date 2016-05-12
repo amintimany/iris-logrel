@@ -6,6 +6,7 @@ From iris.program_logic Require Export lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Export invariants ghost_ownership.
 From iris.program_logic Require Import ownership auth.
+Require Import iris.proofmode.tactics iris.proofmode.invariants.
 Import uPred.
 
 Section typed_interp.
@@ -72,7 +73,7 @@ Section typed_interp.
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst Hv; value_case.
-      iApply big_and_elem_of "HΓ"; eauto.
+      iApply (big_and_elem_of with "HΓ").
       apply elem_of_list_lookup_2 with x.
       rewrite lookup_zip_with; simplify_option_eq; trivial.
     - (* unit *) value_case; trivial.
@@ -120,7 +121,7 @@ Section typed_interp.
       value_case; iApply exist_intro; iSplit; trivial.
       iIntros {τi}; destruct τi as [τi τiPr].
       iRevert "Hheap".
-      iPoseProof always_intro "HΓ" as "HP"; try typeclasses eauto;
+      iPoseProof (always_intro with "HΓ") as "HP"; try typeclasses eauto;
         try (iApply always_impl; iExact "HP").
       iIntros "#HΓ #Hheap"; iNext.
       iApply IHHtyped; [rewrite map_length|]; trivial.
@@ -131,7 +132,7 @@ Section typed_interp.
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
       iDestruct "Hv" as {e'} "[% He']"; rewrite H.
       iApply wp_TLam.
-      iSpecialize "He'" {((interp τ' Δ) ↾ _)}; cbn.
+      iSpecialize ("He'" $! ((interp τ' Δ) ↾ _)); cbn.
       iApply always_elim. iApply always_mono; [|trivial].
       iIntros "He'"; iNext.
       iApply wp_mono; [|trivial].
@@ -166,60 +167,42 @@ Section typed_interp.
     - (* Alloc *)
       smart_wp_bind AllocCtx v "#Hv" IHHtyped; cbn. iClear "HΓ".
       iApply wp_atomic; cbn; trivial; [rewrite to_of_val; auto|].
-      iApply pvs_intro.
-      iApply wp_alloc; [| | | |iSplit;[iExact "Hheap"|iExact "Hv"]];
-        [|iIntros "#[Hheap Hv]"| |]; auto using to_of_val.
-      iIntros "#[Hheap Hv]". iNext.
+      iPvsIntro.
+      iApply wp_alloc; auto 1 using to_of_val.
+      iFrame "Hheap". iNext.
       iIntros {l} "Hl".
-      iApply exist_intro.
-      iApply and_intro; [| trivial |]; auto.
-      iApply inv_alloc; trivial. iNext.
-      iApply exist_intro.
-      iSplit; trivial.
+      iPvs (inv_alloc _ with "[Hl]") as "HN";
+        [| | iPvsIntro; iExists _; iSplit; trivial].
+      trivial.
+      iNext; iExists _; iFrame "Hl"; trivial.
     - (* Load *)
       smart_wp_bind LoadCtx v "#Hv" IHHtyped; cbn. iClear "HΓ".
       iRevert "Hheap". iApply exist_elim; [|iExact "Hv"].
       iIntros {l} "[% #Hv] #Hheap"; rewrite H.
       iApply wp_atomic; cbn; eauto using to_of_val.
-      iApply wp_inv; [auto using to_of_val| trivial
-                      | apply and_elim_r | apply and_elim_l | ].
-      iApply pvs_intro. iSplit; trivial.
-      iIntros "Hl".
-      iPoseProof later_exist_turnstile "Hl" as "Hl'"; [typeclasses eauto|].
-      iRevert "Hheap".
-      iApply exist_elim; [|iExact "Hl'"].
-      iIntros {w} "[Hl1 #Hl2] #Hheap".
-      iApply (wp_load _ _ _ 1);
-        [apply and_elim_r| trivial | apply and_elim_l | iSplit; trivial].
+      iPvsIntro.
+      iInv (L .@ l) as {w} "[Hw1 #Hw2]".
+      iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
       specialize (HNLdisj l); set_solver_ndisj.
-      iNext.
-      iSplitL; trivial.
-      iIntros "Hl".
-      iSplitL.
-      + iNext. iApply exist_intro; iSplitL; trivial.
-      + iApply pvs_intro; trivial.
+      iFrame "Hw1". iNext.
+      iIntros "Hw1". iSplitL; trivial.
+      iNext; iExists _. iFrame "Hw1"; trivial.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHHtyped2; cbn. iClear "HΓ".
       iRevert "Hheap Hw". iApply exist_elim; [|iExact "Hv"].
       iIntros {l} "#[% Hl] #Hheap #Hw"; rewrite H.
       iApply wp_atomic; cbn; [trivial| rewrite ?to_of_val; auto |].
-      iApply wp_inv; [cbn; rewrite ?to_of_val; auto| trivial
-                      | apply and_elim_r | apply and_elim_l | ].
-      iApply pvs_intro. iSplit; trivial.
-      iClear "Hl". iIntros "Hl".
-      iPoseProof later_exist_turnstile "Hl" as "Hl'"; [typeclasses eauto|].
-      iRevert "Hheap Hw".
-      iApply exist_elim; [|iExact "Hl'"].
-      iIntros {u} "[Hl1 #Hl2] #Hheap #Hw".
-      iApply wp_store;
-        [rewrite to_of_val; trivial | apply and_elim_r
-         | | apply and_elim_l | iSplit; trivial].
+      iPvsIntro.
+      iInv (L .@ l) as {z} "[Hz1 #Hz2]".
+      eapply bool_decide_spec; eauto using to_of_val.
+      iApply (wp_store N); auto using to_of_val.
       specialize (HNLdisj l); set_solver_ndisj.
-      iSplitL; trivial.
-      iNext. iIntros "Hl".
-      iSplitL; [|iApply pvs_intro; trivial].
-      iNext. iApply exist_intro; iSplitL; trivial.
+      iFrame "Hheap Hz1".
+      iNext.
+      iIntros "Hz1".
+      iSplitL; [|iPvsIntro; trivial].
+      iNext; iExists _. iFrame "Hz1"; trivial.
       (* unshelving *)
       Unshelve.
       cbn; typeclasses eauto.
