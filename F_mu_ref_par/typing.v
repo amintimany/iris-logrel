@@ -17,6 +17,8 @@ Instance Rename_type : Rename type. derive. Defined.
 Instance Subst_type : Subst type. derive. Defined.
 Instance SubstLemmas_typer : SubstLemmas type. derive. Qed.
 
+Notation TBOOL := (TSum TUnit TUnit).
+
 Inductive typed (Γ : list type) : expr → type → Prop :=
 | Var_typed x τ : Γ !! x = Some τ → typed Γ (Var x) τ
 | Unit_typed : typed Γ Unit TUnit
@@ -50,7 +52,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
     typed Γ e (Tref τ) → typed Γ e' τ → typed Γ (Store e e') TUnit
 | TCAS e1 e2 e3 τ :
     typed Γ e1 (Tref τ) → typed Γ e2 τ → typed Γ e3 τ →
-    typed Γ (CAS e1 e2 e3) TUnit
+    typed Γ (CAS e1 e2 e3) TBOOL
 .
 
 Local Hint Extern 1 =>
