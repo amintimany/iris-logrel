@@ -49,7 +49,8 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 | TStore e e' τ :
     typed Γ e (Tref τ) → typed Γ e' τ → typed Γ (Store e e') TUnit
 | TCAS e1 e2 e3 τ :
-    typed Γ e1 (Tref τ) → typed Γ e2 τ → typed Γ e3 τ → typed Γ (CAS e1 e2 e3) TUnit
+    typed Γ e1 (Tref τ) → typed Γ e2 τ → typed Γ e3 τ →
+    typed Γ (CAS e1 e2 e3) TUnit
 .
 
 Local Hint Extern 1 =>
@@ -63,8 +64,7 @@ Proof.
   assert (∀ {A} `{Ids A} `{Rename A}
             (s1 s2 : nat → A) x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
-  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with
-                               omega typed_subst_invariant.
+  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega typed_subst_invariant.
 Qed.
 
 Definition env_subst (vs : list val) (x : var) : expr :=
