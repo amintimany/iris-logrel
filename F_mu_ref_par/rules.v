@@ -2,7 +2,7 @@ Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import F_mu_ref_par.lang.
 From iris.program_logic Require Export lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
+From iris.algebra Require Import upred_big_op frac dec_agree list.
 From iris.program_logic Require Export invariants ghost_ownership.
 From iris.program_logic Require Import ownership auth.
 From iris.proofmode Require Import weakestpre.
@@ -12,7 +12,8 @@ Import uPred.
 Section lang_rules.
   Definition heapR : cmraT := gmapR loc (fracR (dec_agreeR val)).
 
-  (** The CMRA for the heap of the implementation. This is linked to the physical heap. *)
+  (** The CMRA for the heap of the implementation. This is linked to the
+      physical heap. *)
   Class heapIG Σ :=
     HeapIG {
         heapI_inG :> authG lang Σ heapR;
@@ -22,22 +23,6 @@ Section lang_rules.
   Definition to_heap : state → heapR := fmap (λ v, Frac 1 (DecAgree v)).
   Definition of_heap : heapR → state :=
     omap (mbind (maybe DecAgree ∘ snd) ∘ maybe2 Frac).
-
-  (** The CMRA for the heap of the specification. *)
-  Class heapSG Σ :=
-    HeapSG {
-        heapS_inG :> authG lang Σ heapR;
-        heapS_name : gname
-      }.
-
-  Definition tpoolR : cmraT := gmapR loc (fracR (dec_agreeR expr)).
-
-  (** The CMRA for the thread pool. *)
-  Class tpoolG Σ :=
-    TpoolSG {
-        tpool_inG :> authG lang Σ tpoolR;
-        tpool_name : gname
-      }.
 
   Section definitionsI.
     Context `{iI : heapIG Σ}.
@@ -60,31 +45,6 @@ Section lang_rules.
     (at level 20, q at level 50, format "l  ↦ᵢ{ q }  v") : uPred_scope.
   Notation "l ↦ᵢ v" := (heapI_mapsto l 1 v) (at level 20) : uPred_scope.
 
-  Section definitionsS.
-    Context `{iS : heapSG Σ}
-            `{iT : tpoolG Σ}.
-
-    Definition heapS_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
-      auth_own heapS_name {[ l := Frac q (DecAgree v) ]}.
-
-    Definition tpool_mapsto (l : loc) (q : Qp) (e: expr) : iPropG lang Σ :=
-      auth_own tpool_name {[ l := Frac q (DecAgree e) ]}.
-
-    Definition Spec_ctx (S : namespace) : iPropG lang Σ :=
-      inv S (∃ h, ∃ T, (ghost_ownership.own heapS_name(● h))
-                                         ★ (ghost_ownership.own tpool_name (● T)))%I.
-  End definitionsS.
-  Typeclasses Opaque heapS_mapsto tpool_mapsto.
-
-  Notation "l ↦ₛ{ q } v" := (heapS_mapsto l q v)
-    (at level 20, q at level 50, format "l  ↦ₛ{ q }  v") : uPred_scope.
-  Notation "l ↦ₛ v" := (heapS_mapsto l 1 v) (at level 20) : uPred_scope.
-
-  Notation "j ⤇{ q } e" :=
-    (tpool_mapsto j q e)
-      (at level 20, q at level 50, format "j  ⤇{ q }  e") : uPred_scope.
-  Notation "j ⤇ e" := (tpool_mapsto j 1 e) (at level 20) : uPred_scope.
-
   Section heap.
     Context {Σ : gFunctors}.
     Implicit Types N : namespace.
@@ -93,9 +53,9 @@ Section lang_rules.
     Implicit Types σ : state.
     Implicit Types h g : heapR.
 
-
     Lemma wp_bind {E e} K Φ :
-      WP e @ E {{ (λ v, WP (fill K (of_val v)) @ E {{Φ}}) }} ⊢ WP (fill K e) @ E {{Φ}}.
+      WP e @ E {{ (λ v, WP (fill K (of_val v)) @ E {{Φ}}) }}
+         ⊢ WP (fill K e) @ E {{Φ}}.
     Proof. apply weakestpre.wp_bind. Qed.
 
     Lemma wp_bindi {E e} Ki Φ :
@@ -118,8 +78,8 @@ Section lang_rules.
           apply val_head_stuck, (fill_not_val K) in H;
             by rewrite -Hv to_of_val in H (* maybe use a helper lemma here? *)
         | H : head_step ?e _ _ _ _ |- _ =>
-          try (is_var e; fail 1); (* inversion yields many goals if e is a variable
-     and can thus better be avoided. *)
+          try (is_var e; fail 1); (* inversion yields many goals if e is a
+                                     variable and can thus better be avoided. *)
             inversion H; subst; clear H
         end.
 
@@ -128,7 +88,8 @@ Section lang_rules.
           match e with
           | of_val ?v => v
           | Pair ?e1 ?e2 =>
-            let v1 := reshape_val e1 in let v2 := reshape_val e2 in constr:(PairV v1 v2)
+            let v1 := reshape_val e1 in
+            let v2 := reshape_val e2 in constr:(PairV v1 v2)
           | InjL ?e => let v := reshape_val e in constr:(InjLV v)
           | InjR ?e => let v := reshape_val e in constr:(InjRV v)
           | Loc ?l => constr:(LocV l)
@@ -149,7 +110,8 @@ Section lang_rules.
           | Case ?e0 ?e1 ?e2 => go (CaseCtx e1 e2 :: K) e0
           | Alloc ?e => go (AllocCtx :: K) e
           | Load ?e => go (LoadCtx :: K) e
-          | Store ?e1 ?e2 => reshape_val e1 ltac:(fun v1 => go (StoreRCtx v1 :: K) e2)
+          | Store ?e1 ?e2 => reshape_val
+                              e1 ltac:(fun v1 => go (StoreRCtx v1 :: K) e2)
           | Store ?e1 ?e2 => go (StoreLCtx e2 :: K) e1
           | CAS ?e0 ?e1 ?e2 =>
             reshape_val e0 ltac:
