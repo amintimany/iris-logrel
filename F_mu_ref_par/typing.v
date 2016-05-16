@@ -28,10 +28,10 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 | Snd_typed e τ1 τ2 : typed Γ e (TProd τ1 τ2) → typed Γ (Snd e) τ2
 | InjL_typed e τ1 τ2 : typed Γ e τ1 → typed Γ (InjL e) (TSum τ1 τ2)
 | InjR_typed e τ1 τ2 : typed Γ e τ2 → typed Γ (InjR e) (TSum τ1 τ2)
-| Case_typed e0 e1 e2 τ1 τ2 ρ :
+| Case_typed e0 e1 e2 τ1 τ2 τ3 :
     typed Γ e0 (TSum τ1 τ2) →
-    typed (τ1 :: Γ) e1 ρ → typed (τ2 :: Γ) e2 ρ →
-    typed Γ (Case e0 e1 e2) ρ
+    typed (τ1 :: Γ) e1 τ3 → typed (τ2 :: Γ) e2 τ3 →
+    typed Γ (Case e0 e1 e2) τ3
 | Lam_typed e τ1 τ2 :
     typed (τ1 :: Γ) e τ2 → typed Γ (Lam e) (TArrow τ1 τ2)
 | App_typed e1 e2 τ1 τ2 :
@@ -66,7 +66,8 @@ Proof.
   assert (∀ {A} `{Ids A} `{Rename A}
             (s1 s2 : nat → A) x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
-  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega typed_subst_invariant.
+  (induction Htyped => s1 s2 Hs; f_equal/=);
+    eauto using lookup_lt_Some with omega typed_subst_invariant.
 Qed.
 
 Definition env_subst (vs : list val) (x : var) : expr :=

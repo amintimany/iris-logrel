@@ -308,15 +308,15 @@ Section lang_rules.
 
     Lemma step_load N E ρ j K l q v:
       nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (Load (Loc l))) ★ l ↦ₛ{q} v)%I)
-        ⊢ |={E}=>(j ⤇ (fill K (of_val v)) ★ l ↦ₛ{q} v)%I.
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (Load (Loc l))) ★ ▷ l ↦ₛ{q} v)%I)
+        ⊢ |={E}=>(j ⤇ (fill K (of_val v)) ★ ▷ l ↦ₛ{q} v)%I.
     Proof.
     Admitted.
 
     Lemma step_store N E ρ j K l v' e v:
       to_val e = Some v → nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (Store (Loc l) e)) ★ l ↦ₛ v')%I)
-        ⊢ |={E}=>(j ⤇ (fill K e) ★ l ↦ₛ v)%I.
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (Store (Loc l) e)) ★ ▷ l ↦ₛ v')%I)
+        ⊢ |={E}=>(j ⤇ (fill K Unit) ★ ▷ l ↦ₛ v)%I.
     Proof.
     Admitted.
 
@@ -387,7 +387,7 @@ Section lang_rules.
     Lemma step_fork N E ρ j K e :
       nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (Fork e)))%I)
-        ⊢ |={E}=>(j ⤇ (fill K (Unit)))%I.
+        ⊢ |={E}=>(∃ j', j ⤇ (fill K (Unit)) ★ j' ⤇ (fill K e))%I.
     Proof.
     Admitted.
 

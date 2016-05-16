@@ -175,7 +175,7 @@ Section logrel.
                 λ w, (□ ∀ j K v,
                            ▷ τ1i v ★ ▷ j ⤇ (fill K (App (# w.2) (# v.2))) →
                            WP (App (# w.1) (# v.1)) @ ⊤
-                              {{z, ∃ z', j ⤇ (fill K (# z)) ★ τ2i (z, z')}})%I
+                              {{z, ∃ z', j ⤇ (fill K (# z')) ★ τ2i (z, z')}})%I
             |}
         |}
     |}.
