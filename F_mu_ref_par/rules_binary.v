@@ -321,16 +321,21 @@ Section lang_rules.
     Admitted.
 
     Lemma step_cas_fail N E ρ j K l q v' e1 v1 e2 v2:
-      to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2)) ★ l ↦ₛ{q} v')%I)
-        ⊢ |={E}=>(j ⤇ (fill K (FALSE)) ★ l ↦ₛ{q} v')%I.
+      to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2))
+                 ★ ▷ (■ (v' ≠ v1)) ★ ▷ l ↦ₛ{q} v')%I)
+        ⊢ |={E}=>(j ⤇ (fill K (FALSE)) ★ ▷ l ↦ₛ{q} v')%I.
     Proof.
+      iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hpt]]]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+      iInv> N as {ρ'} "[Hown #Hstep]".
+      iTimeless "Heq". iDestruct "Heq" as "%".
     Admitted.
 
     Lemma step_cas_suc N E ρ j K l e1 v1 e2 v2:
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2)) ★ l ↦ₛ v1)%I)
-        ⊢ |={E}=>(j ⤇ (fill K (TRUE)) ★ l ↦ₛ v2)%I.
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2)) ★ ▷ l ↦ₛ v1)%I)
+        ⊢ |={E}=>(j ⤇ (fill K (TRUE)) ★ ▷ l ↦ₛ v2)%I.
     Proof.
     Admitted.
 

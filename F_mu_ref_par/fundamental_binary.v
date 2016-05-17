@@ -74,8 +74,7 @@ Section typed_interp.
 
   Lemma typed_binary_interp N Δ Γ vs e τ
         (HNLdisj : ∀ l : loc * loc, N ⊥ L .@ l)
-        (HSLdisj : ∀ l : loc * loc, N ⊥ L .@ l)
-        (HSNdisj : S ⊥ N)
+        (HSLdisj : ∀ l : loc * loc, S ⊥ L .@ l)
         (Htyped : typed Γ e τ)
         (HΔ : context_interp_Persistent Δ)
     : List.length Γ = List.length vs →
@@ -132,12 +131,12 @@ Section typed_interp.
       smart_wp_bind (InjLCtx) v v' "[Hv #Hiv]"
                     (IHHtyped _ _ _ _ _ j (K ++ [InjLCtx])); cbn.
       value_case. iExists (InjLV v'); iFrame "Hv".
-      iLeft; iExists _; iSplit; [|iNext; eauto]; simpl; trivial.
+      iLeft; iExists _; iSplit; [|eauto]; simpl; trivial.
     - (* injr *)
       smart_wp_bind (InjRCtx) v v' "[Hv #Hiv]"
                     (IHHtyped _ _ _ _ _ j (K ++ [InjRCtx])); cbn.
       value_case. iExists (InjRV v'); iFrame "Hv".
-      iRight; iExists _; iSplit; [|iNext; eauto]; simpl; trivial.
+      iRight; iExists _; iSplit; [|eauto]; simpl; trivial.
     - (* case *)
       smart_wp_bind (CaseCtx _ _) v v' "[Hv #Hiv]"
                     (IHHtyped1 _ _ _ _ _ j (K ++ [CaseCtx _ _])); cbn.
@@ -322,45 +321,49 @@ Section typed_interp.
                     (IHHtyped3
                        _ _ _ _ _ j (K ++ [CasRCtx _ _])).
       iDestruct "Hiv" as {l} "[% Hinv]".
-      inversion H; subst.
+      inversion H0; subst.
       iApply wp_atomic; trivial;
         [cbn; eauto 10 using to_of_val|].
       iPvsIntro.
       iInv (L .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
       eapply bool_decide_spec; eauto 10 using to_of_val.
-      destruct (val_dec_eq u w) as [|Hneq]; subst.
+      destruct z as [z1 z2]; simpl.
+      destruct (val_dec_eq z1 w) as [|Hneq]; subst.
       + iPvs (step_cas_suc _ _ _ j K (l.2) (# w') w' (# u') u' _ _ _
-              with "[Hu Hw2]") as "[Hw Hw2]".
-        iFrame "Hspec Hu".
-        
-      
-      smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHHtyped1; cbn.
-      smart_wp_bind (CasMCtx _ _) v2 "#Hv2" IHHtyped2; cbn.
-      smart_wp_bind (CasRCtx _ _) v3 "#Hv3" IHHtyped3; cbn. iClear "HΓ".
-      iDestruct "Hv1" as {l} "[% Hinv]"; subst.
-      iApply wp_atomic; cbn; eauto 10 using to_of_val.
-      iPvsIntro.
-      iInv (L .@ l) as {w} "[Hw1 #Hw2]"; [cbn; eauto 10 using to_of_val|].
-      destruct (val_dec_eq v2 w) as [|Hneq]; subst.
-      + iApply (wp_cas_suc N); eauto using to_of_val.
+              with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
+        { iFrame "Hspec Hu". iNext.
+          rewrite ?EqType_related_eq; trivial.
+          iDestruct "Hiw" as "%". iDestruct "Hw3" as "%".
+          repeat subst; trivial. }
+        iApply (wp_cas_suc N); eauto using to_of_val.
         specialize (HNLdisj l); set_solver_ndisj.
         iFrame "Hheap Hw1".
         iNext. iIntros "Hw1".
-        iSplitL.
-        * iNext; iExists _; iSplitL; trivial.
-        * iPvsIntro. iLeft; iExists _; auto with itauto.
-      + iApply (wp_cas_fail N); eauto using to_of_val.
+        iSplitL "Hw1 Hw2".
+        * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
+        * iPvsIntro. iExists TRUEV; iFrame "Hw".
+          iLeft; iExists (UnitV, UnitV); auto with itauto.
+      + iPvs (step_cas_fail _ _ _ j K (l.2) 1 (z2) (# w') w' (# u') u' _ _ _
+              with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
+        { iFrame "Hspec Hu Hw2". iNext.
+          rewrite ?EqType_related_eq; trivial.
+          iDestruct "Hiw" as "%". iDestruct "Hw3" as "%".
+          repeat subst; trivial. }
+        iApply (wp_cas_fail N); eauto using to_of_val.
         clear Hneq. specialize (HNLdisj l); set_solver_ndisj.
         (* Weird that Hneq above makes set_solver_ndisj diverge or
            take exceptionally long!?!? *)
         iFrame "Hheap Hw1".
         iNext. iIntros "Hw1".
-        iSplitL.
-        * iNext; iExists _; iSplitL; trivial.
-        * iPvsIntro. iRight; iExists _; auto with itauto.
-      (* unshelving *)
-      Unshelve.
-      cbn; typeclasses eauto.
+        iSplitL "Hw1 Hw2".
+        * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
+        * iPvsIntro. iExists FALSEV; iFrame "Hw".
+          iRight; iExists (UnitV, UnitV); auto with itauto.
+          (* unshelving... *)
+          Unshelve.
+          all: auto using to_of_val.
+          simpl; typeclasses eauto.
+          all: clear - HSLdisj; specialize (HSLdisj l); set_solver_ndisj.
   Qed.
 
 End typed_interp.

@@ -22,3 +22,4 @@ F_mu_ref_par/logrel_unary.v
 F_mu_ref_par/fundamental_unary.v
 F_mu_ref_par/rules_binary.v
 F_mu_ref_par/logrel_binary.v
+F_mu_ref_par/fundamental_binary.v

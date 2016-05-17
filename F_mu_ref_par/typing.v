@@ -17,6 +17,12 @@ Instance Rename_type : Rename type. derive. Defined.
 Instance Subst_type : Subst type. derive. Defined.
 Instance SubstLemmas_typer : SubstLemmas type. derive. Qed.
 
+Inductive EqType : type → Prop :=
+| EqTUnit : EqType TUnit
+| EqTProd τ τ' : EqType τ → EqType τ' → EqType (TProd τ τ')
+| EqSum τ τ' : EqType τ → EqType τ' → EqType (TSum τ τ')
+.
+
 Notation TBOOL := (TSum TUnit TUnit).
 
 Inductive typed (Γ : list type) : expr → type → Prop :=
@@ -51,6 +57,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 | TStore e e' τ :
     typed Γ e (Tref τ) → typed Γ e' τ → typed Γ (Store e e') TUnit
 | TCAS e1 e2 e3 τ :
+    EqType τ →
     typed Γ e1 (Tref τ) → typed Γ e2 τ → typed Γ e3 τ →
     typed Γ (CAS e1 e2 e3) TBOOL
 .

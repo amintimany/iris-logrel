@@ -7,6 +7,7 @@ From iris.program_logic Require Export lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Export invariants ghost_ownership.
 From iris.program_logic Require Import ownership auth.
+Require Import iris.proofmode.pviewshifts.
 Import uPred.
 
 (** interp : is a unary logical relation. *)
@@ -105,7 +106,7 @@ Section logrel.
             {|
               cofe_mor_car :=
                 λ w, (∃ w1 w2, w = (PairV (w1.1) (w1.2), PairV (w2.1) (w2.2)) ∧
-                               ▷ τ1i (w1.1, w2.1) ∧ ▷ τ2i (w1.2, w2.2))%I
+                               τ1i (w1.1, w2.1) ∧ τ2i (w1.2, w2.2))%I
             |}
         |}
     |}.
@@ -137,8 +138,8 @@ Section logrel.
             λ τ2i,
             {|
               cofe_mor_car :=
-                λ w, ((∃ w1, w = (InjLV (w1.1), InjLV (w1.2)) ∧ ▷ τ1i w1) ∨
-                      (∃ w2, w = (InjRV (w2.1), InjRV (w2.2)) ∧ ▷ τ2i w2))%I
+                λ w, ((∃ w1, w = (InjLV (w1.1), InjLV (w1.2)) ∧ τ1i w1) ∨
+                      (∃ w2, w = (InjRV (w2.1), InjRV (w2.2)) ∧ τ2i w2))%I
             |}
         |}
     |}.
@@ -666,6 +667,30 @@ Section logrel.
     apply and_proper.
     - apply interp_ren_S.
     - apply IHΓ.
+  Qed.
+
+  Lemma EqType_related_eq τ {H : EqType τ} v v' Δ
+        {HΔ : context_interp_Persistent Δ} :
+    interp τ Δ (v, v') ⊢ ■ (v = v').
+  Proof.
+      revert v v'; induction H => v v'; iIntros "#H1".
+    - simpl; iDestruct "H1" as "[% %]"; subst; trivial.
+    - iDestruct "H1" as {w1 w2} "[% [H1 H2]]".
+      destruct w1; destruct w2; simpl in *.
+      inversion H1; subst.
+      rewrite IHEqType1 IHEqType2.
+      iDestruct "H1" as "%". iDestruct "H2" as "%". subst; trivial.
+    - iDestruct "H1" as "[H1|H1]".
+      + iDestruct "H1" as {w} "[% H1]".
+        destruct w; simpl in *.
+        inversion H1; subst.
+        rewrite IHEqType1.
+        iDestruct "H1" as "%". subst; trivial.
+      + iDestruct "H1" as {w} "[% H1]".
+        destruct w; simpl in *.
+        inversion H1; subst.
+        rewrite IHEqType2.
+        iDestruct "H1" as "%". subst; trivial.
   Qed.
 
 End logrel.
