@@ -278,6 +278,7 @@ Section typed_interp.
       iApply wp_atomic; cbn; trivial.
       iPvsIntro.
       iInv (L .@ l) as {w} "[Hw1 [Hw2 #Hw3]]".
+      iTimeless "Hw2".
       iPvs (step_load _ _ _ j K (l.2) 1 (w.2) _ with "[Hv Hw2]") as "[Hv Hw2]".
       iFrame "Hspec Hv"; trivial.
       iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
@@ -301,6 +302,7 @@ Section typed_interp.
       iPvsIntro.
       iInv (L .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
       eapply bool_decide_spec; eauto using to_of_val.
+      iTimeless "Hw2".
       iPvs (step_store _ _ _ j K (l.2) (z.2) (# w') w' _ _ with "[Hw Hw2]")
         as "[Hw Hw2]".
       iFrame "Hspec Hw Hw2"; trivial.
@@ -327,11 +329,12 @@ Section typed_interp.
       iPvsIntro.
       iInv (L .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
       eapply bool_decide_spec; eauto 10 using to_of_val.
+      iTimeless "Hw2".
       destruct z as [z1 z2]; simpl.
       destruct (val_dec_eq z1 w) as [|Hneq]; subst.
-      + iPvs (step_cas_suc _ _ _ j K (l.2) (# w') w' (# u') u' _ _ _
+      + iPvs (step_cas_suc _ _ _ j K (l.2) (# w') w' z2 (# u') u' _ _ _
               with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
-        { iFrame "Hspec Hu". iNext.
+        { iFrame "Hspec Hu Hw2". iNext.
           rewrite ?EqType_related_eq; trivial.
           iDestruct "Hiw" as "%". iDestruct "Hw3" as "%".
           repeat subst; trivial. }

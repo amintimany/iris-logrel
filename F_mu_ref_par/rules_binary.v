@@ -18,6 +18,9 @@ Section lang_rules.
     SingletonM nat (fracR (dec_agreeR expr)) tpoolR.
   Proof. typeclasses eauto. Defined.
 
+  Global Instance tpool_Empty : Empty (fracR (dec_agreeR expr)).
+  Proof. apply frac_empty. Defined.
+
   Definition to_tpool : (list expr) → tpoolR :=
     map (λ v, Frac 1 (DecAgree v)).
   Definition of_tpool : tpoolR → (list expr) :=
@@ -88,8 +91,10 @@ Section lang_rules.
 
     Definition Makes_Steps := clos_refl_trans _ (@step lang).
 
+    Notation "ρ →⋆ ρ'" := (Makes_Steps ρ ρ') (at level 20).
+
     Definition Spec_inv (ρ ρ' : cfgR) : iPropG lang Σ :=
-      (■ Makes_Steps (of_cfg ρ) (of_cfg ρ'))%I.
+      (■ (of_cfg ρ) →⋆ (of_cfg ρ'))%I.
 
     Definition Spec_ctx (S : namespace) (ρ : cfgR) : iPropG lang Σ :=
       auth_ctx cfg_name S (Spec_inv ρ).
@@ -115,6 +120,8 @@ Section lang_rules.
     (tpool_mapsto j q e)
       (at level 20, q at level 50, format "j  ⤇{ q }  e") : uPred_scope.
   Notation "j ⤇ e" := (tpool_mapsto j 1 e) (at level 20) : uPred_scope.
+
+  Notation "ρ →⋆ ρ'" := (Makes_Steps ρ ρ') (at level 20).
 
   Section cfg.
     Context {Σ : gFunctors}.
@@ -190,30 +197,98 @@ Section lang_rules.
                                   eauto using tpool_update_validN.
     Qed.
 
-    Global Instance prod_LocalUpdate_fst
-           {A B : cmraT} {Lv : A → Prop} (L : A → A) {LU: LocalUpdate Lv L} :
-      @LocalUpdate (prodR A B) (λ x, Lv (fst x)) (λ x, (L (x.1), x.2)).
+    Global Instance prod_LocalUpdate
+           {A B : cmraT} {Lv : A → Prop} (L : A → A) {LU : LocalUpdate Lv L}
+           {Lv' : B → Prop} (L' : B → B) {LU' : LocalUpdate Lv' L'} :
+      @LocalUpdate (prodR A B) (λ x, Lv (x.1) ∧ Lv' (x.2)) (prod_map L L').
     Proof.
       constructor.
-      - intros n x1 x2 [Hx1 Hx2]; constructor; simpl; trivial.
+      - intros n x1 x2 [Hx1 Hx2]; constructor; simpl; trivial;
         apply local_update_ne; trivial.
-      - intros n [x1 x2] [y1 y2] H1 [H21 H22]; constructor;
-          simpl in *; trivial.
+      - intros n [x1 x2] [y1 y2] [H11 H12] [H21 H22]; constructor;
+          simpl in *; trivial;
         eapply local_updateN; eauto.
     Qed.
 
-    Global Instance prod_LocalUpdate_snd
-           {A B : cmraT} {Lv : B → Prop} (L : B → B) {LU : LocalUpdate Lv L} :
-      @LocalUpdate (prodR A B) (λ x, Lv (snd x)) (λ x, (x.1, L (x.2))).
+    Lemma of_tpool_singleton j e :
+      of_tpool ({[ j := (Frac 1 (DecAgree e)) ]}) = [e].
+    Proof. induction j; simpl; auto. Qed.
+
+    Lemma of_tpool_2_singletons j k e e' :
+      j < k →
+      of_tpool ({[ j := (Frac 1 (DecAgree e)) ]}
+                  ⋅ {[ k := (Frac 1 (DecAgree e')) ]}) = [e; e'].
     Proof.
-      constructor.
-      - intros n x1 x2 [Hx1 Hx2]; constructor; simpl; trivial.
-        apply local_update_ne; trivial.
-      - intros n [x1 x2] [y1 y2] H1 [H21 H22]; constructor;
-          simpl in *; trivial.
-        eapply local_updateN; eauto.
+      revert k; induction j => k; destruct k; simpl; auto with omega => H.
+      - apply (f_equal (cons _)), of_tpool_singleton.
+      - apply IHj; omega.
     Qed.
 
+    Lemma of_tpool_app tp tp' :
+      of_tpool (tp ++ tp') = of_tpool tp ++ of_tpool tp'.
+    Proof.
+      revert tp'; induction tp as [|x tp] => tp'; simpl; trivial.
+      destruct x as [? [x|]|]; simpl; rewrite IHtp; trivial.
+    Qed.
+
+    Lemma list_op_units k tp :
+      of_tpool (repeat ∅ k ⋅ tp) = of_tpool tp.
+    Proof.
+      revert k; induction tp as [|x tp] => k.
+      - destruct k; simpl; trivial. induction k; simpl; trivial.
+      - destruct k; simpl; trivial. destruct x as [? x|]; simpl; [|apply IHtp].
+        destruct x; simpl; [|apply IHtp]. rewrite IHtp; trivial.
+    Qed.
+
+    Lemma tpool_conv j e tp :
+      ✓ ({[ j := (Frac 1 (DecAgree e : dec_agreeR _)) ]} ⋅ tp) → ∃ l1 l2,
+        (∀ e', of_tpool ({[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]} ⋅ tp) =
+               l1 ++ e' :: l2) ∧
+        (∀ e' k e'',
+            k > j → k > List.length tp →
+            of_tpool
+              ({[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]}
+                 ⋅ {[ k := (Frac 1 (DecAgree e'' : dec_agreeR _)) ]} ⋅ tp) =
+            l1 ++ e' :: l2 ++ [e'']).
+    Proof.
+      revert j. induction tp as [|t tp]; intros j H.
+      - exists []; exists []; split.
+        + intros e'. clear H.
+          induction j; simpl; trivial; simpl in *.
+          rewrite list_op_nil in IHj; trivial.
+        + intros e' k e'' H1 H2; simpl in *. replace [] with (∅ : tpoolR)
+            by trivial; rewrite right_id.
+          apply of_tpool_2_singletons; auto with omega.
+      - destruct j; simpl in *.
+        + inversion H; subst. rewrite (frac_valid_inv_l _ _ H2); simpl.
+          eexists [], _; split.
+          * intros e'; simpl; trivial.
+          * intros e' k e'' Hc1 Hc2. destruct k; auto with omega.
+            simpl; apply (f_equal (cons _)).
+            set (W := @list_op_app); unfold op, cmra_op in W; simpl in W;
+              rewrite W; clear W.
+            rewrite of_tpool_app list_op_units; trivial.
+            rewrite repeat_length.
+            match type of Hc2 with
+              _ > S ?A =>
+              match goal with (* A and B are convertible! *)
+                |- ?B ≤ _ => change B with A; omega
+              end
+            end.
+        + inversion H; subst.
+          destruct t as [q [t|]|]; simpl in *.
+          * edestruct IHtp as [l1 [l2 [Hl1 Hl2]]]; eauto.
+            exists (t :: l1), l2; split.
+            -- intros e'; rewrite Hl1; trivial.
+            -- intros e' k e'' Hx1 Hx2. destruct k; simpl; auto with omega.
+               apply (f_equal (cons _)), Hl2; auto with omega.
+          * inversion H2. inversion H1.
+          * edestruct IHtp as [l1 [l2 [Hl1 Hl2]]]; eauto.
+            exists l1, l2; split; trivial.
+            intros e' k e'' Hx1 Hx2; destruct k; simpl; auto with omega.
+            apply Hl2; auto with omega.
+    Qed.
+(*
     Lemma tpool_conv j e tp :
       ✓ ({[ j := (Frac 1 (DecAgree e : dec_agreeR _)) ]} ⋅ tp) → ∃ l1 l2,
       ∀ e', of_tpool ({[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]} ⋅ tp) =
@@ -233,34 +308,92 @@ Section lang_rules.
           * inversion H2. inversion H1.
           * apply IHtp; trivial.
     Qed.
-(*
-    Global Instance tpool_local_update j e e':
-      @LocalUpdate
-        tpoolR
-        (λ x, x !! j = Some (Frac 1 (DecAgree e)))
-        (λ x, {[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]} ⋅ x).
-    Proof.
-      constructor.
-      - intros n x y H; rewrite H; trivial.
-      - intros n x y H1 H2; subst.
-
-
-        apply cmra_validN_op_l in H2.
-        revert H2; induction y.
-        + induction j; simpl; trivial.
-        + intros H2. destruct j; simpl in *.
-          inversion H2; subst.
-          constructor; trivial.
-
-
-    Lemma thread_update j e e' ρ:
-      (● (({[j := Frac 1 (DecAgree e)]}, ∅) ⋅ ρ : cfgR)
-        ⋅ ◯ (({[j := Frac 1 (DecAgree e)]}, ∅)))
-        ~~> (● (({[j := Frac 1 (DecAgree e')]}, ∅) ⋅ ρ)
-             ⋅ ◯ (({[j := Frac 1 (DecAgree e')]}, ∅))).
-    Proof.
-
 *)
+    Lemma thread_update j e e' h ρ :
+      ✓ (({[j := Frac 1 (DecAgree e)]}, h) ⋅ ρ) →
+      (● (({[j := Frac 1 (DecAgree e)]}, h) ⋅ ρ : cfgR)
+        ⋅ ◯ (({[j := Frac 1 (DecAgree e)]}, h)))
+        ~~> (● (({[j := Frac 1 (DecAgree e')]}, h) ⋅ ρ)
+             ⋅ ◯ (({[j := Frac 1 (DecAgree e')]}, h))).
+    Proof.
+      intros H.
+      replace ({[j := Frac 1 (DecAgree e')]} : tpoolR) with
+      (alter (λ _ : fracR (dec_agreeR expr), Frac 1 (DecAgree e')) j
+             {[j := Frac 1 (DecAgree e)]}) by (by rewrite list_alter_singleton).
+      apply (@auth_local_update_l
+               _ _ _ _ _
+               (@prod_LocalUpdate _ heapR _ _ _ _ _ (local_update_id))).
+      - split; trivial. eexists (Frac 1 _);
+                          by rewrite list_Singleton_lookup; split.
+      - simpl. rewrite list_alter_singleton.
+        inversion H; constructor; simpl in *; trivial.
+        eapply tpool_update_valid; eauto.
+    Qed.
+
+(*    Lemma thread_alloc_update j e e' h ρ :
+      ✓ (({[j := Frac 1 (DecAgree e)]}, h) ⋅ ρ) →
+      (● (({[j := Frac 1 (DecAgree e)]}, h) ⋅ ρ : cfgR)
+        ⋅ ◯ (({[j := Frac 1 (DecAgree e)]}, h)))
+        ~~> (● (({[j := Frac 1 (DecAgree e')]}, h) ⋅ ρ)
+             ⋅ ◯ (({[j := Frac 1 (DecAgree e')]}, h))).
+    Proof.
+      intros H.
+      replace ({[j := Frac 1 (DecAgree e')]} : tpoolR) with
+      (alter (λ _ : fracR (dec_agreeR expr), Frac 1 (DecAgree e')) j
+             {[j := Frac 1 (DecAgree e)]}) by (by rewrite list_alter_singleton).
+      apply (@auth_local_update_l
+               _ _ _ _ _
+               (@prod_LocalUpdate _ heapR _ _ _ _ _ (local_update_id))).
+      - split; trivial. eexists (Frac 1 _);
+                          by rewrite list_Singleton_lookup; split.
+      - simpl. rewrite list_alter_singleton.
+        inversion H; constructor; simpl in *; trivial.
+        eapply tpool_update_valid; eauto.
+    Qed. *)
+
+    Lemma step_pure_base j K e e' h ρ :
+      ✓ (({[j := Frac 1 (DecAgree (fill K e))]}, h) ⋅ ρ : cfgR) →
+      (∀ σ, head_step e σ e' σ None) →
+      step (of_cfg (({[j := Frac 1 (DecAgree (fill K e))]}, h) ⋅ ρ))
+           (of_cfg (({[j := Frac 1 (DecAgree (fill K e'))]}, h) ⋅ ρ)).
+    Proof.
+      intros [H11 H12] H2; destruct ρ as [th hp]; simpl in *.
+      unfold op, cmra_op; simpl. unfold prod_op; simpl.
+      unfold of_cfg; simpl.
+      destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H3 _]]].
+      repeat rewrite H3.
+      eapply (step_atomic _ _ _ _ _ _ None _ _); simpl.
+      - trivial.
+      - simpl; rewrite app_nil_r; trivial.
+      - econstructor; eauto.
+    Qed.
+
+    Lemma step_pure N E ρ j K e e' :
+      (∀ σ, head_step e σ e' σ None) →
+      nclose N ⊆ E →
+      (Spec_ctx N ρ ★ j ⤇ (fill K e)%I) ⊢ |={E}=>(j ⤇ (fill K e'))%I.
+    Proof.
+      intros H1 H2.
+      iIntros "[#Hspec Hj]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+      iInv> N as {ρ'} "[Hown #Hstep]".
+      iCombine "Hj" "Hown" as "Hown".
+      iDestruct (own_valid _ with "Hown !") as "Hvalid".
+      iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
+        simpl; iClear "Hvalid".
+      iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+      rewrite ->(right_id _ _) in Ha'; setoid_subst.
+      iDestruct "Hstep" as %Hstep.
+      iPvs (own_update with "Hown") as "Hown".
+      rewrite cmra_comm; apply thread_update; trivial.
+      rewrite own_op; iDestruct "Hown" as "[H1 H2]".
+      iSplitR "H2"; trivial.
+      iExists _; iSplitL; trivial.
+      iPvsIntro.
+      iApply const_intro; eauto.
+      eapply rt_trans; [exact Hstep|].
+      apply rt_step. apply step_pure_base; trivial.
+    Qed.
 
     Lemma step_alloc_base ρ j K e v :
       ✓ (({[j := (Frac 1 (DecAgree (fill K (Alloc e))))]}, ∅) ⋅ ρ) →
@@ -278,7 +411,7 @@ Section lang_rules.
       repeat rewrite left_id; rewrite right_id.
       unfold of_cfg; simpl.
       destruct H1 as [H11 H12]; simpl in *.
-      destruct (tpool_conv _ _ _ H11) as [l1 [l2 H3]].
+      destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H3 _]]].
       repeat rewrite H3.
       rewrite of_heap_singleton_op.
       { eapply (step_atomic _ _ _ _ _ _ None _ _).
@@ -308,86 +441,93 @@ Section lang_rules.
 
     Lemma step_load N E ρ j K l q v:
       nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (Load (Loc l))) ★ ▷ l ↦ₛ{q} v)%I)
-        ⊢ |={E}=>(j ⤇ (fill K (of_val v)) ★ ▷ l ↦ₛ{q} v)%I.
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (Load (Loc l))) ★ l ↦ₛ{q} v)%I)
+        ⊢ |={E}=>(j ⤇ (fill K (of_val v)) ★ l ↦ₛ{q} v)%I.
     Proof.
+      iIntros {H1} "[#Hinv [Hj Hl]]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+      iInv> N as {ρ'} "[Hown #Hstep]".
+      iCombine "HΦ" "Hown" as "Hown".
+      iDestruct (own_valid _ with "Hown !") as "Hvalid".
+      iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
+        simpl; iClear "Hvalid".
+      iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+      rewrite ->(right_id _ _) in Ha'; setoid_subst.
+      iDestruct "Hstep" as %Hstep.
     Admitted.
 
     Lemma step_store N E ρ j K l v' e v:
       to_val e = Some v → nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (Store (Loc l) e)) ★ ▷ l ↦ₛ v')%I)
-        ⊢ |={E}=>(j ⤇ (fill K Unit) ★ ▷ l ↦ₛ v)%I.
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (Store (Loc l) e)) ★ l ↦ₛ v')%I)
+        ⊢ |={E}=>(j ⤇ (fill K Unit) ★ l ↦ₛ v)%I.
     Proof.
     Admitted.
 
     Lemma step_cas_fail N E ρ j K l q v' e1 v1 e2 v2:
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2))
-                 ★ ▷ (■ (v' ≠ v1)) ★ ▷ l ↦ₛ{q} v')%I)
-        ⊢ |={E}=>(j ⤇ (fill K (FALSE)) ★ ▷ l ↦ₛ{q} v')%I.
+                 ★ ▷ (■ (v' ≠ v1)) ★ l ↦ₛ{q} v')%I)
+        ⊢ |={E}=>(j ⤇ (fill K (FALSE)) ★ l ↦ₛ{q} v')%I.
+    Proof.
+      iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hpt]]]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+      iInv> N as {ρ'} "[Hown #Hstep]".
+      iTimeless "Hneq". iDestruct "Hneq" as %Hneq.
+    Admitted.
+
+    Lemma step_cas_suc N E ρ j K l e1 v1 v1' e2 v2:
+      to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2))
+                 ★ ▷ (■ (v1 = v1')) ★ l ↦ₛ v1')%I)
+        ⊢ |={E}=>(j ⤇ (fill K (TRUE)) ★ l ↦ₛ v2)%I.
     Proof.
       iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hpt]]]".
       unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
       iInv> N as {ρ'} "[Hown #Hstep]".
-      iTimeless "Heq". iDestruct "Heq" as "%".
+      iTimeless "Heq". iDestruct "Heq" as %Heq; subst.
     Admitted.
-
-    Lemma step_cas_suc N E ρ j K l e1 v1 e2 v2:
-      to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-      ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2)) ★ ▷ l ↦ₛ v1)%I)
-        ⊢ |={E}=>(j ⤇ (fill K (TRUE)) ★ ▷ l ↦ₛ v2)%I.
-    Proof.
-    Admitted.
-
 
     Lemma step_lam N E ρ j K e1 e2 v :
       to_val e2 = Some v → nclose N ⊆ E →
       (Spec_ctx N ρ ★ j ⤇ (fill K (App (Lam e1) e2))%I)
         ⊢ |={E}=>(j ⤇ (fill K ((e1.[e2/]))))%I.
-    Proof.
-    Admitted.
+    Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_Tlam N E ρ j K e :
       nclose N ⊆ E →
       (Spec_ctx N ρ ★ j ⤇ (fill K (TApp (TLam e)))%I)
         ⊢ |={E}=>(j ⤇ (fill K (e)))%I.
-    Proof.
-    Admitted.
+    Proof. apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_Fold N E ρ j K e v :
       to_val e = Some v → nclose N ⊆ E →
       (Spec_ctx N ρ ★ j ⤇ (fill K (Unfold (Fold e)))%I)
         ⊢ |={E}=>(j ⤇ (fill K e))%I.
-    Proof.
-    Admitted.
+    Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_fst N E ρ j K e1 v1 e2 v2 :
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
       (Spec_ctx N ρ ★ j ⤇ (fill K (Fst (Pair e1 e2)))%I)
         ⊢ |={E}=>(j ⤇ (fill K e1))%I.
-    Proof.
-    Admitted.
+    Proof. intros H1 H2; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_snd N E ρ j K e1 v1 e2 v2 :
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
       (Spec_ctx N ρ ★ j ⤇ (fill K (Snd (Pair e1 e2)))%I)
         ⊢ |={E}=>(j ⤇ (fill K e2))%I.
-    Proof.
-    Admitted.
+    Proof. intros H1 H2; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_case_inl N E ρ j K e0 v0 e1 e2 :
       to_val e0 = Some v0 → nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (Case (InjL e0) e1 e2)))%I)
         ⊢ |={E}=>(j ⤇ (fill K (e1.[e0/])))%I.
-    Proof.
-    Admitted.
+    Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_case_inr N E ρ j K e0 v0 e1 e2 :
       to_val e0 = Some v0 → nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (Case (InjR e0) e1 e2)))%I)
         ⊢ |={E}=>(j ⤇ (fill K (e2.[e0/])))%I.
-    Proof.
-    Admitted.
+    Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_fork N E ρ j K e :
       nclose N ⊆ E →
