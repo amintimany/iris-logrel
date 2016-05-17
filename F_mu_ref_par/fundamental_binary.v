@@ -246,7 +246,8 @@ Section typed_interp.
       iApply wp_fork.
       iSplitL "Hz1".
       + iNext. iExists UnitV; iFrame "Hz1"; iSplit; trivial.
-      + iNext. iApply wp_wand_l; iSplitR; [|iApply IHHtyped]; trivial.
+      + iNext. iApply wp_wand_l; iSplitR;
+                 [|iApply (IHHtyped _ _ _ _ _ _ [])]; trivial.
         * iIntros {w} "Hw"; trivial.
         * iFrame "Hheap Hspec HΓ"; trivial.
     - (* Alloc *)
