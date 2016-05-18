@@ -149,6 +149,14 @@ Section lang_rules.
     Lemma to_cfg_valid ρ : ✓ to_cfg ρ.
     Proof. constructor; cbn; auto using to_tpool_valid, to_heap_valid. Qed.
 
+    Global Instance step_proper : Proper ((≡) ==> (≡) ==> iff) (@step lang).
+    Proof.
+      intros [th1 hp1] [th2 hp2] [H1 H2] [th1' hp1'] [th2' hp2'] [H3 H4];
+        simpl in *. cbv in H2, H4.
+      apply list_leibniz in H1. apply list_leibniz in H3; subst.
+      trivial.
+    Qed.
+
     Context`{icfg : cfgSG Σ}.
 
     Lemma tpool_update_validN n j e e' tp :
@@ -250,8 +258,8 @@ Section lang_rules.
 
     Lemma tpool_conv j e tp :
       ✓ ({[ j := (Frac 1 (DecAgree e : dec_agreeR _)) ]} ⋅ tp) → ∃ l1 l2,
-        (∀ e', of_tpool ({[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]} ⋅ tp) =
-               l1 ++ e' :: l2) ∧
+        (∀ e', of_tpool ({[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]} ⋅ tp)
+               = l1 ++ e' :: l2) ∧
         (∀ e' k e'',
             k > j → k > List.length tp →
             of_tpool
@@ -307,7 +315,7 @@ Section lang_rules.
       intros H.
       replace ({[j := Frac 1 (DecAgree e')]} : tpoolR) with
       (alter (λ _ : fracR (dec_agreeR expr), Frac 1 (DecAgree e')) j
-             {[j := Frac 1 (DecAgree e)]}) by (by rewrite list_alter_singleton).
+             {[j := Frac 1 (DecAgree e)]})by (by rewrite list_alter_singleton).
       apply (@auth_local_update_l
                _ _ _ _ _
                (@prod_LocalUpdate _ heapR _ _ _ _ _ (local_update_id))).
@@ -380,6 +388,44 @@ Section lang_rules.
         apply thread_alloc_safe; trivial.
     Qed.
 
+    Lemma heap_alloc_safe l v h :
+      ✓ h → h !! l = None ∨ h !! l ≡ Some FracUnit →
+      ✓ ({[l := Frac 1 (DecAgree v)]} ⋅ h : heapR).
+    Proof.
+      intros H1 H2 i. rewrite lookup_op.
+      destruct (decide (i = l)); subst.
+      - destruct H2 as [H2|H2]; rewrite H2 lookup_singleton;
+          repeat constructor; auto.
+      - rewrite lookup_singleton_ne; auto with omega.
+        match goal with
+          |- ✓ (None ⋅ ?A) => replace (None ⋅ A) with A; [|destruct A]
+        end;
+            repeat constructor; auto.
+    Qed.
+
+    Lemma heap_alloc_update l v th ρ :
+      ✓ ((th, ∅) ⋅ ρ) → (ρ.2) !! l = None ∨ (ρ.2) !! l ≡ Some FracUnit →
+      (● ((th, ∅) ⋅ ρ : cfgR) ⋅ ◯ (th, ∅))
+        ~~> (● ((th, {[l := Frac 1 (DecAgree v)]}) ⋅ ρ)
+             ⋅ ◯ ((th, {[l := Frac 1 (DecAgree v)]}))).
+    Proof.
+      intros H1 H2.
+      rewrite -(cmra_unit_right_id {[l := Frac 1 (DecAgree v)]}).
+      apply (@auth_local_update_l
+               _ _ _ _ _
+               (@prod_LocalUpdate
+                  tpoolR _ _ _ (local_update_id)
+                  _ _ (local_update_op {[l := Frac 1 (DecAgree v)]}))).
+      - split; trivial.
+      - simpl. destruct H1 as [H11 H12]. constructor; simpl in *; trivial.
+        rewrite cmra_unit_right_id. apply heap_alloc_safe; trivial.
+        revert H12; rewrite left_id; trivial.
+    Qed.
+
+    Lemma cfg_combine th1 th2 hp1 hp2 :
+      (th1, hp1) ⋅ (th2, hp2) = (th1 ⋅ th2, hp1 ⋅ hp2) :> cfgR.
+    Proof. trivial. Qed.
+
     Lemma step_pure_base j K e e' h ρ :
       ✓ (({[j := Frac 1 (DecAgree (fill K e))]}, h) ⋅ ρ : cfgR) →
       (∀ σ, head_step e σ e' σ None) →
@@ -387,14 +433,19 @@ Section lang_rules.
            (of_cfg (({[j := Frac 1 (DecAgree (fill K e'))]}, h) ⋅ ρ)).
     Proof.
       intros [H11 H12] H2; destruct ρ as [th hp]; simpl in *.
-      unfold op, cmra_op; simpl. unfold prod_op; simpl.
-      unfold of_cfg; simpl.
+      rewrite !cfg_combine.
       destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H3 _]]].
-      repeat rewrite H3.
+      unfold of_cfg; rewrite !H3.
       eapply (step_atomic _ _ _ _ _ _ None _ _); simpl.
       - trivial.
       - simpl; rewrite app_nil_r; trivial.
       - econstructor; eauto.
+    Qed.
+
+    Lemma cfg_split th hp : ((th, hp) : cfgR) ≡ ((th, ∅) ⋅ (∅, hp)).
+    Proof.
+      unfold op, cmra_op; simpl; unfold prod_op; simpl.
+        by rewrite cmra_unit_left_id cmra_unit_right_id.
     Qed.
 
     Lemma step_pure N E ρ j K e e' :
@@ -429,26 +480,27 @@ Section lang_rules.
       to_val e = Some v →
       ∃ l, step
              (of_cfg (({[j := (Frac 1 (DecAgree (fill K (Alloc e))))]}, ∅) ⋅ ρ))
-             (of_cfg (({[j := Frac 1 (DecAgree (fill K (Loc l)))]}, ∅) ⋅
-                        (∅, ({[l := Frac 1 (DecAgree v)]})) ⋅ ρ)).
+             (of_cfg (({[j := Frac 1 (DecAgree (fill K (Loc l)))]}, ∅)
+                        ⋅ (∅, ({[l := Frac 1 (DecAgree v)]})) ⋅ ρ))
+           ∧ ((ρ.2) !! l = None ∨ (ρ.2) !! l ≡ Some FracUnit).
     Proof.
-      intros H1 H2.
-      destruct ρ as [tp th].
-      set (l := fresh (dom (gset positive) (of_heap th))).
-      exists l.
-      unfold op, cmra_op; simpl. unfold prod_op; simpl.
-      repeat rewrite left_id; rewrite right_id.
-      unfold of_cfg; simpl.
-      destruct H1 as [H11 H12]; simpl in *.
-      destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H3 _]]].
-      repeat rewrite H3.
-      rewrite of_heap_singleton_op.
-      { eapply (step_atomic _ _ _ _ _ _ None _ _).
-        - trivial.
-        - simpl; rewrite app_nil_r; trivial.
-        - econstructor; eauto. apply alloc_fresh; trivial. }
-      admit.
-    Admitted.
+      intros H1 H2. destruct ρ as [tp th]; simpl.
+      set (l := fresh (dom (gset positive) (of_heap th))). exists l.
+      refine ((λ H, conj (_ H) H) _); [intros H3|].
+      - rewrite !cfg_combine. repeat rewrite left_id; rewrite right_id.
+        unfold of_cfg; simpl. destruct H1 as [H11 H12]; simpl in *.
+        destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H4 _]]]. repeat rewrite H4.
+        rewrite of_heap_singleton_op.
+        { eapply (step_atomic _ _ _ _ _ _ None _ _).
+          - trivial.
+          - simpl; rewrite app_nil_r; trivial.
+          - econstructor; eauto. apply alloc_fresh; trivial. }
+        apply heap_alloc_safe; trivial.
+        revert H12; rewrite left_id; trivial.
+      - destruct H1 as [H11 H12]; simpl in *; revert H12; rewrite left_id => H12.
+        edestruct of_heap_None as [Hx|Hx]; eauto.
+        unfold l. apply (not_elem_of_dom (D := gset _)), is_fresh.
+    Qed.
 
     Lemma step_alloc N E ρ j K e v:
       to_val e = Some v → nclose N ⊆ E →
@@ -465,8 +517,65 @@ Section lang_rules.
       iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
       rewrite ->(right_id _ _) in Ha'; setoid_subst.
       iDestruct "Hstep" as %Hstep.
-      admit.
-    Admitted.
+      edestruct step_alloc_base as [l [Hs Ho]]; eauto.
+      iPvs (own_update with "Hown") as "Hown".
+      rewrite cmra_comm; apply (thread_update _ _ (fill K (Loc l))); trivial.
+      iPvs (own_update with "Hown") as "Hown".
+      eapply (heap_alloc_update l v); trivial.
+      eapply cfg_valid_tpool_update; eauto.
+      rewrite cfg_split.
+      rewrite own_op; iDestruct "Hown" as "[H1 H2]".
+      iSplitR "H2".
+      - iExists _; iSplitL; trivial.
+        iPvsIntro. iApply const_intro; eauto.
+        eapply rt_trans; [exact Hstep|]. apply rt_step; trivial.
+      - iPvsIntro. iExists _. rewrite -own_op; trivial.
+    Qed.
+
+    Lemma cfg_heap_update l v v' th ρ :
+      ✓ ((th, {[l := Frac 1 (DecAgree v)]}) ⋅ ρ) →
+      (● ((th, {[l := Frac 1 (DecAgree v)]}) ⋅ ρ : cfgR)
+         ⋅ ◯ (th, {[l := Frac 1 (DecAgree v)]}))
+        ~~> (● ((th, {[l := Frac 1 (DecAgree v')]}) ⋅ ρ)
+             ⋅ ◯ ((th, {[l := Frac 1 (DecAgree v')]}))).
+    Proof.
+      intros H.
+      assert (H' : {[l := Frac 1 (DecAgree v')]}
+                ≡ (alter (λ _ : fracR (dec_agreeR val), Frac 1 (DecAgree v'))
+                         l {[l := Frac 1 (DecAgree v)]})).
+      { intros i. destruct (decide (l = i)); subst.
+        + by rewrite lookup_alter !lookup_singleton.
+        + rewrite lookup_alter_ne ?lookup_singleton_ne; trivial. }
+      rewrite H'.
+      - apply (@auth_local_update_l
+                 _ _ _ _ _
+                 (@prod_LocalUpdate tpoolR _ _ _ (local_update_id) _ _ _ )).
+        + simpl; split; trivial.
+          eexists; rewrite lookup_singleton; split; eauto; simpl; trivial.
+        + simpl; rewrite -H'; destruct H as [H1 H2]; constructor; simpl in *;
+            eauto using heap_store_valid.
+    Qed.
+
+    Lemma step_load_base ρ j K l q v :
+      ✓ (({[j := Frac 1 (DecAgree (fill K (Load (Loc l))))]}, ∅)
+           ⋅ (∅, {[l := Frac q (DecAgree v)]}) ⋅ ρ) →
+      step
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (Load (Loc l))))]}, ∅)
+                   ⋅ (∅, {[l := Frac q (DecAgree v)]}) ⋅ ρ))
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (of_val v)))]}, ∅)
+                   ⋅ (∅, {[l := Frac q (DecAgree v)]}) ⋅ ρ)).
+    Proof.
+      destruct ρ as [tp th]; simpl.
+      rewrite !cfg_combine. rewrite !cmra_unit_left_id !cmra_unit_right_id.
+      unfold of_cfg; simpl.
+      intros H1. destruct H1 as [H11 H12]; simpl in *.
+      destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H2 _]]]. repeat rewrite H2.
+      rewrite of_heap_singleton_op; trivial.
+      eapply (step_atomic _ _ _ _ _ _ None _ _).
+      - trivial.
+      - simpl; rewrite app_nil_r; trivial.
+      - econstructor; eauto. apply LoadS. apply lookup_insert.
+    Qed.
 
     Lemma step_load N E ρ j K l q v:
       nclose N ⊆ E →
@@ -484,14 +593,101 @@ Section lang_rules.
       iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
       rewrite ->(right_id _ _) in Ha'; setoid_subst.
       iDestruct "Hstep" as %Hstep.
-    Admitted.
+      iPvs (own_update with "Hown") as "Hown".
+      rewrite assoc -auth_frag_op.
+      rewrite -cfg_split.
+      rewrite cmra_comm; apply (thread_update _ _ (fill K (of_val v))); trivial.
+      revert H. rewrite cfg_combine.
+      by rewrite !cmra_unit_left_id !cmra_unit_right_id.
+      rewrite own_op; iDestruct "Hown" as "[H1 H2]".
+      iSplitR "H2".
+      - iExists _; iSplitL; trivial.
+        iPvsIntro. iApply const_intro; eauto.
+        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        rewrite cfg_split. apply step_load_base; trivial.
+      - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
+    Qed.
+
+    Lemma step_store_base ρ j K l e v v' :
+      to_val e = Some v' →
+      ✓ (({[j := Frac 1 (DecAgree (fill K (Store (Loc l) e)))]}, ∅)
+           ⋅ (∅, {[l := Frac 1 (DecAgree v)]}) ⋅ ρ) →
+      step
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (Store (Loc l) e)))]}, ∅)
+                   ⋅ (∅, {[l := Frac 1 (DecAgree v)]}) ⋅ ρ))
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K Unit))]}, ∅)
+                   ⋅ (∅, {[l := Frac 1 (DecAgree v')]}) ⋅ ρ)).
+    Proof.
+      destruct ρ as [tp th]; simpl.
+      rewrite !cfg_combine. rewrite !cmra_unit_left_id !cmra_unit_right_id.
+      unfold of_cfg; simpl.
+      intros H1 H2. destruct H2 as [H21 H22]; simpl in *.
+      destruct (tpool_conv _ _ _ H21) as [l1 [l2 [H3 _]]]. repeat rewrite H3.
+      rewrite !of_heap_singleton_op; eauto using heap_store_valid.
+      eapply (step_atomic _ _ _ _ _ _ None _ _).
+      - trivial.
+      - simpl; rewrite app_nil_r; trivial.
+      - replace (<[l:=v']> (of_heap th)) with
+        (<[l:=v']> (<[l:=v]> (of_heap th))) by (by rewrite insert_insert).
+        econstructor; eauto.
+        apply StoreS; trivial. eexists; apply lookup_insert.
+    Qed.
 
     Lemma step_store N E ρ j K l v' e v:
       to_val e = Some v → nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (Store (Loc l) e)) ★ l ↦ₛ v')%I)
         ⊢ |={E}=>(j ⤇ (fill K Unit) ★ l ↦ₛ v)%I.
     Proof.
-    Admitted.
+      iIntros {H1 H2} "[#Hinv [Hj Hl]]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
+      iInv> N as {ρ'} "[Hown #Hstep]".
+      iCombine "Hl" "Hown" as "Hown".
+      iCombine "Hj" "Hown" as "Hown".
+      iDestruct (own_valid _ with "Hown !") as "Hvalid".
+      iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
+        simpl; iClear "Hvalid".
+      iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+      rewrite ->(right_id _ _) in Ha'; setoid_subst.
+      iDestruct "Hstep" as %Hstep.
+      iPvs (own_update with "Hown") as "Hown".
+      rewrite assoc -auth_frag_op.
+      rewrite -cfg_split; rewrite cmra_comm.
+      apply (thread_update _ _ (fill K Unit)). revert H.
+      rewrite cfg_combine; first by rewrite !left_id !right_id.
+      iPvs (own_update with "Hown") as "Hown".
+      apply (cfg_heap_update _ _ v). revert H.
+      rewrite cfg_combine. rewrite !left_id !right_id.
+      apply cfg_valid_tpool_update.
+      rewrite own_op; iDestruct "Hown" as "[H1 H2]".
+      iSplitR "H2".
+      - iExists _; iSplitL; trivial.
+        iPvsIntro. iApply const_intro; eauto.
+        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        rewrite cfg_split. apply step_store_base; trivial.
+      - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
+    Qed.
+
+    Lemma step_cas_fail_base ρ j K l q v' e1 v1 e2 v2 :
+      to_val e1 = Some v1 → to_val e2 = Some v2 → (v' ≠ v1) →
+      ✓ (({[j := Frac 1 (DecAgree (fill K (CAS (Loc l) e1 e2)))]}, ∅)
+           ⋅ (∅, {[l := Frac q (DecAgree v')]}) ⋅ ρ) →
+      step
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (CAS (Loc l) e1 e2)))]}, ∅)
+                   ⋅ (∅, {[l := Frac q (DecAgree v')]}) ⋅ ρ))
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K FALSE))]}, ∅)
+                   ⋅ (∅, {[l := Frac q (DecAgree v')]}) ⋅ ρ)).
+    Proof.
+      destruct ρ as [tp th]; simpl.
+      rewrite !cfg_combine. rewrite !cmra_unit_left_id !cmra_unit_right_id.
+      unfold of_cfg; simpl.
+      intros H1 H2 H3 H4. destruct H4 as [H41 H42]; simpl in *.
+      destruct (tpool_conv _ _ _ H41) as [l1 [l2 [H5 _]]]. repeat rewrite H5.
+      rewrite !of_heap_singleton_op; trivial.
+      eapply (step_atomic _ _ _ _ _ _ None _ _).
+      - trivial.
+      - simpl; rewrite app_nil_r; trivial.
+      - econstructor; eauto. eapply CasFailS; eauto. apply lookup_insert.
+    Qed.
 
     Lemma step_cas_fail N E ρ j K l q v' e1 v1 e2 v2:
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
@@ -499,11 +695,55 @@ Section lang_rules.
                  ★ ▷ (■ (v' ≠ v1)) ★ l ↦ₛ{q} v')%I)
         ⊢ |={E}=>(j ⤇ (fill K (FALSE)) ★ l ↦ₛ{q} v')%I.
     Proof.
-      iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hpt]]]".
-      unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+      iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hl]]]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
       iInv> N as {ρ'} "[Hown #Hstep]".
       iTimeless "Hneq". iDestruct "Hneq" as %Hneq.
-    Admitted.
+      iCombine "Hl" "Hown" as "Hown".
+      iCombine "Hj" "Hown" as "Hown".
+      iDestruct (own_valid _ with "Hown !") as "Hvalid".
+      iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
+        simpl; iClear "Hvalid".
+      iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+      rewrite ->(right_id _ _) in Ha'; setoid_subst.
+      iDestruct "Hstep" as %Hstep.
+      iPvs (own_update with "Hown") as "Hown".
+      rewrite assoc -auth_frag_op.
+      rewrite -cfg_split; rewrite cmra_comm.
+      apply (thread_update _ _ (fill K FALSE)). revert H.
+      rewrite cfg_combine; first by rewrite !left_id !right_id.
+      rewrite own_op; iDestruct "Hown" as "[H1 H2]".
+      iSplitR "H2".
+      - iExists _; iSplitL; trivial.
+        iPvsIntro. iApply const_intro; eauto.
+        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        rewrite cfg_split. eapply step_cas_fail_base; eauto.
+      - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
+    Qed.
+
+    Lemma step_cas_suc_base ρ j K l e1 v1 e2 v2 :
+      to_val e1 = Some v1 → to_val e2 = Some v2 →
+      ✓ (({[j := Frac 1 (DecAgree (fill K (CAS (Loc l) e1 e2)))]}, ∅)
+           ⋅ (∅, {[l := Frac 1 (DecAgree v1)]}) ⋅ ρ) →
+      step
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (CAS (Loc l) e1 e2)))]}, ∅)
+                   ⋅ (∅, {[l := Frac 1 (DecAgree v1)]}) ⋅ ρ))
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K TRUE))]}, ∅)
+                   ⋅ (∅, {[l := Frac 1 (DecAgree v2)]}) ⋅ ρ)).
+    Proof.
+      destruct ρ as [tp th]; simpl.
+      rewrite !cfg_combine. rewrite !cmra_unit_left_id !cmra_unit_right_id.
+      unfold of_cfg; simpl.
+      intros H1 H2 H3. destruct H3 as [H31 H32]; simpl in *.
+      destruct (tpool_conv _ _ _ H31) as [l1 [l2 [H4 _]]]. repeat rewrite H4.
+      rewrite !of_heap_singleton_op; eauto using heap_store_valid.
+      eapply (step_atomic _ _ _ _ _ _ None _ _).
+      - trivial.
+      - simpl; rewrite app_nil_r; trivial.
+      - replace (<[l:=v2]> (of_heap th)) with
+        (<[l:=v2]> (<[l:=v1]> (of_heap th))) by (by rewrite insert_insert).
+        econstructor; eauto. eapply CasSucS; eauto. apply lookup_insert.
+    Qed.
 
     Lemma step_cas_suc N E ρ j K l e1 v1 v1' e2 v2:
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
@@ -511,11 +751,35 @@ Section lang_rules.
                  ★ ▷ (■ (v1 = v1')) ★ l ↦ₛ v1')%I)
         ⊢ |={E}=>(j ⤇ (fill K (TRUE)) ★ l ↦ₛ v2)%I.
     Proof.
-      iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hpt]]]".
-      unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+      iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hl]]]".
+      unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
       iInv> N as {ρ'} "[Hown #Hstep]".
       iTimeless "Heq". iDestruct "Heq" as %Heq; subst.
-    Admitted.
+      iCombine "Hl" "Hown" as "Hown".
+      iCombine "Hj" "Hown" as "Hown".
+      iDestruct (own_valid _ with "Hown !") as "Hvalid".
+      iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
+        simpl; iClear "Hvalid".
+      iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+      rewrite ->(right_id _ _) in Ha'; setoid_subst.
+      iDestruct "Hstep" as %Hstep.
+      iPvs (own_update with "Hown") as "Hown".
+      rewrite assoc -auth_frag_op.
+      rewrite -cfg_split; rewrite cmra_comm.
+      apply (thread_update _ _ (fill K TRUE)). revert H.
+      rewrite cfg_combine; first by rewrite !left_id !right_id.
+      iPvs (own_update with "Hown") as "Hown".
+      apply (cfg_heap_update _ _ v2). revert H.
+      rewrite cfg_combine. rewrite !left_id !right_id.
+      apply cfg_valid_tpool_update.
+      rewrite own_op; iDestruct "Hown" as "[H1 H2]".
+      iSplitR "H2".
+      - iExists _; iSplitL; trivial.
+        iPvsIntro. iApply const_intro; eauto.
+        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        rewrite cfg_split. apply step_cas_suc_base; trivial.
+      - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
+    Qed.
 
     Lemma step_lam N E ρ j K e1 e2 v :
       to_val e2 = Some v → nclose N ⊆ E →
