@@ -5,6 +5,7 @@ stlc/typing.v
 stlc/rules.v
 stlc/logrel.v
 stlc/fundamental.v
+stlc/soundness.v
 F_mu/lang.v
 F_mu/typing.v
 F_mu/rules.v

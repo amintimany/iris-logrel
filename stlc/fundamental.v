@@ -31,15 +31,14 @@ Section typed_interp.
        --------------------------------------□
        (_ ∧ _)) => iSplit
   end : itauto.
-  
-  
+
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) constr(Hp) :=
     iApply (@wp_bind _ _ _ [ctx]);
     iApply wp_impl_l;
     iSplit; [| iApply Hp; trivial]; cbn;
     eapply (@always_intro _ _ _ _);
     iIntros {v} Hv.
-              
+
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
   Lemma typed_interp Γ vs e τ :
