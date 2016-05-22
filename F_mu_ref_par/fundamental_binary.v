@@ -53,8 +53,6 @@ Section typed_interp.
   Notation "Δ ∥ Γ ⊩ e '≤log≤' e' ∷ τ" := (bin_log_related Δ Γ e e' τ)
                                        (at level 20) : bin_logrel_scope.
 
-  Delimit Scope bin_logrel_scope with bin_logrel.
-
   Local Open Scope bin_logrel_scope.
 
   Notation "✓✓" := context_interp_Persistent.
@@ -270,10 +268,7 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_Fold Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped :
-           (extend_context_interp ((@interp Σ iS iI (N .@ 1) (TRec τ)) Δ) Δ)
-                                  ∥ map (λ t : type, t.[ren (+1)]) Γ
-                                  ⊩ e ≤log≤ e' ∷ τ)
+        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ.[(TRec τ)/])
     :
       Δ ∥ Γ ⊩ Fold e ≤log≤ Fold e' ∷  TRec τ.
   Proof.
@@ -282,14 +277,14 @@ Section typed_interp.
       iApply wp_wand_l; iSplitR;
         [|iApply (IHHtyped _ _ _ j (K ++ [FoldCtx]));
           rewrite fill_app; simpl; repeat iSplitR; trivial].
-    + iIntros {v} "Hv"; iDestruct "Hv" as {w} "[Hv #Hiv]";
-        rewrite fill_app.
-      value_case. iExists (FoldV w); iFrame "Hv".
-      rewrite fixpoint_unfold; cbn.
-      iAlways. iExists (_, _); iSplit; try iNext; trivial.
-    + rewrite zip_with_context_interp_subst; trivial.
-      (* unshelving *)
-      Unshelve. all: rewrite map_length; trivial.
+    iIntros {v} "Hv"; iDestruct "Hv" as {w} "[Hv #Hiv]";
+      rewrite fill_app.
+    value_case. iExists (FoldV w); iFrame "Hv".
+    rewrite fixpoint_unfold; cbn.
+    rewrite -interp_subst; trivial.
+    iAlways; iExists (_, _); iSplit; try iNext; trivial.
+    (* unshelving *)
+    Unshelve. all: trivial.
   Qed.
 
   Lemma typed_binary_interp_Unfold Δ Γ e e' τ {HΔ : ✓✓ Δ}
@@ -534,4 +529,5 @@ Section typed_interp.
 End typed_interp.
 
 Notation "Δ ∥ Γ ⊩ e '≤log≤' e' ∷ τ" := (bin_log_related Δ Γ e e' τ)
-                                       (at level 20) : bin_logrel_scope.
+                                         (at level 20) : bin_logrel_scope.
+Delimit Scope bin_logrel_scope with bin_logrel.

@@ -135,18 +135,16 @@ Section typed_interp.
       iApply wp_mono; [|trivial].
       iIntros {w} "#H". rewrite -interp_subst; trivial.
     - (* Fold *)
-      rewrite map_length in IHHtyped.
+      specialize (IHHtyped Δ HΔ vs Hlen).
+      setoid_rewrite <- interp_subst in IHHtyped.
       iApply (@wp_bind _ _ _ [FoldCtx]).
-        iApply wp_impl_l.
-        iSplit; [eapply (@always_intro _ _ _ _)|
-                 iApply (IHHtyped (extend_context_interp ((interp (TRec τ)) Δ) Δ));
-                 trivial].
+      iApply wp_impl_l.
+      iSplit; [eapply (@always_intro _ _ _ _)| iApply IHHtyped; trivial].
       + iIntros {v} "#Hv".
         value_case.
         rewrite fixpoint_unfold; cbn.
         auto with itauto.
-      + iRevert "Hheap HΓ"; rewrite zip_with_context_interp_subst;
-          iIntros "#Hheap #HΓ"; auto with itauto.
+      + iFrame "Hheap HΓ"; trivial.
     - (* Unfold *)
       iApply (@wp_bind _ _ _ [UnfoldCtx]);
         iApply wp_impl_l;

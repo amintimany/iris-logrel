@@ -48,7 +48,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 | TApp_typed e τ τ':
     typed Γ e (TForall τ) → typed Γ (TApp e) (τ.[τ'/])
 | TFold e τ :
-    typed (map (λ t, t.[ren (+1)]) Γ) e τ →
+    typed Γ e (τ.[(TRec τ)/]) →
     typed Γ (Fold e) (TRec τ)
 | TUnfold e τ : typed Γ e (TRec τ) → typed Γ (Unfold e) (τ.[(TRec τ)/])
 | TFork e : typed Γ e TUnit → typed Γ (Fork e) TUnit
