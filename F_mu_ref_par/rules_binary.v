@@ -1,4 +1,3 @@
-Require Import Coq.Relations.Relation_Operators.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import F_mu_ref_par.lang F_mu_ref_par.rules.
@@ -89,9 +88,7 @@ Section lang_rules.
       auth_own cfg_name ({[ j := Frac q (DecAgree e : dec_agreeR _) ]},
                          ∅ : heapR).
 
-    Definition Makes_Steps := clos_refl_trans _ (@step lang).
-
-    Notation "ρ →⋆ ρ'" := (Makes_Steps ρ ρ') (at level 20).
+    Notation "cfg →⋆ cfg'" := (rtc step cfg cfg') (at level 20).
 
     Definition Spec_inv (ρ ρ' : cfgR) : iPropG lang Σ :=
       (■ (of_cfg ρ) →⋆ (of_cfg ρ'))%I.
@@ -121,7 +118,7 @@ Section lang_rules.
       (at level 20, q at level 50, format "j  ⤇{ q }  e") : uPred_scope.
   Notation "j ⤇ e" := (tpool_mapsto j 1 e) (at level 20) : uPred_scope.
 
-  Notation "ρ →⋆ ρ'" := (Makes_Steps ρ ρ') (at level 20).
+  Notation "cfg →⋆ cfg'" := (rtc step cfg cfg') (at level 20).
 
   Section cfg.
     Context {Σ : gFunctors}.
@@ -471,8 +468,8 @@ Section lang_rules.
       iExists _; iSplitL; trivial.
       iPvsIntro.
       iApply const_intro; eauto.
-      eapply rt_trans; [exact Hstep|].
-      apply rt_step. apply step_pure_base; trivial.
+      eapply rtc_r; [exact Hstep|].
+      eapply step_pure_base; trivial.
     Qed.
 
     Lemma step_alloc_base ρ j K e v :
@@ -528,7 +525,7 @@ Section lang_rules.
       iSplitR "H2".
       - iExists _; iSplitL; trivial.
         iPvsIntro. iApply const_intro; eauto.
-        eapply rt_trans; [exact Hstep|]. apply rt_step; trivial.
+        eapply rtc_r; [exact Hstep|]; trivial.
       - iPvsIntro. iExists _. rewrite -own_op; trivial.
     Qed.
 
@@ -603,7 +600,7 @@ Section lang_rules.
       iSplitR "H2".
       - iExists _; iSplitL; trivial.
         iPvsIntro. iApply const_intro; eauto.
-        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        eapply rtc_r; [exact Hstep|].
         rewrite cfg_split. apply step_load_base; trivial.
       - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
     Qed.
@@ -662,7 +659,7 @@ Section lang_rules.
       iSplitR "H2".
       - iExists _; iSplitL; trivial.
         iPvsIntro. iApply const_intro; eauto.
-        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        eapply rtc_r; [exact Hstep|].
         rewrite cfg_split. apply step_store_base; trivial.
       - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
     Qed.
@@ -716,7 +713,7 @@ Section lang_rules.
       iSplitR "H2".
       - iExists _; iSplitL; trivial.
         iPvsIntro. iApply const_intro; eauto.
-        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        eapply rtc_r; [exact Hstep|].
         rewrite cfg_split. eapply step_cas_fail_base; eauto.
       - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
     Qed.
@@ -776,7 +773,7 @@ Section lang_rules.
       iSplitR "H2".
       - iExists _; iSplitL; trivial.
         iPvsIntro. iApply const_intro; eauto.
-        eapply rt_trans; [exact Hstep|]. apply rt_step.
+        eapply rtc_r; [exact Hstep|].
         rewrite cfg_split. apply step_cas_suc_base; trivial.
       - iPvsIntro. rewrite -own_op -auth_frag_op cfg_split; trivial.
     Qed.
@@ -869,8 +866,7 @@ Section lang_rules.
         + iExists _; iSplitL; trivial.
           iPvsIntro.
           iApply const_intro; eauto.
-          eapply rt_trans; [exact Hstep|].
-          apply rt_step. eapply step_fork_base; trivial.
+          eapply rtc_r; [exact Hstep|]; eapply step_fork_base; trivial.
         + iPvsIntro. iExists _.
           setoid_replace  (({[j := Frac 1 (DecAgree (fill K Unit))]}
                               ⋅ {[k := Frac 1 (DecAgree e)]}, ∅) : cfgR) with
