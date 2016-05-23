@@ -15,7 +15,7 @@ Section lang_rules.
 
   Global Instance tpool_singleton :
     SingletonM nat (fracR (dec_agreeR expr)) tpoolR.
-  Proof. typeclasses eauto. Defined.
+  Proof. eapply @list_singletonM, frac_empty. Defined.
 
   Global Instance tpool_Empty : Empty (fracR (dec_agreeR expr)).
   Proof. apply frac_empty. Defined.
@@ -164,9 +164,9 @@ Section lang_rules.
       apply Forall_lookup => i x H2.
       destruct (eq_nat_dec j i); [subst|].
       - assert (H3 := proj1 (Forall_lookup _ _) H1 i). cbn in H3.
-        rewrite list_op_lookup in H2. rewrite list_op_lookup in H3.
-        rewrite list_Singleton_lookup in H2.
-        rewrite list_Singleton_lookup in H3.
+        rewrite list_lookup_op in H2. rewrite list_lookup_op in H3.
+        rewrite list_lookup_singletonM in H2.
+        rewrite list_lookup_singletonM in H3.
         match goal with
           [H : Some _ ⋅ ?B = Some _, H' : forall x, Some _ ⋅ ?B = Some x → _ |- _] =>
           destruct B as [y|]
@@ -178,10 +178,10 @@ Section lang_rules.
           repeat constructor; auto.
         + inversion H2. repeat constructor; auto.
       - assert (H3 := proj1 (Forall_lookup _ _) H1 i). cbn in H3.
-        rewrite list_op_lookup in H2. rewrite list_op_lookup in H3.
-        edestruct (list_Singleton_lookup_2 j i) with
+        rewrite list_lookup_op in H2. rewrite list_lookup_op in H3.
+        edestruct (list_lookup_singletonM_ne j i) with
         (Frac 1 (DecAgree e) : fracR (dec_agreeR _)) as [H4 | H4]; trivial;
-          edestruct (list_Singleton_lookup_2 j i)
+          edestruct (list_lookup_singletonM_ne j i)
           with (Frac 1 (DecAgree e'): fracR (dec_agreeR _)) as [H5|H5]; trivial;
             rewrite H4 in H3; rewrite H5 in H2;
         match goal with
@@ -245,13 +245,18 @@ Section lang_rules.
     Qed.
 
     Lemma list_op_units k tp :
-      of_tpool (repeat ∅ k ⋅ tp) = of_tpool tp.
+      of_tpool (replicate k ∅ ⋅ tp) = of_tpool tp.
     Proof.
       revert k; induction tp as [|x tp] => k.
       - destruct k; simpl; trivial. induction k; simpl; trivial.
       - destruct k; simpl; trivial. destruct x as [? x|]; simpl; [|apply IHtp].
         destruct x; simpl; [|apply IHtp]. rewrite IHtp; trivial.
     Qed.
+
+    Local Ltac rewrite_list_lemma L :=
+      let W := fresh in
+      set (W := L); unfold op, cmra_op in W; simpl in W;
+      rewrite W; clear W.
 
     Lemma tpool_conv j e tp :
       ✓ ({[ j := (Frac 1 (DecAgree e : dec_agreeR _)) ]} ⋅ tp) → ∃ l1 l2,
@@ -268,7 +273,7 @@ Section lang_rules.
       - exists []; exists []; split.
         + intros e'. clear H.
           induction j; simpl; trivial; simpl in *.
-          rewrite list_op_nil in IHj; trivial.
+          rewrite -> cmra_comm in IHj; trivial.
         + intros e' k e'' H1 H2; simpl in *. replace [] with (∅ : tpoolR)
             by trivial; rewrite right_id.
           apply of_tpool_2_singletons; auto with omega.
@@ -278,10 +283,10 @@ Section lang_rules.
           * intros e'; simpl; trivial.
           * intros e' k e'' Hc1 Hc2. destruct k; auto with omega.
             simpl; apply (f_equal (cons _)).
-            set (W := @list_op_app); unfold op, cmra_op in W; simpl in W;
-              rewrite W; clear W.
-            rewrite of_tpool_app list_op_units; trivial.
-            rewrite repeat_length.
+            unfold op, cmra_op.
+            rewrite_list_lemma @list_op_app. rewrite_list_lemma of_tpool_app.
+            rewrite list_op_units; trivial.
+            rewrite replicate_length.
             match type of Hc2 with
               _ > S ?A =>
               match goal with (* A and B are convertible! *)
@@ -312,13 +317,13 @@ Section lang_rules.
       intros H.
       replace ({[j := Frac 1 (DecAgree e')]} : tpoolR) with
       (alter (λ _ : fracR (dec_agreeR expr), Frac 1 (DecAgree e')) j
-             {[j := Frac 1 (DecAgree e)]})by (by rewrite list_alter_singleton).
+             {[j := Frac 1 (DecAgree e)]})by (by rewrite list_alter_singletonM).
       apply (@auth_local_update_l
                _ _ _ _ _
                (@prod_LocalUpdate _ heapR _ _ _ _ _ (local_update_id))).
       - split; trivial. eexists (Frac 1 _);
-                          by rewrite list_Singleton_lookup; split.
-      - simpl. rewrite list_alter_singleton.
+                          by rewrite list_lookup_singletonM; split.
+      - simpl. rewrite list_alter_singletonM.
         inversion H; constructor; simpl in *; trivial.
         eapply tpool_update_valid; eauto.
     Qed.
@@ -334,9 +339,9 @@ Section lang_rules.
       List.length {[j := Frac 1 (DecAgree e)]} = S j.
     Proof. induction j; simpl; eauto with f_equal. Qed.
 
-    Lemma tpool_valid_units j : ✓ (repeat ∅ j).
+    Lemma tpool_valid_units j : ✓ (replicate j ∅).
     Proof. induction j; repeat constructor; auto. Qed.
-    Lemma tpool_valid_prepend_units_valid j th : ✓ th → ✓ (repeat ∅ j ⋅ th).
+    Lemma tpool_valid_prepend_units_valid j th : ✓ th → ✓ (replicate j ∅ ⋅ th).
     Proof.
       revert th; induction j => th H.
       - destruct th; inversion H; constructor; trivial.
@@ -360,7 +365,7 @@ Section lang_rules.
       rewrite list_op_app.
       - apply Forall_app ;split; [|repeat constructor; auto].
         apply tpool_valid_prepend_units_valid; trivial.
-      - rewrite list_op_length tpool_singleton_length repeat_length. lia.
+      - rewrite list_op_length tpool_singleton_length replicate_length. lia.
     Qed.
 
     Lemma thread_alloc_update k j e e' h ρ :
