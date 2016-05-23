@@ -39,7 +39,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
     typed (τ1 :: Γ) e1 τ3 → typed (τ2 :: Γ) e2 τ3 →
     typed Γ (Case e0 e1 e2) τ3
 | Lam_typed e τ1 τ2 :
-    typed (τ1 :: Γ) e τ2 → typed Γ (Lam e) (TArrow τ1 τ2)
+    typed (TArrow τ1 τ2 :: τ1 :: Γ) e τ2 → typed Γ (Lam e) (TArrow τ1 τ2)
 | App_typed e1 e2 τ1 τ2 :
     typed Γ e1 (TArrow τ1 τ2) → typed Γ e2 τ1 → typed Γ (App e1 e2) τ2
 | TLam_typed e τ :
@@ -93,6 +93,16 @@ Proof.
     by rewrite Hv.
 Qed.
 
+Lemma typed_subst_head_simpl_2 Δ τ e w w' ws :
+  typed Δ e τ -> List.length Δ = 2 + (List.length ws) →
+  e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)]
+.
+Proof.
+  intros H1 H2.
+  rewrite /env_subst. eapply typed_subst_invariant; eauto => /= -[|[|x]] H3 //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
+    by rewrite Hv.
+Qed.
 
 Local Opaque eq_nat_dec.
 

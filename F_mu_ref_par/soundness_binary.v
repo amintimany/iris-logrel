@@ -82,7 +82,7 @@ Local Open Scope bin_logrel_scope.
 Inductive typed_context_item :
   context_item → (list type) → type → (list type) → type → Prop :=
 | TP_CTX_Lam : ∀ Γ τ τ',
-    typed_context_item CTX_Lam (τ :: Γ) τ' Γ (TArrow τ τ')
+    typed_context_item CTX_Lam (TArrow τ τ' :: τ :: Γ) τ' Γ (TArrow τ τ')
 | TP_CTX_AppL (e2 : expr) : ∀ Γ τ τ',
     typed Γ e2 τ →
     typed_context_item (CTX_AppL e2) Γ (TArrow τ τ') Γ τ'

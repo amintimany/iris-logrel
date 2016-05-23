@@ -10,7 +10,7 @@ Module lang.
 
   Inductive expr :=
   | Var (x : var)
-  | Lam (e : {bind 1 of expr})
+  | Lam (e : {bind 2 of expr})
   | App (e1 e2 : expr)
   (* Unit *)
   | Unit
@@ -155,7 +155,7 @@ Module lang.
   (* β *)
   | BetaS e1 e2 v2 σ :
       to_val e2 = Some v2 →
-      head_step (App (Lam e1) e2) σ e1.[e2/] σ None
+      head_step (App (Lam e1) e2) σ e1.[(Lam e1), e2/] σ None
   (* Products *)
   | FstS e1 v1 e2 v2 σ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →

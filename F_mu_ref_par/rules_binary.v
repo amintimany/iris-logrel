@@ -781,7 +781,7 @@ Section lang_rules.
     Lemma step_lam N E ρ j K e1 e2 v :
       to_val e2 = Some v → nclose N ⊆ E →
       (Spec_ctx N ρ ★ j ⤇ (fill K (App (Lam e1) e2))%I)
-        ⊢ |={E}=>(j ⤇ (fill K ((e1.[e2/]))))%I.
+        ⊢ |={E}=>(j ⤇ (fill K ((e1.[Lam e1,e2/]))))%I.
     Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
     Lemma step_Tlam N E ρ j K e :

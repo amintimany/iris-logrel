@@ -365,10 +365,12 @@ Section lang_rules.
     (** Helper Lemmas for weakestpre. *)
 
     Lemma wp_lam E e1 e2 v Φ :
-      to_val e2 = Some v → ▷ WP e1.[e2 /] @ E {{Φ}} ⊢ WP (App (Lam e1) e2) @ E {{Φ}}.
+      to_val e2 = Some v →
+      ▷ WP e1.[(Lam e1), e2 /] @ E {{Φ}} ⊢ WP (App (Lam e1) e2) @ E {{Φ}}.
     Proof.
       intros <-%of_to_val.
-      rewrite -(wp_lift_pure_det_step (App _ _) e1.[of_val v /] None) //=.
+      rewrite -(wp_lift_pure_det_step
+                  (App _ _) e1.[(Lam e1), of_val v /] None) //=.
       - by rewrite right_id.
       - intros. inv_step; auto.
     Qed.

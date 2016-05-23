@@ -186,23 +186,27 @@ Section typed_interp.
 
 
   Lemma typed_binary_interp_Lam Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
-        (Htyped : typed (τ1 :: Γ) e τ2)
-        (Htyped' : typed (τ1 :: Γ) e' τ2)
-        (IHHtyped : Δ ∥ τ1 :: Γ ⊩ e ≤log≤ e' ∷ τ2)
+        (Htyped : typed (TArrow τ1 τ2 :: τ1 :: Γ) e τ2)
+        (Htyped' : typed (TArrow τ1 τ2 :: τ1 :: Γ) e' τ2)
+        (IHHtyped : Δ ∥ TArrow τ1 τ2 :: τ1 :: Γ ⊩ e ≤log≤ e' ∷ τ2)
     :
       Δ ∥ Γ ⊩ Lam e ≤log≤ Lam e' ∷  TArrow τ1 τ2.
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     value_case. iExists (LamV _). iFrame "Htr".
+    iApply löb. rewrite -always_later. iIntros "#Hlat".
     iAlways. iIntros {j' K' v} "[#Hiv Hv]".
     iApply wp_lam; auto 1 using to_of_val. iNext.
     iPvs (step_lam _ _ _ j' K' _ (# (v.2)) (v.2) _ _ with "* -") as "Hz".
     iFrame "Hspec Hv"; trivial.
-    asimpl. erewrite ?typed_subst_head_simpl; eauto;
-              simpl; try rewrite map_length; eauto with f_equal.
-    specialize (IHHtyped (v::vs)); simpl in IHHtyped.
+    asimpl.
+    specialize (IHHtyped ((LamV e.[upn 2 (env_subst (map fst vs))],
+                           LamV e'.[upn 2 (env_subst (map snd vs))])
+                            :: v :: vs)). simpl in IHHtyped.
+    erewrite <- ?typed_subst_head_simpl_2 in IHHtyped; eauto; simpl;
+      try rewrite map_length; auto.
     iApply IHHtyped; auto.
-    iFrame "Hheap Hspec Hiv HΓ"; trivial.
+    repeat iSplitR; trivial. repeat iSplit; trivial.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
   Qed.

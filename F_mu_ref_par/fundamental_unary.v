@@ -106,10 +106,13 @@ Section typed_interp.
         erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto); iNext;
           [iApply IHHtyped2 | iApply IHHtyped3]; cbn; auto with itauto.
     - (* lam *)
-      value_case; apply (always_intro _ _); iIntros {w} "#Hw".
+      value_case. iApply löb. rewrite -always_later.
+      iIntros "#Hlat". iAlways. iIntros {w} "#Hw".
       iApply wp_lam; auto 1 using to_of_val.
-      asimpl; erewrite typed_subst_head_simpl; [|eauto|cbn]; eauto.
-      iNext; iApply (IHHtyped Δ HΔ (w :: vs)); cbn; auto with itauto.
+      asimpl. change (Lam _) with (# (LamV e.[upn 2 (env_subst vs)])).
+      erewrite typed_subst_head_simpl_2; [|eauto|cbn]; eauto.
+      iNext; iApply (IHHtyped Δ HΔ (_ :: w :: vs)); cbn; auto.
+      repeat iSplit; trivial.
     - (* app *)
       smart_wp_bind (AppLCtx (e2.[env_subst vs])) v "#Hv" IHHtyped1.
       smart_wp_bind (AppRCtx v) w "#Hw" IHHtyped2.
