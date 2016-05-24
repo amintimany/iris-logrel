@@ -676,7 +676,7 @@ Section lang_rules.
       step
         (of_cfg (({[j := Frac 1 (DecAgree (fill K (CAS (Loc l) e1 e2)))]}, ∅)
                    ⋅ (∅, {[l := Frac q (DecAgree v')]}) ⋅ ρ))
-        (of_cfg (({[j := Frac 1 (DecAgree (fill K FALSE))]}, ∅)
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (♭ false)))]}, ∅)
                    ⋅ (∅, {[l := Frac q (DecAgree v')]}) ⋅ ρ)).
     Proof.
       destruct ρ as [tp th]; simpl.
@@ -695,7 +695,7 @@ Section lang_rules.
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2))
                  ★ ▷ (■ (v' ≠ v1)) ★ l ↦ₛ{q} v')%I)
-        ⊢ |={E}=>(j ⤇ (fill K (FALSE)) ★ l ↦ₛ{q} v')%I.
+        ⊢ |={E}=>(j ⤇ (fill K (♭ false)) ★ l ↦ₛ{q} v')%I.
     Proof.
       iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hl]]]".
       unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
@@ -712,7 +712,7 @@ Section lang_rules.
       iPvs (own_update with "Hown") as "Hown".
       rewrite assoc -auth_frag_op.
       rewrite -cfg_split; rewrite cmra_comm.
-      apply (thread_update _ _ (fill K FALSE)). revert H.
+      apply (thread_update _ _ (fill K (♭ false))). revert H.
       rewrite cfg_combine; first by rewrite !left_id !right_id.
       rewrite own_op; iDestruct "Hown" as "[H1 H2]".
       iSplitR "H2".
@@ -730,7 +730,7 @@ Section lang_rules.
       step
         (of_cfg (({[j := Frac 1 (DecAgree (fill K (CAS (Loc l) e1 e2)))]}, ∅)
                    ⋅ (∅, {[l := Frac 1 (DecAgree v1)]}) ⋅ ρ))
-        (of_cfg (({[j := Frac 1 (DecAgree (fill K TRUE))]}, ∅)
+        (of_cfg (({[j := Frac 1 (DecAgree (fill K (♭ true)))]}, ∅)
                    ⋅ (∅, {[l := Frac 1 (DecAgree v2)]}) ⋅ ρ)).
     Proof.
       destruct ρ as [tp th]; simpl.
@@ -751,7 +751,7 @@ Section lang_rules.
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
       ((Spec_ctx N ρ ★ j ⤇ (fill K (CAS (Loc l) e1 e2))
                  ★ ▷ (■ (v1 = v1')) ★ l ↦ₛ v1')%I)
-        ⊢ |={E}=>(j ⤇ (fill K (TRUE)) ★ l ↦ₛ v2)%I.
+        ⊢ |={E}=>(j ⤇ (fill K (♭ true)) ★ l ↦ₛ v2)%I.
     Proof.
       iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hl]]]".
       unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
@@ -768,7 +768,7 @@ Section lang_rules.
       iPvs (own_update with "Hown") as "Hown".
       rewrite assoc -auth_frag_op.
       rewrite -cfg_split; rewrite cmra_comm.
-      apply (thread_update _ _ (fill K TRUE)). revert H.
+      apply (thread_update _ _ (fill K (♭ true))). revert H.
       rewrite cfg_combine; first by rewrite !left_id !right_id.
       iPvs (own_update with "Hown") as "Hown".
       apply (cfg_heap_update _ _ v2). revert H.
@@ -824,6 +824,24 @@ Section lang_rules.
       ((Spec_ctx N ρ ★ j ⤇ (fill K (Case (InjR e0) e1 e2)))%I)
         ⊢ |={E}=>(j ⤇ (fill K (e2.[e0/])))%I.
     Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
+
+    Lemma step_if_false N E ρ j K e1 e2 :
+      nclose N ⊆ E →
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (If (♭ false) e1 e2)))%I)
+        ⊢ |={E}=>(j ⤇ (fill K e2))%I.
+    Proof. apply step_pure => σ; econstructor. Qed.
+
+    Lemma step_if_true N E ρ j K e1 e2 :
+      nclose N ⊆ E →
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (If (♭ true) e1 e2)))%I)
+        ⊢ |={E}=>(j ⤇ (fill K e1))%I.
+    Proof. apply step_pure => σ; econstructor. Qed.
+
+    Lemma step_nat_bin_op N E ρ j K op a b :
+      nclose N ⊆ E →
+      ((Spec_ctx N ρ ★ j ⤇ (fill K (NBOP op (♯ a) (♯ b))))%I)
+        ⊢ |={E}=>(j ⤇ (fill K (of_val (NatBinOP_meaning op a b))))%I.
+    Proof. apply step_pure => σ; econstructor. Qed.
 
     Lemma step_fork_base k j K e h ρ :
       k > j → k > List.length (ρ.1) →

@@ -8,12 +8,27 @@ Module lang.
 
   Global Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
 
+  Inductive NatBinOP :=
+  | Add
+  | Sub
+  | Eq
+  | Le
+  | Lt.
+
+  Global Instance Natbinop_dec_eq (op op' : NatBinOP) : Decision (op = op').
+  Proof. unfold Decision. decide equality. Qed.
+
   Inductive expr :=
   | Var (x : var)
   | Lam (e : {bind 2 of expr})
   | App (e1 e2 : expr)
-  (* Unit *)
+  (* Base Types *)
   | Unit
+  | Nat (n : nat)
+  | Bool (b : bool)
+  | NBOP (op : NatBinOP) (e1 e2 : expr)
+  (* If then else *)
+  | If (e0 e1 e2 : expr)
   (* Products *)
   | Pair (e1 e2 : expr)
   | Fst (e : expr)
@@ -43,26 +58,47 @@ Module lang.
   Instance Subst_expr : Subst expr. derive. Defined.
   Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
 
+  (* Notation for bool and nat *)
+  Notation "♭ b" := (Bool b) (at level 200).
+  Notation "♯ n" := (Nat n) (at level 200).
 
   Global Instance expr_dec_eq (e e' : expr) : Decision (e = e').
   Proof.
-    unfold Decision.
-    decide equality; [apply eq_nat_dec | apply loc_dec_eq].
+    unfold Decision; decide equality;
+      solve [apply eq_nat_dec | apply loc_dec_eq |
+             apply bool_eq_dec | apply Natbinop_dec_eq].
   Defined.
 
   Inductive val :=
   | LamV (e : {bind 1 of expr})
   | TLamV (e : {bind 1 of expr})
   | UnitV
+  | NatV (n : nat)
+  | BoolV (b : bool)
   | PairV (v1 v2 : val)
   | InjLV (v : val)
   | InjRV (v : val)
   | FoldV (v : val)
   | LocV (l : loc).
 
+  (* Notation for bool and nat *)
+  Notation "'♭v' b" := (BoolV b) (at level 200).
+  Notation "'♯v' n" := (NatV n) (at level 200).
+
+  Fixpoint NatBinOP_meaning (op : NatBinOP) : nat → nat → val :=
+    match op with
+    | Add => λ a b, ♯v(a + b)
+    | Sub => λ a b, ♯v(a - b)
+    | Eq => λ a b, if (eq_nat_dec a b) then ♭v true else ♭v false
+    | Le => λ a b, if (le_dec a b) then ♭v true else ♭v false
+    | Lt => λ a b, if (lt_dec a b) then ♭v true else ♭v false
+    end.
+
   Global Instance val_dec_eq (v v' : val) : Decision (v = v').
   Proof.
-    unfold Decision; decide equality; try apply expr_dec_eq; apply loc_dec_eq.
+    unfold Decision; decide equality;
+      try solve [apply expr_dec_eq | apply eq_nat_dec |
+                 apply loc_dec_eq | apply bool_eq_dec].
   Defined.
 
   Global Instance val_inh : Inhabited val.
@@ -73,6 +109,8 @@ Module lang.
     | LamV e => Lam e
     | TLamV e => TLam e
     | UnitV => Unit
+    | NatV v => Nat v
+    | BoolV v => Bool v
     | PairV v1 v2 => Pair (of_val v1) (of_val v2)
     | InjLV v => InjL (of_val v)
     | InjRV v => InjR (of_val v)
@@ -85,6 +123,8 @@ Module lang.
     | Lam e => Some (LamV e)
     | TLam e => Some (TLamV e)
     | Unit => Some UnitV
+    | Nat n => Some (NatV n)
+    | Bool b => Some (BoolV b)
     | Pair e1 e2 => v1 ← to_val e1; v2 ← to_val e2; Some (PairV v1 v2)
     | InjL e => InjLV <$> to_val e
     | InjR e => InjRV <$> to_val e
@@ -100,11 +140,14 @@ Module lang.
   | TAppCtx
   | PairLCtx (e2 : expr)
   | PairRCtx (v1 : val)
+  | NBOPLCtx (op : NatBinOP) (e2 : expr)
+  | NBOPRCtx (op : NatBinOP) (v1 : val)
   | FstCtx
   | SndCtx
   | InjLCtx
   | InjRCtx
   | CaseCtx (e1 : {bind expr}) (e2 : {bind expr})
+  | IfCtx (e1 : {bind expr}) (e2 : {bind expr})
   | FoldCtx
   | UnfoldCtx
   | AllocCtx
@@ -124,11 +167,14 @@ Module lang.
     | TAppCtx => TApp e
     | PairLCtx e2 => Pair e e2
     | PairRCtx v1 => Pair (of_val v1) e
+    | NBOPLCtx op e2 => NBOP op e e2
+    | NBOPRCtx op v1 => NBOP op (of_val v1) e
     | FstCtx => Fst e
     | SndCtx => Snd e
     | InjLCtx => InjL e
     | InjRCtx => InjR e
     | CaseCtx e1 e2 => Case e e1 e2
+    | IfCtx e1 e2 => If e e1 e2
     | FoldCtx => Fold e
     | UnfoldCtx => Unfold e
     | AllocCtx => Alloc e
@@ -143,13 +189,6 @@ Module lang.
   Definition fill (K : ectx) (e : expr) : expr := fold_right fill_item e K.
 
   Definition state : Type := gmap loc val.
-
-  (** Abbreviation for true and false -- we don't want to add a primitive boolean type
-      and its terms *)
-  Notation TRUE := (InjL Unit).
-  Notation FALSE := (InjR Unit).
-  Notation TRUEV := (InjLV UnitV).
-  Notation FALSEV := (InjRV UnitV).
 
   Inductive head_step : expr -> state -> expr -> state -> option expr -> Prop :=
   (* β *)
@@ -170,6 +209,14 @@ Module lang.
   | CaseRS e0 v0 e1 e2 σ :
       to_val e0 = Some v0 →
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
+    (* nat bin op *)
+  | NBOPS op a b σ :
+      head_step (NBOP op (♯ a) (♯b)) σ (of_val (NatBinOP_meaning op a b)) σ None
+  (* If then else *)
+  | IfFalse e1 e2 σ :
+      head_step (If (♭ false) e1 e2) σ e2 σ None
+  | IfTrue e1 e2 σ :
+      head_step (If (♭ true) e1 e2) σ e1 σ None
   (* Recursive Types *)
   | Unfold_Fold e v σ :
       to_val e = Some v →
@@ -194,11 +241,11 @@ Module lang.
   | CasFailS l e1 v1 e2 v2 vl σ :
      to_val e1 = Some v1 → to_val e2 = Some v2 →
      σ !! l = Some vl → vl ≠ v1 →
-     head_step (CAS (Loc l) e1 e2) σ FALSE σ None
+     head_step (CAS (Loc l) e1 e2) σ (♭ false) σ None
   | CasSucS l e1 v1 e2 v2 σ :
      to_val e1 = Some v1 → to_val e2 = Some v2 →
      σ !! l = Some v1 →
-     head_step (CAS (Loc l) e1 e2) σ TRUE (<[l:=v2]>σ) None.
+     head_step (CAS (Loc l) e1 e2) σ (♭ true) (<[l:=v2]>σ) None.
 
   (** Atomic expressions: we don't consider any atomic operations. *)
   Definition atomic (e: expr) :=

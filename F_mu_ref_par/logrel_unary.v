@@ -87,6 +87,16 @@ Section logrel.
       cofe_mor_car := λ w, (w = UnitV)%I
     |}.
 
+  Definition interp_nat : valC -n> iPropG lang Σ :=
+    {|
+      cofe_mor_car := λ w, (∃ n, w = (♯v n))%I
+    |}.
+
+  Definition interp_bool : valC -n> iPropG lang Σ :=
+    {|
+      cofe_mor_car := λ w, (∃ n, w = (♭v n))%I
+    |}.
+
   Program Definition interp_prod :
     (valC -n> iPropG lang Σ) -n> (valC -n> iPropG lang Σ) -n>
     valC -n> iPropG lang Σ :=
@@ -262,9 +272,14 @@ Section logrel.
                      valC -n> iPropG lang Σ
       with
       | TUnit => {| cofe_mor_car := λ Δ, interp_unit |}
-      | TProd τ1 τ2 => {| cofe_mor_car := λ Δ, interp_prod (interp τ1 Δ) (interp τ2 Δ)|}
-      | TSum τ1 τ2 => {| cofe_mor_car := λ Δ, interp_sum(interp τ1 Δ) (interp τ2 Δ)|}
-      | TArrow τ1 τ2 => {|cofe_mor_car := λ Δ, interp_arrow (interp τ1 Δ) (interp τ2 Δ)|}
+      | TNat => {| cofe_mor_car := λ Δ, interp_nat |}
+      | TBool => {| cofe_mor_car := λ Δ, interp_bool |}
+      | TProd τ1 τ2 =>
+        {| cofe_mor_car := λ Δ, interp_prod (interp τ1 Δ) (interp τ2 Δ)|}
+      | TSum τ1 τ2 =>
+        {| cofe_mor_car := λ Δ, interp_sum(interp τ1 Δ) (interp τ2 Δ)|}
+      | TArrow τ1 τ2 =>
+        {|cofe_mor_car := λ Δ, interp_arrow (interp τ1 Δ) (interp τ2 Δ)|}
       | TVar v => {| cofe_mor_car :=
                       λ Δ : (varC -n> (valC -n> iPropG lang Σ)), (Δ v)  |}
       | TForall τ' =>

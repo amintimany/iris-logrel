@@ -74,6 +74,15 @@ Section typed_interp.
       apply elem_of_list_lookup_2 with x.
       rewrite lookup_zip_with; simplify_option_eq; trivial.
     - (* unit *) value_case; trivial.
+    - (* nat *) value_case; iExists _ ; trivial.
+    - (* bool *) value_case; iExists _ ; trivial.
+    - (* nat bin op *)
+      smart_wp_bind (NBOPLCtx _ e2.[env_subst vs]) v "#Hv" IHHtyped1.
+      smart_wp_bind (NBOPRCtx _ v) v' "# Hv'" IHHtyped2.
+      iDestruct "Hv" as {n} "%"; iDestruct "Hv'" as {n'} "%"; subst. simpl.
+      iApply wp_nat_bin_op. iNext; destruct op; simpl;
+      try destruct eq_nat_dec; try destruct le_dec; try destruct lt_dec;
+        eauto 10 with itauto.
     - (* pair *)
       smart_wp_bind (PairLCtx e2.[env_subst vs]) v "#Hv" IHHtyped1.
       smart_wp_bind (PairRCtx v) v' "# Hv'" IHHtyped2.
@@ -105,6 +114,11 @@ Section typed_interp.
          specialize (IHHtyped3 Δ HΔ (w::vs))];
         erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto); iNext;
           [iApply IHHtyped2 | iApply IHHtyped3]; cbn; auto with itauto.
+    - (* If *)
+      smart_wp_bind (IfCtx _ _) v "#Hv" IHHtyped1; cbn.
+      iDestruct "Hv" as {b} "%"; subst; destruct b; simpl;
+        [iApply wp_if_true| iApply wp_if_false]; iNext;
+      [iApply IHHtyped2| iApply IHHtyped3]; auto with itauto.
     - (* lam *)
       value_case. iApply löb. rewrite -always_later.
       iIntros "#Hlat". iAlways. iIntros {w} "#Hw".
@@ -223,7 +237,7 @@ Section typed_interp.
         iNext. iIntros "Hw1".
         iSplitL.
         * iNext; iExists _; iSplitL; trivial.
-        * iPvsIntro. iLeft; iExists _; auto with itauto.
+        * iPvsIntro. iExists _; auto with itauto.
       + iApply (wp_cas_fail N); eauto using to_of_val.
         clear Hneq. specialize (HNLdisj l); set_solver_ndisj.
         (* Weird that Hneq above makes set_solver_ndisj diverge or
@@ -232,7 +246,7 @@ Section typed_interp.
         iNext. iIntros "Hw1".
         iSplitL.
         * iNext; iExists _; iSplitL; trivial.
-        * iPvsIntro. iRight; iExists _; auto with itauto.
+        * iPvsIntro. iExists _; auto with itauto.
       (* unshelving *)
       Unshelve.
       cbn; typeclasses eauto.

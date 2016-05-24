@@ -184,6 +184,48 @@ Section typed_interp.
       Unshelve. all: eauto using to_of_val.
   Qed.
 
+  Lemma typed_binary_interp_If Δ Γ e0 e1 e2 e0' e1' e2' τ {HΔ : ✓✓ Δ}
+        (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TBool)
+        (IHHtyped2 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ τ)
+        (IHHtyped3 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ)
+    :
+      Δ ∥ Γ ⊩ If e0 e1 e2 ≤log≤ If e0' e1' e2' ∷ τ.
+  Proof.
+    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    smart_wp_bind (IfCtx _ _) v v' "[Hv #Hiv]"
+                  (IHHtyped1 _ _ _ j (K ++ [IfCtx _ _])); cbn.
+    iDestruct "Hiv" as {b} "[% %]"; subst; destruct b; simpl.
+    + iPvs (step_if_true _ _ _ j K _ _ _ with "* -") as "Hz".
+      iFrame "Hspec Hv"; trivial. iApply wp_if_true. iNext.
+      iApply IHHtyped2; trivial. iFrame "Hheap Hspec HΓ"; trivial.
+    + iPvs (step_if_false _ _ _ j K _ _ _ with "* -") as "Hz".
+      iFrame "Hspec Hv"; trivial. iApply wp_if_false. iNext.
+      iApply IHHtyped3; trivial. iFrame "Hheap Hspec HΓ"; trivial.
+      (* unshelving *)
+      Unshelve. all: eauto using to_of_val.
+  Qed.
+
+  Lemma typed_binary_interp_nat_bin_op Δ Γ op e1 e2 e1' e2' {HΔ : ✓✓ Δ}
+        (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ TNat)
+        (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ TNat)
+    :
+      Δ ∥ Γ ⊩ NBOP op e1 e2 ≤log≤ NBOP op e1' e2' ∷ (NatBinOP_res_type op).
+  Proof.
+    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    smart_wp_bind (NBOPLCtx _ _) v v' "[Hv #Hiv]"
+                  (IHHtyped1 _ _ _ j (K ++ [NBOPLCtx _ _])); cbn.
+    smart_wp_bind (NBOPRCtx _ _) w w' "[Hw #Hiw]"
+                  (IHHtyped2 _ _ _ j (K ++ [NBOPRCtx _ _])); cbn.
+    iDestruct "Hiv" as {n} "[% %]"; subst; simpl.
+    iDestruct "Hiw" as {n'} "[% %]"; subst; simpl.
+    iPvs (step_nat_bin_op _ _ _ j K _ _ _ _ with "* -") as "Hz".
+    iFrame "Hspec Hw"; trivial. iApply wp_nat_bin_op. iNext.
+    iExists _; iSplitL; eauto.
+    destruct op; simpl; try destruct eq_nat_dec; try destruct le_dec;
+      try destruct lt_dec; iExists _; iSplit; trivial.
+    (* unshelving *)
+    Unshelve. all: eauto using to_of_val.
+  Qed.
 
   Lemma typed_binary_interp_Lam Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
         (Htyped : typed (TArrow τ1 τ2 :: τ1 :: Γ) e τ2)
@@ -444,7 +486,7 @@ Section typed_interp.
         (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ)
         (IHHtyped3 : Δ ∥ Γ ⊩ e3 ≤log≤ e3' ∷ τ)
     :
-      Δ ∥ Γ ⊩ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' ∷ TBOOL.
+      Δ ∥ Γ ⊩ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' ∷ TBool.
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     smart_wp_bind (CasLCtx _ _) v v' "[Hv #Hiv]"
@@ -475,8 +517,7 @@ Section typed_interp.
       iNext. iIntros "Hw1".
       iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
-      * iPvsIntro. iExists TRUEV; iFrame "Hw".
-        iLeft; iExists (UnitV, UnitV); repeat iSplit; trivial.
+      * iPvsIntro. iExists (♭v true); iFrame "Hw". iExists _; iSplit; trivial.
     + iPvs (step_cas_fail _ _ _ j K (l.2) 1 (z2) (# w') w' (# u') u' _ _ _
             with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
       { iFrame "Hspec Hu Hw2". iNext.
@@ -489,15 +530,13 @@ Section typed_interp.
       iNext. iIntros "Hw1".
       iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
-      * iPvsIntro. iExists FALSEV; iFrame "Hw".
-        iRight; iExists (UnitV, UnitV); repeat iSplit; trivial.
+      * iPvsIntro. iExists (♭v false); iFrame "Hw". iExists _; iSplit; trivial.
         (* unshelving *)
         Unshelve. all: eauto using to_of_val. all: SolveDisj 3 l.
   Qed.
 
   Lemma typed_binary_interp Δ Γ e τ {HΔ : context_interp_Persistent Δ}
-        (Htyped : typed Γ e τ)
-    : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
+        (Htyped : typed Γ e τ) : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
   Proof.
     revert Δ HΔ; induction Htyped; intros Δ HΔ.
     - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
@@ -511,12 +550,18 @@ Section typed_interp.
       rewrite lookup_zip_with; simplify_option_eq; destruct v; trivial.
     - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
       value_case. iExists UnitV; iFrame "Htr"; iSplit; trivial.
+    - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+      value_case. iExists (♯v _); iFrame "Htr"; iExists _; iSplit; trivial.
+    - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+      value_case. iExists (♭v _); iFrame "Htr"; iExists _; iSplit; trivial.
+    - apply typed_binary_interp_nat_bin_op; trivial.
     - apply typed_binary_interp_Pair; trivial.
     - eapply typed_binary_interp_Fst; trivial.
     - eapply typed_binary_interp_Snd; trivial.
     - eapply typed_binary_interp_InjL; trivial.
     - eapply typed_binary_interp_InjR; trivial.
     - eapply typed_binary_interp_Case; eauto.
+    - eapply typed_binary_interp_If; eauto.
     - eapply typed_binary_interp_Lam; eauto.
     - eapply typed_binary_interp_App; trivial.
     - eapply typed_binary_interp_TLam; trivial.

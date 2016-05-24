@@ -3,6 +3,8 @@ Require Import F_mu_ref_par.lang.
 
 Inductive type :=
 | TUnit : type
+| TNat : type
+| TBool : type
 | TProd : type → type → type
 | TSum : type → type → type
 | TArrow : type → type → type
@@ -17,17 +19,28 @@ Instance Rename_type : Rename type. derive. Defined.
 Instance Subst_type : Subst type. derive. Defined.
 Instance SubstLemmas_typer : SubstLemmas type. derive. Qed.
 
+Fixpoint NatBinOP_res_type (op : NatBinOP) : type :=
+  match op with
+  | Add => TNat | Sub => TNat
+  | Eq => TBool | Le => TBool | Lt => TBool
+  end.
+
 Inductive EqType : type → Prop :=
 | EqTUnit : EqType TUnit
+| EqTNat : EqType TNat
+| EqTBool : EqType TBool
 | EqTProd τ τ' : EqType τ → EqType τ' → EqType (TProd τ τ')
 | EqSum τ τ' : EqType τ → EqType τ' → EqType (TSum τ τ')
 .
 
-Notation TBOOL := (TSum TUnit TUnit).
-
 Inductive typed (Γ : list type) : expr → type → Prop :=
 | Var_typed x τ : Γ !! x = Some τ → typed Γ (Var x) τ
 | Unit_typed : typed Γ Unit TUnit
+| Nat_typed n : typed Γ (♯ n) TNat
+| Bool_typed b : typed Γ (♭ b) TBool
+| NBOP_typed op e1 e2 :
+    typed Γ e1 TNat → typed Γ e2 TNat →
+    typed Γ (NBOP op e1 e2) (NatBinOP_res_type op)
 | Pair_typed e1 e2 τ1 τ2 :
     typed Γ e1 τ1 → typed Γ e2 τ2 → typed Γ (Pair e1 e2) (TProd τ1 τ2)
 | Fst_typed e τ1 τ2 : typed Γ e (TProd τ1 τ2) → typed Γ (Fst e) τ1
@@ -38,6 +51,9 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
     typed Γ e0 (TSum τ1 τ2) →
     typed (τ1 :: Γ) e1 τ3 → typed (τ2 :: Γ) e2 τ3 →
     typed Γ (Case e0 e1 e2) τ3
+| If_typed e0 e1 e2 τ :
+    typed Γ e0 TBool → typed Γ e1 τ → typed Γ e2 τ →
+    typed Γ (If e0 e1 e2) τ
 | Lam_typed e τ1 τ2 :
     typed (TArrow τ1 τ2 :: τ1 :: Γ) e τ2 → typed Γ (Lam e) (TArrow τ1 τ2)
 | App_typed e1 e2 τ1 τ2 :
@@ -59,7 +75,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 | TCAS e1 e2 e3 τ :
     EqType τ →
     typed Γ e1 (Tref τ) → typed Γ e2 τ → typed Γ e3 τ →
-    typed Γ (CAS e1 e2 e3) TBOOL
+    typed Γ (CAS e1 e2 e3) TBool
 .
 
 Local Hint Extern 1 =>

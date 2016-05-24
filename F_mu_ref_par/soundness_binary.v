@@ -26,6 +26,13 @@ Inductive context_item : Type :=
 | CTX_CaseL (e1 : expr) (e2 : expr)
 | CTX_CaseM (e0 : expr) (e2 : expr)
 | CTX_CaseR (e0 : expr) (e1 : expr)
+(* Nat bin op *)
+| CTX_NBOPL (op : NatBinOP) (e2 : expr)
+| CTX_NBOPR (op : NatBinOP) (e1 : expr)
+(* If *)
+| CTX_IfL (e1 : expr) (e2 : expr)
+| CTX_IfM (e0 : expr) (e2 : expr)
+| CTX_IfR (e0 : expr) (e1 : expr)
 (* Recursive Types *)
 | CTX_Fold
 | CTX_Unfold
@@ -58,6 +65,11 @@ Fixpoint fill_ctx_item (ctx : context_item) (e : expr) : expr :=
   | CTX_CaseL e1 e2 => Case e e1 e2
   | CTX_CaseM e0 e2 => Case e0 e e2
   | CTX_CaseR e0 e1 => Case e0 e1 e
+  | CTX_NBOPL op e2 => NBOP op e e2
+  | CTX_NBOPR op e1 => NBOP op e1 e
+  | CTX_IfL e1 e2 => If e e1 e2
+  | CTX_IfM e0 e2 => If e0 e e2
+  | CTX_IfR e0 e1 => If e0 e1 e
   | CTX_Fold => Fold e
   | CTX_Unfold => Unfold e
   | CTX_TLam => TLam e
@@ -112,6 +124,21 @@ Inductive typed_context_item :
 | TP_CTX_CaseR (e0 : expr) (e1 : expr) : ∀ Γ τ1 τ2 τ',
     typed Γ e0 (TSum τ1 τ2) → typed (τ1 :: Γ) e1 τ' →
     typed_context_item (CTX_CaseR e0 e1) (τ2 :: Γ) τ' Γ τ'
+| TP_CTX_IfL (e1 : expr) (e2 : expr) : ∀ Γ τ,
+    typed Γ e1 τ → typed Γ e2 τ →
+    typed_context_item (CTX_IfL e1 e2) Γ (TBool) Γ τ
+| TP_CTX_IfM (e0 : expr) (e2 : expr) : ∀ Γ τ,
+    typed Γ e0 (TBool) → typed Γ e2 τ →
+    typed_context_item (CTX_IfM e0 e2) Γ τ Γ τ
+| TP_CTX_IfR (e0 : expr) (e1 : expr) : ∀ Γ τ,
+    typed Γ e0 (TBool) → typed Γ e1 τ →
+    typed_context_item (CTX_IfR e0 e1) Γ τ Γ τ
+| TP_CTX_NBOPL op (e2 : expr) : ∀ Γ,
+    typed Γ e2 TNat →
+    typed_context_item (CTX_NBOPL op e2) Γ TNat Γ (NatBinOP_res_type op)
+| TP_CTX_NBOPR op (e1 : expr) : ∀ Γ,
+    typed Γ e1 TNat →
+    typed_context_item (CTX_NBOPR op e1) Γ TNat Γ (NatBinOP_res_type op)
 | TP_CTX_Fold : ∀ Γ τ,
     typed_context_item CTX_Fold Γ τ.[(TRec τ)/] Γ (TRec τ)
 | TP_CTX_Unfold : ∀ Γ τ,
@@ -135,13 +162,13 @@ Inductive typed_context_item :
     typed_context_item (CTX_StoreR e1) Γ τ Γ TUnit
 | TP_CTX_CasL (e1 : expr)  (e2 : expr) : ∀ Γ τ,
     EqType τ → typed Γ e1 τ → typed Γ e2 τ →
-    typed_context_item (CTX_CAS_L e1 e2) Γ (Tref τ) Γ TBOOL
+    typed_context_item (CTX_CAS_L e1 e2) Γ (Tref τ) Γ TBool
 | TP_CTX_CasM (e0 : expr) (e2 : expr) : ∀ Γ τ,
     EqType τ → typed Γ e0 (Tref τ) → typed Γ e2 τ →
-    typed_context_item (CTX_CAS_M e0 e2) Γ τ Γ TBOOL
+    typed_context_item (CTX_CAS_M e0 e2) Γ τ Γ TBool
 | TP_CTX_CasR (e0 : expr) (e1 : expr) : ∀ Γ τ,
     EqType τ → typed Γ e0 (Tref τ) → typed Γ e1 τ →
-    typed_context_item (CTX_CAS_R e0 e1) Γ τ Γ TBOOL.
+    typed_context_item (CTX_CAS_R e0 e1) Γ τ Γ TBool.
 
 Lemma typed_context_item_typed k Γ τ Γ' τ' e :
   typed Γ e τ → typed_context_item k Γ τ Γ' τ' →
@@ -302,6 +329,16 @@ Section Soundness.
       + eapply typed_binary_interp_Case;
           eauto using typed_context_typed, typed_binary_interp.
       + eapply typed_binary_interp_Case;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_If;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_If;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_If;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_nat_bin_op;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_nat_bin_op;
           eauto using typed_context_typed, typed_binary_interp.
       + eapply typed_binary_interp_Fold; eauto.
       + eapply typed_binary_interp_Unfold; eauto.

@@ -94,6 +94,20 @@ Section logrel.
   Next Obligation.
   Proof. intros n x y [H1 H2]; rewrite H1 H2; trivial. Qed.
 
+  Program Definition interp_nat : bivalC -n> iPropG lang Σ :=
+    {|
+      cofe_mor_car := λ w, (∃ n, w.1 = (♯v n) ∧ w.2 = (♯v n))%I
+    |}.
+  Next Obligation.
+  Proof. intros n x y [H1 H2]; rewrite H1 H2; trivial. Qed.
+
+  Program Definition interp_bool : bivalC -n> iPropG lang Σ :=
+    {|
+      cofe_mor_car := λ w, (∃ b, w.1 = (♭v b) ∧ w.2 = (♭v b))%I
+    |}.
+  Next Obligation.
+  Proof. intros n x y [H1 H2]; rewrite H1 H2; trivial. Qed.
+
   Program Definition interp_prod :
     (bivalC -n> iPropG lang Σ) -n> (bivalC -n> iPropG lang Σ) -n>
     bivalC -n> iPropG lang Σ :=
@@ -328,6 +342,8 @@ Section logrel.
                      bivalC -n> iPropG lang Σ
       with
       | TUnit => {| cofe_mor_car := λ Δ, interp_unit |}
+      | TNat => {| cofe_mor_car := λ Δ, interp_nat |}
+      | TBool => {| cofe_mor_car := λ Δ, interp_bool |}
       | TProd τ1 τ2 =>
         {| cofe_mor_car := λ Δ, interp_prod (interp τ1 Δ) (interp τ2 Δ)|}
       | TSum τ1 τ2 =>
@@ -673,8 +689,10 @@ Section logrel.
         {HΔ : context_interp_Persistent Δ} :
     interp τ Δ (v, v') ⊢ ■ (v = v').
   Proof.
-      revert v v'; induction H => v v'; iIntros "#H1".
+    revert v v'; induction H => v v'; iIntros "#H1".
     - simpl; iDestruct "H1" as "[% %]"; subst; trivial.
+    - simpl; iDestruct "H1" as {n} "[% %]"; subst; trivial.
+    - simpl; iDestruct "H1" as {b} "[% %]"; subst; trivial.
     - iDestruct "H1" as {w1 w2} "[% [H1 H2]]".
       destruct w1; destruct w2; simpl in *.
       inversion H1; subst.
