@@ -177,3 +177,8 @@ Proof.
     repeat destruct lt_dec; repeat destruct eq_nat_dec;
       asimpl; auto with omega.
 Qed.
+
+Lemma empty_env_subst e : e.[env_subst []] = e.
+  replace (env_subst []) with (@ids expr _) by reflexivity.
+  asimpl; trivial.
+Qed.

@@ -10,7 +10,7 @@ Definition release : expr := Lam (Store (Var 1) (♭ false)).
 Definition with_lock (e : expr) (l : expr) : expr :=
   App
     (Lam
-       (App (Lam (App (Lam (App release (Var 5))) (App e Unit)))
+       (App (Lam (App (Lam (App release (Var 5))) (App e.[ren (+4)] Unit)))
             (App acquire (Var 1))
        )
     )
@@ -26,11 +26,15 @@ Proof. by asimpl. Qed.
 Lemma release_closed f : release.[f] = release.
 Proof. by asimpl. Qed.
 
+Lemma with_lock_subst (e l : expr) f :
+  (with_lock e l).[f] = with_lock e.[f] l.[f].
+Proof. unfold with_lock; asimpl; trivial. Qed.
+
 Lemma with_lock_closed e l:
   (∀ f : var → expr, e.[f] = e) →
   (∀ f : var → expr, l.[f] = l) →
   ∀ f, (with_lock e l).[f] = with_lock e l.
-Proof. asimpl => H1 H2 f. by rewrite H1 H2. Qed.
+Proof. asimpl => H1 H2 f. unfold with_lock. by rewrite ?H1 ?H2. Qed.
 
 Definition LockType := Tref TBool.
 
@@ -44,14 +48,13 @@ Lemma release_type Γ : typed Γ release (TArrow LockType TUnit).
 Proof. repeat econstructor. Qed.
 
 Lemma with_lock_type e l Γ τ :
-  (∀ f : var → expr, e.[f] = e) →
   typed Γ e (TArrow TUnit τ) →
   typed Γ l LockType →
   typed Γ (with_lock e l) TUnit.
 Proof.
-  intros H1 H2 H3. econstructor; eauto.
+  intros H1 H2. econstructor; eauto.
   repeat (econstructor; eauto using release_type, acquire_type).
-  eapply (closed_context_weakening [_; _; _; _]); eauto.
+  eapply (context_weakening [_; _; _; _]); eauto.
 Qed.
 
 Section proof.
@@ -133,8 +136,8 @@ Section proof.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
-    rewrite release_closed H1.
+    iFrame "Hspec Hj"; trivial.
+    rewrite H1. asimpl. rewrite release_closed H1.
     iPvs (H2 (K ++ [AppRCtx (LamV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
