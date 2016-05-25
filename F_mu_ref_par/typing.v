@@ -79,15 +79,16 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 .
 
 Local Hint Extern 1 =>
-match goal with [H : context [length (map _ _)] |- _] => rewrite map_length in H end
-: typed_subst_invariant.
+match goal with [H : context [length (map _ _)] |- _] =>
+                rewrite map_length in H end : typed_subst_invariant.
 
 Lemma typed_subst_invariant Γ e τ s1 s2 :
   typed Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
   assert (∀ {A} `{Ids A} `{Rename A}
-            (s1 s2 : nat → A) x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
+            (s1 s2 : nat → A) x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) →
+                               up s1 x = up s2 x).
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
   (induction Htyped => s1 s2 Hs; f_equal/=);
     eauto using lookup_lt_Some with omega typed_subst_invariant.
@@ -95,6 +96,44 @@ Qed.
 
 Definition env_subst (vs : list val) (x : var) : expr :=
   from_option (Var x) (of_val <$> vs !! x).
+
+Lemma context_gen_weakening ξ Γ' Γ e τ :
+  typed (Γ' ++ Γ) e τ →
+  typed (Γ' ++ ξ ++ Γ) e.[iter (List.length Γ') up (ren (+ (List.length ξ)))] τ.
+Proof.
+  intros H1.
+  remember (Γ' ++ Γ) as Ξ. revert Γ' Γ ξ HeqΞ.
+  induction H1 => Γ1 Γ2 ξ HeqΞ; subst; asimpl in *; eauto using typed.
+  - rewrite iter_up; destruct lt_dec as [Hl | Hl].
+    + constructor. rewrite lookup_app_l; trivial. by rewrite lookup_app_l in H.
+    + asimpl. constructor. rewrite lookup_app_r; auto with omega.
+      rewrite lookup_app_r; auto with omega.
+      rewrite lookup_app_r in H; auto with omega.
+      match goal with
+        |- _ !! ?A = _ => by replace A with (x - List.length Γ1) by omega
+      end.
+  - econstructor; eauto.
+    + eapply (IHtyped2 (_ :: Γ1) Γ2 ξ Logic.eq_refl).
+    + eapply (IHtyped3 (_ :: Γ1) Γ2 ξ Logic.eq_refl).
+  - constructor.
+    eapply (IHtyped (_ :: _ :: Γ1) Γ2 ξ Logic.eq_refl).
+  - constructor.
+    specialize (IHtyped
+                  (map (λ t : type, t.[ren (+1)]) Γ1)
+                  (map (λ t : type, t.[ren (+1)]) Γ2)
+                  (map (λ t : type, t.[ren (+1)]) ξ)).
+    asimpl in *. rewrite ?map_length in IHtyped.
+    repeat rewrite map_app. apply IHtyped.
+    by repeat rewrite map_app.
+Qed.
+
+Lemma context_weakening ξ Γ e τ :
+  typed Γ e τ → typed (ξ ++ Γ) e.[(ren (+ (List.length ξ)))] τ.
+Proof. eapply (context_gen_weakening _ []). Qed.
+
+Lemma closed_context_weakening ξ Γ e τ :
+  (∀ f, e.[f] = e) → typed Γ e τ → typed (ξ ++ Γ) e τ.
+Proof. intros H1 H2. erewrite <- H1. by eapply context_weakening. Qed.
 
 Notation "# v" := (of_val v) (at level 20).
 
