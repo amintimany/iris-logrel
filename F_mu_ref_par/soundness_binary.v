@@ -201,11 +201,6 @@ Section Soundness.
           {iI : heapIG Σ} {iS : cfgSG Σ}
           {N : namespace}.
 
-  Lemma empty_env_subst e : e.[env_subst []] = e.
-    replace (env_subst []) with (@ids expr _) by reflexivity.
-    asimpl; trivial.
-  Qed.
-
   Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ :=
     {| cofe_mor_car := λ x, {| cofe_mor_car := λ y, (True)%I |} |}.
 
