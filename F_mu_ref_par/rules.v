@@ -222,6 +222,18 @@ Section lang_rules.
       rewrite option_validI frac_validI discrete_valid. by apply const_elim_r.
     Qed.
 
+    Lemma heap_mapsto_dup_invalid l v1 v2 :
+      (l ↦ᵢ v1 ★ l ↦ᵢ v2)%I ⊢ False%I.
+    Proof.
+      iIntros "Hl".
+      rewrite heap_mapsto_op. iDestruct "Hl" as "[% Hl]".
+      iDestruct (own_valid _ with "[Hl]")
+        as "Hvalid"; [unfold heapI_mapsto, auth_own; trivial|].
+      iDestruct "Hvalid" as %valid.
+      specialize (valid l); simpl in valid. rewrite lookup_singleton in valid.
+      inversion valid as [Hv1 Hv2]. cbv in Hv1; tauto.
+    Qed.
+
     Lemma heap_mapsto_op_split l q v :
       (l ↦ᵢ{q} v)%I ≡ (l ↦ᵢ{q/2} v ★ l ↦ᵢ{q/2} v)%I.
     Proof. by rewrite heap_mapsto_op_eq Qp_div_2. Qed.
