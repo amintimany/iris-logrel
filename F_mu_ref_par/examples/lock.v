@@ -8,15 +8,38 @@ Definition acquire : expr :=
 Definition release : expr := Lam (Store (Var 1) (♭ false)).
 
 Definition with_lock (e : expr) (l : expr) : expr :=
-  App
-    (Lam
-       (App (Lam (App (Lam (App (Lam (Var 3)) (App release (Var 5))))
-                           (App e.[ren (+4)] Unit)))
-            (App acquire (Var 1))
+  Lam
+    (App
+       (Lam
+          (App (Lam (App (Lam (App (Lam (Var 3)) (App release (Var 5))))
+                         (App e.[ren (+6)] (Var 5))))
+               (App acquire (Var 1))
+          )
        )
-    )
-    l
-.
+       l.[ren (+2)]
+    ).
+
+Definition with_lockV (e l : expr) : val :=
+  LamV
+    (App
+       (Lam
+          (App (Lam (App (Lam (App (Lam (Var 3)) (App release (Var 5))))
+                         (App e.[ren (+6)] (Var 5))))
+               (App acquire (Var 1))
+          )
+       )
+       l.[ren (+2)]
+    ).
+
+Lemma with_lock_to_val e l :
+  to_val (with_lock e l) = Some (with_lockV e l).
+Proof. trivial. Qed.
+
+Lemma with_lock_of_val e l :
+  of_val (with_lockV e l) = with_lock e l.
+Proof. trivial. Qed.
+
+Global Opaque with_lockV.
 
 Lemma newlock_closed f : newlock.[f] = newlock.
 Proof. by asimpl. Qed.
@@ -48,14 +71,15 @@ Proof. do 3 econstructor; eauto using EqTBool; repeat constructor. Qed.
 Lemma release_type Γ : typed Γ release (TArrow LockType TUnit).
 Proof. repeat econstructor. Qed.
 
-Lemma with_lock_type e l Γ τ :
-  typed Γ e (TArrow TUnit τ) →
+Lemma with_lock_type e l Γ τ τ' :
+  typed Γ e (TArrow τ τ') →
   typed Γ l LockType →
-  typed Γ (with_lock e l) τ.
+  typed Γ (with_lock e l) (TArrow τ τ').
 Proof.
-  intros H1 H2. econstructor; eauto.
-  repeat (econstructor; eauto using release_type, acquire_type).
-  eapply (context_weakening [_; _; _; _]); eauto.
+  intros H1 H2. do 2 econstructor; eauto.
+  - repeat (econstructor; eauto using release_type, acquire_type).
+    eapply (context_weakening [_; _; _; _; _; _]); eauto.
+  - eapply (context_weakening [_; _]); eauto.
 Qed.
 
 Section proof.
@@ -115,30 +139,33 @@ Section proof.
 
   Global Opaque release.
 
-  Lemma steps_with_lock N E ρ j K e l P Q v :
+  Lemma steps_with_lock N E ρ j K e l P Q v w:
     nclose N ⊆ E →
     (∀ f, e.[f] = e) (* e is a closed term *)
     →
-    (∀ K', ((Spec_ctx N ρ ★ P ★ j ⤇ (fill K' (App e Unit)))%I)
+    (∀ K', ((Spec_ctx N ρ ★ P ★ j ⤇ (fill K' (App e (# w))))%I)
             ⊢ |={E}=>(j ⤇ (fill K' (# v)) ★ Q)%I)
     →
     (((Spec_ctx N ρ ★ P ★ l ↦ₛ (♭v false)
-                ★ j ⤇ (fill K (with_lock e (Loc l))))%I)
+                ★ j ⤇ (fill K (App (with_lock e (Loc l)) (# w))))%I)
       ⊢ |={E}=>(j ⤇ (fill K (# v)) ★ Q ★ l ↦ₛ (♭v false))%I).
   Proof.
     intros HNE H1 H2.
     iIntros "[#Hspec [HP [Hl Hj]]]".
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. simpl.
-    rewrite acquire_closed release_closed H1. asimpl.
+    rewrite ?acquire_closed ?release_closed ?H1. asimpl.
+    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial. simpl.
+    rewrite ?acquire_closed ?release_closed ?H1. asimpl.
     iPvs (steps_acquire _ _ _ j (K ++ [AppRCtx (LamV _)])
                    _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     rewrite fill_app; simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    rewrite H1. asimpl. rewrite release_closed H1.
+    iFrame "Hspec Hj"; trivial. simpl.
+    rewrite ?release_closed ?H1. asimpl.
     iPvs (H2 (K ++ [AppRCtx (LamV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.

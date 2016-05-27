@@ -62,17 +62,17 @@ Section CG_Counter.
   Global Opaque CG_increment.
 
   Definition CG_locked_increment (x l : expr) :=
-    Lam (with_lock (CG_increment x.[ren (+2)]) l.[ren (+2)]).
+    with_lock (CG_increment x) l.
   Definition CG_locked_incrementV (x l : expr) : val :=
-    LamV (with_lock (CG_increment x.[ren (+2)]) l.[ren (+2)]).
+    with_lockV (CG_increment x) l.
 
   Lemma CG_locked_increment_to_val x l :
     to_val (CG_locked_increment x l) = Some (CG_locked_incrementV x l).
-  Proof. trivial. Qed.
+  Proof. by rewrite with_lock_to_val. Qed.
 
   Lemma CG_locked_increment_of_val x l :
     of_val (CG_locked_incrementV x l) = CG_locked_increment x l.
-  Proof. trivial. Qed.
+  Proof. by rewrite with_lock_of_val. Qed.
 
   Global Opaque CG_locked_incrementV.
 
@@ -82,16 +82,14 @@ Section CG_Counter.
     typed Γ (CG_locked_increment x l) (TArrow TUnit TUnit).
   Proof.
     intros H1 H2. repeat econstructor.
-    eapply with_lock_type.
-    - apply CG_increment_type. by eapply (context_weakening [_; _]).
-    - by eapply (context_weakening [_; _]).
+    eapply with_lock_type; auto using CG_increment_type.
   Qed.
 
   Lemma CG_locked_increment_closed (x l : expr) :
     (∀ f, x.[f] = x) → (∀ f, l.[f] = l) →
     ∀ f, (CG_locked_increment x l).[f] = CG_locked_increment x l.
   Proof.
-    intros H1 H2 f. asimpl. unfold CG_locked_increment. rewrite H1 H2.
+    intros H1 H2 f. asimpl. unfold CG_locked_increment.
     rewrite with_lock_closed; trivial. apply CG_increment_closed; trivial.
   Qed.
 
@@ -109,11 +107,9 @@ Section CG_Counter.
                                 (CG_locked_increment (Loc x) (Loc l)) Unit)))%I)
       ⊢ |={E}=>(j ⤇ (fill K (Unit)) ★ x ↦ₛ (♯v S n) ★ l ↦ₛ (♭v false))%I.
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_increment.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. rewrite with_lock_closed; auto. asimpl.
+    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]".
     iPvs (steps_with_lock
-            _ _ _ j K _ _ _ _ UnitV _ _ with "[Hj Hx Hl]") as "Hj"; eauto.
+            _ _ _ j K _ _ _ _ UnitV UnitV _ _ with "[Hj Hx Hl]") as "Hj"; eauto.
     - intros K'.
       iIntros "[#Hspec [Hx Hj]]".
       iApply steps_CG_increment; eauto. iFrame "Hspec Hj Hx"; trivial.
