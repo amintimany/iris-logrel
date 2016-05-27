@@ -111,11 +111,10 @@ Section CG_Counter.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_increment.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    rewrite with_lock_closed; auto.
+    iFrame "Hspec Hj"; trivial. rewrite with_lock_closed; auto. asimpl.
     iPvs (steps_with_lock
-            _ _ _ j K _ _ _ _ _ _ with "[Hj Hx Hl]") as "Hj"; eauto.
-    - exists UnitV. intros K'.
+            _ _ _ j K _ _ _ _ UnitV _ _ with "[Hj Hx Hl]") as "Hj"; eauto.
+    - intros K'.
       iIntros "[#Hspec [Hx Hj]]".
       iApply steps_CG_increment; eauto. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.

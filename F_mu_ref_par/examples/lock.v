@@ -10,7 +10,8 @@ Definition release : expr := Lam (Store (Var 1) (♭ false)).
 Definition with_lock (e : expr) (l : expr) : expr :=
   App
     (Lam
-       (App (Lam (App (Lam (App release (Var 5))) (App e.[ren (+4)] Unit)))
+       (App (Lam (App (Lam (App (Lam (Var 3)) (App release (Var 5))))
+                           (App e.[ren (+4)] Unit)))
             (App acquire (Var 1))
        )
     )
@@ -50,7 +51,7 @@ Proof. repeat econstructor. Qed.
 Lemma with_lock_type e l Γ τ :
   typed Γ e (TArrow TUnit τ) →
   typed Γ l LockType →
-  typed Γ (with_lock e l) TUnit.
+  typed Γ (with_lock e l) τ.
 Proof.
   intros H1 H2. econstructor; eauto.
   repeat (econstructor; eauto using release_type, acquire_type).
@@ -114,18 +115,18 @@ Section proof.
 
   Global Opaque release.
 
-  Lemma steps_with_lock N E ρ j K e l P Q :
+  Lemma steps_with_lock N E ρ j K e l P Q v :
     nclose N ⊆ E →
     (∀ f, e.[f] = e) (* e is a closed term *)
     →
-    (∃ v, ∀ K', ((Spec_ctx N ρ ★ P ★ j ⤇ (fill K' (App e Unit)))%I)
-            ⊢ |={E}=>(j ⤇ (fill K' (of_val v)) ★ Q)%I)
+    (∀ K', ((Spec_ctx N ρ ★ P ★ j ⤇ (fill K' (App e Unit)))%I)
+            ⊢ |={E}=>(j ⤇ (fill K' (# v)) ★ Q)%I)
     →
     (((Spec_ctx N ρ ★ P ★ l ↦ₛ (♭v false)
                 ★ j ⤇ (fill K (with_lock e (Loc l))))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (Unit)) ★ Q ★ l ↦ₛ (♭v false))%I).
+      ⊢ |={E}=>(j ⤇ (fill K (# v)) ★ Q ★ l ↦ₛ (♭v false))%I).
   Proof.
-    intros HNE H1 [v H2].
+    intros HNE H1 H2.
     iIntros "[#Hspec [HP [Hl Hj]]]".
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. simpl.
@@ -144,9 +145,14 @@ Section proof.
     rewrite ?fill_app. simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. simpl.
-    rewrite release_closed.
-    iPvs (steps_release _ _ _ j K _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
+    rewrite release_closed. asimpl.
+    iPvs (steps_release _ _ _ j (K ++ [AppRCtx (LamV _)]) _ _ with "[Hj Hl]")
+      as "[Hj Hl]"; eauto.
+    rewrite ?fill_app. simpl.
     iFrame "Hspec Hl Hj"; trivial.
+    rewrite ?fill_app. simpl.
+    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial. asimpl.
     iPvsIntro. iFrame "Hj HQ Hl"; trivial.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
