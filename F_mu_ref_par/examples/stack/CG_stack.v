@@ -94,7 +94,7 @@ Section CG_Stack.
   (CG_locked_push st l).[f] = CG_locked_push st.[f] l.[f].
   Proof. by rewrite with_lock_subst CG_push_subst. Qed.
 
-  Lemma steps_CG_locked_increment N E ρ j K st w v l :
+  Lemma steps_CG_locked_push N E ρ j K st w v l :
     nclose N ⊆ E →
     ((Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
                ★ j ⤇ (fill K (App (CG_locked_push (Loc st) (Loc l)) (# w))))%I)

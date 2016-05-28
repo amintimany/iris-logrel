@@ -47,10 +47,11 @@ Section Rules.
         {|
           cofe_mor_car :=
             λ v, (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
-                                    ((w = InjLV UnitV ∧ v.2 = InjLV UnitV) ∨
+                                    ((w = InjLV UnitV ∧
+                                      v.2 = FoldV (InjLV UnitV)) ∨
                                      (∃ y1 z1 y2 z2,
-                                         (w = InjRV (PairV y1 z1))
-                                           ★ (v.2 = InjRV (PairV y2 z2))
+                                         (w = InjRV (PairV y1 (FoldV z1)))
+                                           ★ (v.2 = FoldV (InjRV (PairV y2 z2)))
                                            ★ Q (y1, y2) ★ ▷ P(z1, z2)
                                      )
                                     )
@@ -84,16 +85,17 @@ Section Rules.
 
   Lemma StackLink_unfold Q {HQ} v :
     @StackLink Q HQ v ≡
-              (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
-                                    ((w = InjLV UnitV ∧ v.2 = InjLV UnitV) ∨
-                                     (∃ y1 z1 y2 z2,
-                                         (w = InjRV (PairV y1 z1))
-                                           ★ (v.2 = InjRV (PairV y2 z2))
-                                           ★ Q (y1, y2)
-                                           ★ ▷ @StackLink Q HQ (z1, z2)
-                                     )
-                                    )
-              )%I.
+               (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
+                                  ((w = InjLV UnitV ∧
+                                    v.2 = FoldV (InjLV UnitV)) ∨
+                                   (∃ y1 z1 y2 z2,
+                                       (w = InjRV (PairV y1 (FoldV z1)))
+                                         ★ (v.2 = FoldV (InjRV (PairV y2 z2)))
+                                         ★ Q (y1, y2)
+                                         ★ ▷ @StackLink Q HQ (z1, z2)
+                                   )
+                                  )
+               )%I.
   Proof.
     unfold StackLink at 1.
     rewrite fixpoint_unfold; trivial.
