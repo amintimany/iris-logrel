@@ -11,16 +11,16 @@ Section CG_Stack.
 
   (* Coarse-grained push *)
   Definition CG_push (st : expr) : expr :=
-    Lam (App (Lam (Store st.[ren (+ 4)] (Fold (InjR (Pair (Var 3) (Var 1))))))
-             (Load st.[ren (+ 2)])).
+    Lam (Store
+           (st.[ren (+2)]) (Fold (InjR (Pair (Var 1) (Load st.[ren (+ 2)]))))).
 
   Lemma CG_push_type st Γ τ :
     typed Γ st (Tref (CG_StackType τ)) →
     typed Γ (CG_push st) (TArrow τ TUnit).
   Proof.
     intros H1. repeat econstructor.
-    eapply (context_weakening [_; _; _; _]); eauto.
-    repeat constructor; by asimpl.
+    eapply (context_weakening [_; _]); eauto.
+    repeat constructor; asimpl; trivial.
     eapply (context_weakening [_; _]); eauto.
   Qed.
 
@@ -41,13 +41,12 @@ Section CG_Stack.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_push.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
-    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_load _ _ _ j (K ++ [StoreRCtx (LocV _); FoldCtx;
+                                   InjRCtx; PairRCtx _])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_store _ _ _ j K _ _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     iFrame "Hspec Hj"; trivial.
@@ -116,17 +115,12 @@ Section CG_Stack.
 
   (* Coarse-grained pop *)
   Definition CG_pop (st : expr) : expr :=
-    Lam (App (Lam
-                (
-                  Case (Var 1)
-                       (InjL Unit)
-                       (
-                         App (Lam (InjR (Fst (Var 2))))
-                             (Store st.[ren (+ 5)] (Snd (Var 0)))
-                       )
-                )
-             )
-             (Unfold (Load st.[ren (+ 2)]))
+    Lam (Case (Unfold (Load st.[ren (+ 2)]))
+              (InjL Unit)
+              (
+                App (Lam (InjR (Fst (Var 2))))
+                    (Store st.[ren (+ 3)] (Snd (Var 0)))
+              )
         ).
 
   Lemma CG_pop_type st Γ τ :
@@ -134,10 +128,15 @@ Section CG_Stack.
     typed Γ (CG_pop st) (TArrow TUnit (TSum TUnit τ)).
   Proof.
     intros H1.
-    do 2 econstructor;
-      [|do 2 econstructor; eapply (context_weakening [_; _]); eauto].
-    repeat econstructor; asimpl; eauto.
-    eapply (context_weakening [_; _; _; _; _]); eauto.
+    econstructor.
+    eapply (Case_typed _ _ _ _ TUnit);
+      [| repeat constructor
+       | repeat econstructor; eapply (context_weakening [_; _; _]); eauto].
+    replace (TSum TUnit (TProd τ (CG_StackType τ))) with
+    ((TSum TUnit (TProd τ.[ren (+1)] (TVar 0))).[(CG_StackType τ)/])
+      by (by asimpl).
+    repeat econstructor.
+    eapply (context_weakening [_; _]); eauto.
   Qed.
 
   Lemma CG_pop_closed (st : expr) :
@@ -157,18 +156,16 @@ Section CG_Stack.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
-    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _); UnfoldCtx])
+    iPvs (step_load _ _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_Fold _ _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_case_inr _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_snd _ _ _ j (K ++ [AppRCtx (LamV _); StoreRCtx (LocV _)]) _ _ _ _
@@ -202,18 +199,16 @@ Section CG_Stack.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
-    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _); UnfoldCtx])
+    iPvs (step_load _ _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_Fold _ _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_case_inl _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
     iPvsIntro. iFrame "Hj Hx"; trivial.
@@ -360,35 +355,23 @@ Section CG_Stack.
 
   (* Coarse-grained iter *)
   Definition CG_iter (f : expr) : expr :=
-    (Lam (App (Lam
-                 (
-                   Case (Var 1)
-                        Unit
-                        (
-                          App (Lam (App (Var 5) (Snd (Var 2))))
-                              (App f.[ren (+5)] (Fst (Var 0)))
-                        )
-                 )
+    Lam (Case (Unfold (Var 1))
+              Unit
+              (
+                App (Lam (App (Var 3) (Snd (Var 2))))
+                    (App f.[ren (+3)] (Fst (Var 0)))
               )
-              (Unfold (Var 1))
-         )
-    ).
+        ).
 
   Lemma CG_iter_folding (f : expr) :
     CG_iter f =
-    (Lam (App (Lam
-                 (
-                   Case (Var 1)
-                        Unit
-                        (
-                          App (Lam (App (Var 5) (Snd (Var 2))))
-                              (App f.[ren (+5)] (Fst (Var 0)))
-                        )
-                 )
+    Lam (Case (Unfold (Var 1))
+              Unit
+              (
+                App (Lam (App (Var 3) (Snd (Var 2))))
+                    (App f.[ren (+3)] (Fst (Var 0)))
               )
-              (Unfold (Var 1))
-         )
-    ).
+        ).
   Proof. trivial. Qed.
 
   Lemma CG_iter_type f Γ τ :
@@ -396,9 +379,14 @@ Section CG_Stack.
     typed Γ (CG_iter f) (TArrow (CG_StackType τ) TUnit).
   Proof.
     intros H1.
-    do 2 econstructor; [|by do 2 econstructor].
+    econstructor.
+    eapply (Case_typed _ _ _ _ TUnit);
+      [| repeat constructor
+       | repeat econstructor; eapply (context_weakening [_; _; _]); eauto].
+    replace (TSum TUnit (TProd τ (CG_StackType τ))) with
+    ((TSum TUnit (TProd τ.[ren (+1)] (TVar 0))).[(CG_StackType τ)/])
+      by (by asimpl).
     repeat econstructor.
-    asimpl. eapply (context_weakening [_; _; _; _; _]); eauto.
   Qed.
 
   Lemma CG_iter_closed (f : expr) :
@@ -427,14 +415,11 @@ Section CG_Stack.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
-    iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_Fold _ _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. asimpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    simpl. asimpl.
     iPvs (step_case_inr _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_fst _ _ _ j (K ++ [AppRCtx (LamV _); AppRCtx f]) _ _ _ _
@@ -460,14 +445,11 @@ Section CG_Stack.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
-    iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_Fold _ _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. asimpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    simpl. asimpl.
     iPvs (step_case_inl _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
     by iPvsIntro.

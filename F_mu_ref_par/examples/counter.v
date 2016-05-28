@@ -8,16 +8,15 @@ Section CG_Counter.
 
   (* Coarse-grained increment *)
   Definition CG_increment (x : expr) : expr :=
-    Lam (App (Lam (Store x.[ren (+ 4)] (NBOP Add (♯ 1) (Var 1))))
-             (Load x.[ren (+ 2)])).
+    Lam ((Store x.[ren (+ 2)] (NBOP Add (♯ 1) (Load x.[ren (+ 2)])))).
 
   Lemma CG_increment_type x Γ :
     typed Γ x (Tref TNat) →
     typed Γ (CG_increment x) (TArrow TUnit TUnit).
   Proof.
     intros H1. repeat econstructor.
-    eapply (context_weakening [_; _; _; _]); eauto.
-    eapply (context_weakening [_; _]); eauto.
+    - eapply (context_weakening [_; _]); eauto.
+    - eapply (context_weakening [_; _]); eauto.
   Qed.
 
   Lemma CG_increment_closed (x : expr) :
@@ -37,15 +36,11 @@ Section CG_Counter.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_increment.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. simpl.
-    Unshelve. 3: simpl; auto. asimpl.
-    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_load _ _ _ j (K ++ [StoreRCtx (LocV _); NBOPRCtx _ (♯v _)])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
-    Unshelve. 3: simpl; auto.
     iPvs (step_nat_bin_op _ _ _ j (K ++ [StoreRCtx (LocV _)])
                           _ _ _  with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
@@ -54,9 +49,9 @@ Section CG_Counter.
     iPvs (step_store _ _ _ j K _ _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     iFrame "Hspec Hj"; trivial.
-    Unshelve. 3: trivial.
     iPvsIntro.
     iFrame "Hj Hx"; trivial.
+    Unshelve. all: trivial.
   Qed.
 
   Global Opaque CG_increment.

@@ -9,26 +9,16 @@ Definition release : expr := Lam (Store (Var 1) (♭ false)).
 
 Definition with_lock (e : expr) (l : expr) : expr :=
   Lam
-    (App
-       (Lam
-          (App (Lam (App (Lam (App (Lam (Var 3)) (App release (Var 5))))
-                         (App e.[ren (+6)] (Var 5))))
-               (App acquire (Var 1))
-          )
-       )
-       l.[ren (+2)]
+    (App (Lam (App (Lam (App (Lam (Var 3)) (App release l.[ren (+6)])))
+                   (App e.[ren (+4)] (Var 3))))
+         (App acquire l.[ren (+2)])
     ).
 
 Definition with_lockV (e l : expr) : val :=
   LamV
-    (App
-       (Lam
-          (App (Lam (App (Lam (App (Lam (Var 3)) (App release (Var 5))))
-                         (App e.[ren (+6)] (Var 5))))
-               (App acquire (Var 1))
-          )
-       )
-       l.[ren (+2)]
+    (App (Lam (App (Lam (App (Lam (Var 3)) (App release l.[ren (+6)])))
+                   (App e.[ren (+4)] (Var 3))))
+         (App acquire l.[ren (+2)])
     ).
 
 Lemma with_lock_to_val e l :
@@ -76,9 +66,11 @@ Lemma with_lock_type e l Γ τ τ' :
   typed Γ l LockType →
   typed Γ (with_lock e l) (TArrow τ τ').
 Proof.
-  intros H1 H2. do 2 econstructor; eauto.
-  - repeat (econstructor; eauto using release_type, acquire_type).
-    eapply (context_weakening [_; _; _; _; _; _]); eauto.
+  intros H1 H2. do 3 econstructor; eauto.
+  - repeat (econstructor; eauto using release_type).
+    + eapply (context_weakening [_; _; _; _; _; _]); eauto.
+    + eapply (context_weakening [_; _; _; _]); eauto.
+  - eapply acquire_type.
   - eapply (context_weakening [_; _]); eauto.
 Qed.
 
@@ -152,9 +144,6 @@ Section proof.
   Proof.
     intros HNE H1 H2.
     iIntros "[#Hspec [HP [Hl Hj]]]".
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
-    rewrite ?acquire_closed ?release_closed ?H1. asimpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. simpl.
     rewrite ?acquire_closed ?release_closed ?H1. asimpl.
