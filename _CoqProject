@@ -32,3 +32,4 @@ F_mu_ref_par/examples/lock.v
 F_mu_ref_par/examples/counter.v
 F_mu_ref_par/examples/stack/stack_rules.v
 F_mu_ref_par/examples/stack/CG_stack.v
+F_mu_ref_par/examples/stack/FG_stack.v
