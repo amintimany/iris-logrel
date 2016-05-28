@@ -116,20 +116,17 @@ Section CG_Stack.
 
   (* Coarse-grained pop *)
   Definition CG_pop (st : expr) : expr :=
-    Lam (App (Lam (App (Lam
-                          (
-                            Case (Var 1)
-                                 (InjL Unit)
-                                 (
-                                   App (Lam (InjR (Fst (Var 2))))
-                                       (Store st.[ren (+ 7)] (Snd (Var 0)))
-                                 )
-                          )
+    Lam (App (Lam
+                (
+                  Case (Var 1)
+                       (InjL Unit)
+                       (
+                         App (Lam (InjR (Fst (Var 2))))
+                             (Store st.[ren (+ 5)] (Snd (Var 0)))
                        )
-                       (Unfold (Var 1))
-                  )
+                )
              )
-             (Load st.[ren (+ 2)])
+             (Unfold (Load st.[ren (+ 2)]))
         ).
 
   Lemma CG_pop_type st Γ τ :
@@ -138,10 +135,9 @@ Section CG_Stack.
   Proof.
     intros H1.
     do 2 econstructor;
-      [|econstructor; eapply (context_weakening [_; _]); eauto].
-    do 2 econstructor. 2: repeat constructor. asimpl.
-    repeat econstructor.
-    eapply (context_weakening [_; _; _; _; _; _; _]); eauto.
+      [|do 2 econstructor; eapply (context_weakening [_; _]); eauto].
+    repeat econstructor; asimpl; eauto.
+    eapply (context_weakening [_; _; _; _; _]); eauto.
   Qed.
 
   Lemma CG_pop_closed (st : expr) :
@@ -161,13 +157,11 @@ Section CG_Stack.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
-    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _); UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
                     _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
@@ -208,13 +202,11 @@ Section CG_Stack.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     iFrame "Hspec Hj"; trivial. asimpl.
-    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (step_load _ _ _ j (K ++ [AppRCtx (LamV _); UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
     iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
                     _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
