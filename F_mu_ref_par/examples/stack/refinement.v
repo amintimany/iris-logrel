@@ -178,10 +178,111 @@ Section CG_Counter.
         iApply (@wp_bind _ _ _ [AppRCtx (LamV _); UnfoldCtx]);
           iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
         iInv (N .@4) as {istk v h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
+        iApply wp_pvs.
         iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Hstk".
         iNext. iIntros "Hstk".
+        (* Checking whether the stack is empty *)
         iDestruct (StackLink_dup with "[HLK]") as "[HLK HLK']"; trivial.
-        iSplitL "Hoe Hstk' HLK Hl Hstk".
+        rewrite -> StackLink_unfold at 2.
+        iDestruct "HLK'" as {istk2 w} "[HH [Hmpt HLK']]".
+        iDestruct "HH" as %HH. inversion HH; simpl in *; subst.
+        iDestruct "HLK'" as "[[% %]|HLK']".
+        * (* The stack is empty *)
+          simpl in *; subst.
+          iPvs (steps_CG_locked_pop_fail _ _ _ _ _ _ _ _ with "[Hj Hstk' Hl]")
+            as "[Hj [Hstk' Hl]]".
+          { by iFrame "Hspec Hstk' Hl Hj". }
+          iPvsIntro.
+          iSplitR "Hj Hmpt".
+          { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl". }
+          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
+          iApply wp_Fold; simpl; auto using to_of_val.
+          iNext. iApply wp_lam; auto using to_of_val. iNext. asimpl.
+          clear h.
+          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
+          iInv (N .@4) as {istk3 w h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
+          iDestruct (stack_owns_later_open_close with "[Hmpt Hoe]")
+            as "[Histk HLoe]".
+          { by iFrame "Hmpt". }
+          iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Histk".
+          iNext. iIntros "Histk".
+          iSplitR "Hj".
+          { iNext. iExists _, _, _. iFrame "Hstk' Hstk HLK Hl".
+            iDestruct ("HLoe" with "[Histk]") as "[Hh _]"; trivial.
+          }
+          iApply wp_lam; simpl; trivial.
+          iNext. asimpl.
+          iApply wp_case_inl; trivial.
+          iNext. iApply wp_value; simpl; trivial. iExists (InjLV UnitV).
+          iSplit; trivial. iLeft. iExists (_, _); repeat iSplit; simpl; trivial.
+        * (* The stack is not empty *)
+          iPvsIntro. iSplitR "Hj Hmpt HLK'".
+          { iNext. iExists _, _, _. by iFrame "Hstk' Hstk HLK Hl". }
+          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
+          iApply wp_Fold; simpl; auto using to_of_val.
+          iNext. iApply wp_lam; auto using to_of_val. iNext. asimpl.
+          clear h.
+          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
+          iInv (N .@4) as {istk3 w' h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
+          iDestruct (stack_owns_later_open_close with "[Hmpt Hoe]")
+            as "[Histk HLoe]".
+          { by iFrame "Hmpt". }
+          iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Histk".
+          iNext. iIntros "Histk".
+          iDestruct ("HLoe" with "[Histk]") as "[Hh Hmpt]"; trivial.
+          iSplitR "Hj Hmpt HLK'".
+          { iNext. iExists _, _, _. by iFrame "Hstk' Hstk HLK Hl". }
+          iApply wp_lam; auto using to_of_val.
+          iNext. asimpl.
+          iDestruct "HLK'" as {y1 z1 y2 z2} "[% HLK']". subst. simpl.
+          iApply wp_case_inr; [simpl; by rewrite ?to_of_val |].
+          iNext.
+          iApply (@wp_bind _ _ _ [IfCtx _ _; CasRCtx (LocV _) (FoldV (LocV _))]);
+            iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
+          asimpl. iApply wp_snd; [simpl; by rewrite ?to_of_val |
+                                  simpl; by rewrite ?to_of_val |].
+          simpl. iNext.
+          iApply (@wp_bind _ _ _ [IfCtx _ _]);
+            iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
+          clear istk3 h. asimpl.
+          iInv (N .@4) as {istk3 w h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
+          { by simpl; rewrite ?to_of_val; simpl. }
+          (* deciding whether CAS will succeed or fail *)
+          destruct (decide (istk2 = istk3)) as [|Hneq]; subst.
+          -- (* CAS succeeds *)
+            (* In this case, the specification pushes *)
+            iApply wp_pvs.
+            iApply (wp_cas_suc _ _ _ _ _ _ _ _ _ _ _).
+            iFrame "Hheap Hstk". iNext. iIntros "Hstk".
+            iClear "HLK'".
+            iDestruct (StackLink_dup with "[HLK]") as "[HLK HLK']"; trivial.
+            rewrite -> StackLink_unfold at 2.
+            iDestruct "HLK'" as {istk4 w2} "[HH [Hmpt' HLK']]".
+            iDestruct "HH" as %HH'. inversion HH'; simpl in *; subst.
+            
+            iDestruct "HLK'" as "[[% %]|HLK']".
+
+            
+
+          iApply wp_value; simpl; trivial. iExists (InjLV UnitV).
+          iSplit; trivial. iLeft. iExists (_, _); repeat iSplit; simpl; trivial.
+
+
+
+
+
+
+
+
+
+
+          
+          
+          iSplitL "Hoe Hstk' HLK Hl Hstk".
         iNext. iExists _, _, _; by iFrame "Hoe Hstk' HLK Hl Hstk".
         clear h.
         iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
@@ -191,38 +292,32 @@ Section CG_Counter.
         iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
         iInv (N .@4) as {istk2 w h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
-        iAssert ((▷ ∃ w, istk ↦ᵢ w ★ (istk ↦ᵢ w -★ stack_owns h))%I)
-          as "Hpromise" with "[HLK' Hoe]".
-        { iNext.
-          rewrite StackLink_unfold.
-          iDestruct "HLK'" as {istk3 w2} "[Heq [Hpt HLK']]".
-          iDestruct "Heq" as %Heq. simpl in Heq; inversion Heq; subst.
-          iDestruct (stack_owns_open with "[Hoe Hpt]")
-            as "[Hh [Hm [Histk Hpt]]]".
-          { by iFrame "Hoe Hpt". }
-          iExists _. iFrame "Histk". iIntros "Histk".
-          iSplitL "Histk".
-          - iExists _; by iFrame "Histk".
-          - iDestruct (stack_owns_close with "[Hh Hm Hpt]") as "Howns".
-            { iFrame "Hh Hm" }
-
-
-
-          
-        iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap".
-        iNext.
         rewrite StackLink_unfold.
         iDestruct "HLK'" as {istk3 w2} "[Heq [Hpt HLK']]".
         iDestruct "Heq" as %Heq. simpl in Heq; inversion Heq; subst.
-        iDestruct (stack_owns_open with "[Hoe Hpt]") as "[Hh [Hm [Histk3 Hpt]]]".
-        { by iFrame "Hoe Hpt". }
-        iFrame "Histk3".
-
-
+        iDestruct (stack_owns_later_open_close with "[Hpt Hoe]")
+          as "[Histk HLoe]".
+        { by iFrame "Hpt". }
+        (* Checking whether the stack is empty *)
+        iDestruct "HLK'" as "[[% %]|HLKE']".
+        * (* The stack is empty *)
+          simpl in *; subst.
+          iTimeless "Hl". iTimeless "Hstk'".
+          iPvs (steps_CG_locked_pop_fail _ _ _ _ _ _ _ _ with "[Hj Hstk' Hl]")
+            as "[Hj [Hskt' Hl]]".
+          { iFrame "Hspec Hstk' Hl Hj". }
+          iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Histk".
+          iNext. iIntros "Histk".
+          
+          iSplitR "Hj".
+          { iNext. iExists _, _, _. iFrame "Hstk' Hstk HLK Hl".
+            iDestruct ("HLoe" with "[Histk]") as "[Hh _]"; trivial.
+          }
+        iApply wp_lam; auto using to_of_val. iNext.
+        asimpl.
         
-        iApply wp_load; simpl; auto using to_of_val.
 
-        
+
         iApply (@wp_bind _ _ _ [IfCtx _ _; CasRCtx (LocV _) (FoldV (LocV _));
                                 FoldCtx]);
           iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].

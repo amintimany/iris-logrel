@@ -322,4 +322,20 @@ Section Rules.
     unfold stack_owns. by iFrame "Hown Hl' Hall".
   Qed.
 
+  Lemma stack_owns_open_close h l v :
+    ((stack_owns h ★ l ↦ˢᵗᵏ v)%I)
+      ⊢ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))%I).
+  Proof.
+    iIntros "[Howns Hls]".
+    iDestruct (stack_owns_open with "[Howns Hls]") as "[Hh [Hm [Hl Hls]]]".
+    { by iFrame "Howns Hls". }
+    iFrame "Hl". iIntros "Hl".
+    iApply stack_owns_close. by iFrame "Hh Hm Hl Hls".
+  Qed.
+
+  Lemma stack_owns_later_open_close h l v :
+    ((▷ stack_owns h ★ l ↦ˢᵗᵏ v)%I)
+      ⊢ (▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))))%I.
+  Proof. iIntros "H". iNext. by iApply stack_owns_open_close. Qed.
+
 End Rules.
