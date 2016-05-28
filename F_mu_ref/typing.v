@@ -1,5 +1,5 @@
-Require Import prelude.base.
-Require Import F_mu_ref.lang.
+Require Import iris_logrel.prelude.base.
+Require Import iris_logrel.F_mu_ref.lang.
 
 Inductive type :=
 | TUnit : type

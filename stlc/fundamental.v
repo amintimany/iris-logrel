@@ -2,7 +2,8 @@ Require Import iris.proofmode.tactics.
 Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import stlc.lang stlc.typing stlc.rules stlc.logrel.
+Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
+        iris_logrel.stlc.rules iris_logrel.stlc.logrel.
 Import uPred.
 
 Section typed_interp.

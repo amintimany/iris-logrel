@@ -1,7 +1,8 @@
 Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import stlc.lang stlc.typing stlc.rules.
+Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
+        iris_logrel.stlc.rules.
 
 (** interp : is a unary logical relation. *)
 Section logrel.

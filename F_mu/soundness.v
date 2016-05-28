@@ -2,7 +2,9 @@ Require Import iris.proofmode.tactics.
 Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import F_mu.lang F_mu.typing F_mu.rules F_mu.logrel F_mu.fundamental.
+Require Import iris_logrel.F_mu.lang iris_logrel.F_mu.typing
+        iris_logrel.F_mu.rules iris_logrel.F_mu.logrel
+        iris_logrel.F_mu.fundamental.
 Require Import iris.program_logic.adequacy.
 Import uPred.
 

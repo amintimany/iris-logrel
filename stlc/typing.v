@@ -1,4 +1,4 @@
-Require Import stlc.lang.
+Require Import iris_logrel.stlc.lang.
 Require Import iris.prelude.base.
 
 Inductive type :=

@@ -1,7 +1,8 @@
 Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import F_mu.lang F_mu.typing F_mu.rules.
+Require Import iris_logrel.F_mu.lang iris_logrel.F_mu.typing
+        iris_logrel.F_mu.rules.
 Import uPred.
 
 (** interp : is a unary logical relation. *)

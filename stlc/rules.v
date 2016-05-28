@@ -1,6 +1,6 @@
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import stlc.lang.
+Require Import iris_logrel.stlc.lang.
 
 Section lang_rules.
 

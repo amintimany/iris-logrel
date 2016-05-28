@@ -1,4 +1,4 @@
--Q . ""
+-Q . iris_logrel
 prelude/base.v
 stlc/lang.v
 stlc/typing.v

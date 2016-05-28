@@ -1,6 +1,6 @@
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import F_mu_ref_par.lang.
+Require Import iris_logrel.F_mu_ref_par.lang.
 From iris.program_logic Require Export lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree list.
 From iris.program_logic Require Export invariants ghost_ownership.

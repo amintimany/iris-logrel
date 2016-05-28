@@ -1,4 +1,4 @@
-Require Export prelude.base.
+Require Export iris_logrel.prelude.base.
 Require Import iris.program_logic.language.
 Require Export Autosubst.Autosubst.
 

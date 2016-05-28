@@ -1,7 +1,8 @@
 Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
-Require Import F_mu_ref.lang F_mu_ref.typing F_mu_ref.rules F_mu_ref.logrel.
+Require Import iris_logrel.F_mu_ref.lang iris_logrel.F_mu_ref.typing
+        iris_logrel.F_mu_ref.rules iris_logrel.F_mu_ref.logrel.
 From iris.program_logic Require Export lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Export invariants ghost_ownership.

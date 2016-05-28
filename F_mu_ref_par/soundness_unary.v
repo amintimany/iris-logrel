@@ -2,8 +2,9 @@ Require Import iris.proofmode.weakestpre iris.proofmode.tactics.
 Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.auth.
-Require Import F_mu_ref_par.lang F_mu_ref_par.typing F_mu_ref_par.rules
-        F_mu_ref_par.logrel_unary F_mu_ref_par.fundamental_unary.
+Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
+        iris_logrel.F_mu_ref_par.rules iris_logrel.F_mu_ref_par.logrel_unary
+        iris_logrel.F_mu_ref_par.fundamental_unary.
 Require Import iris.program_logic.adequacy.
 Import uPred.
 

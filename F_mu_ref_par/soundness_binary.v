@@ -5,9 +5,8 @@ Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.auth iris.algebra.dec_agree iris.algebra.frac
         iris.algebra.upred_big_op.
-Require Import F_mu_ref_par.lang F_mu_ref_par.typing F_mu_ref_par.rules_binary
-        F_mu_ref_par.rules F_mu_ref_par.logrel_binary
-        F_mu_ref_par.fundamental_binary.
+From iris_logrel.F_mu_ref_par Require Import lang typing rules_binary
+        rules logrel_binary fundamental_binary.
 Require Import iris.program_logic.adequacy.
 Import uPred.
 
