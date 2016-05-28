@@ -114,7 +114,7 @@ Section CG_Stack.
 
   Global Opaque CG_locked_push.
 
-    (* Coarse-grained pop *)
+  (* Coarse-grained pop *)
   Definition CG_pop (st : expr) : expr :=
     Lam (App (Lam (App (Lam
                           (
@@ -303,5 +303,280 @@ Section CG_Stack.
   Qed.
 
   Global Opaque CG_locked_pop.
+
+  Definition CG_snap (st l : expr) :=
+    with_lock (Lam (Load st.[ren (+2)])) l.
+  Definition CG_snapV (st l : expr) : val :=
+    with_lockV (Lam (Load st.[ren (+2)])) l.
+
+  Lemma CG_snap_to_val st l :
+    to_val (CG_snap st l) = Some (CG_snapV st l).
+  Proof. trivial. Qed.
+
+  Lemma CG_snap_of_val st l :
+    of_val (CG_snapV st l) = CG_snap st l.
+  Proof. trivial. Qed.
+
+  Global Opaque CG_snapV.
+
+  Lemma CG_snap_type st l Γ τ :
+    typed Γ st (Tref (CG_StackType τ)) →
+    typed Γ l LockType →
+    typed Γ (CG_snap st l) (TArrow TUnit (CG_StackType τ)).
+  Proof.
+    intros H1 H2. repeat econstructor.
+    eapply with_lock_type; trivial. do 2 constructor.
+    eapply (context_weakening [_; _]); eauto.
+  Qed.
+
+  Lemma CG_snap_closed (st l : expr) :
+    (∀ f, st.[f] = st) → (∀ f, l.[f] = l) →
+    ∀ f, (CG_snap st l).[f] = CG_snap st l.
+  Proof.
+    intros H1 H2 f. asimpl. unfold CG_snap.
+    rewrite with_lock_closed; trivial.
+    intros f'. by asimpl; rewrite ?H1.
+  Qed.
+
+  Lemma CG_snap_subst (st l : expr) f :
+  (CG_snap st l).[f] = CG_snap st.[f] l.[f].
+  Proof. unfold CG_snap; rewrite ?with_lock_subst. by asimpl. Qed.
+
+  Lemma steps_CG_snap N E ρ j K st v l :
+    nclose N ⊆ E →
+    ((Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
+               ★ j ⤇ (fill K (App (CG_snap (Loc st) (Loc l)) Unit)))%I)
+      ⊢ |={E}=>(j ⤇ (fill K (# v)) ★ st ↦ₛ v ★ l ↦ₛ (♭v false))%I.
+  Proof.
+    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_snap.
+    iPvs (steps_with_lock _ _ _ j K _ _ _ _ v UnitV _ _
+          with "[Hj Hx Hl]") as "Hj"; eauto; [|by iFrame "Hspec Hx Hl Hj"].
+    intros K'.
+    iIntros "[#Hspec [Hx Hj]]".
+    iPvs (step_lam _ _ _ j K' _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial. asimpl.
+    iPvs (step_load _ _ _ j K' _ _ _ _
+          with "[Hj Hx]") as "[Hj Hx]"; eauto.
+    - by iFrame "Hspec Hj Hx".
+    - iPvsIntro. by iFrame "Hj Hx".
+      Unshelve.
+      all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
+      all: trivial.
+  Qed.
+
+  Global Opaque CG_snap.
+
+  (* Coarse-grained iter *)
+  Definition CG_iter (f : expr) : expr :=
+    (Lam (App (Lam
+                 (
+                   Case (Var 1)
+                        Unit
+                        (
+                          App (Lam (App (Var 5) (Snd (Var 2))))
+                              (App f.[ren (+5)] (Fst (Var 0)))
+                        )
+                 )
+              )
+              (Unfold (Var 1))
+         )
+    ).
+
+  Lemma CG_iter_folding (f : expr) :
+    CG_iter f =
+    (Lam (App (Lam
+                 (
+                   Case (Var 1)
+                        Unit
+                        (
+                          App (Lam (App (Var 5) (Snd (Var 2))))
+                              (App f.[ren (+5)] (Fst (Var 0)))
+                        )
+                 )
+              )
+              (Unfold (Var 1))
+         )
+    ).
+  Proof. trivial. Qed.
+
+  Lemma CG_iter_type f Γ τ :
+    typed Γ f (TArrow τ TUnit) →
+    typed Γ (CG_iter f) (TArrow (CG_StackType τ) TUnit).
+  Proof.
+    intros H1.
+    do 2 econstructor; [|by do 2 econstructor].
+    repeat econstructor.
+    asimpl. eapply (context_weakening [_; _; _; _; _]); eauto.
+  Qed.
+
+  Lemma CG_iter_closed (f : expr) :
+    (∀ g, f.[g] = f) → ∀ g, (CG_iter f).[g] = CG_iter f.
+  Proof. intros H g. unfold CG_iter. asimpl. rewrite ?H; trivial. Qed.
+
+  Lemma CG_iter_subst (f : expr) g :
+  (CG_iter f).[g] = CG_iter f.[g].
+  Proof. unfold CG_iter; asimpl; trivial. Qed.
+
+  Lemma steps_CG_iter N E ρ j K f v w :
+    nclose N ⊆ E →
+    (((Spec_ctx N ρ)
+        ★ j ⤇
+        (fill K (App (CG_iter (# f)) (Fold (InjR (Pair (# w) (# v)))))))%I)
+      ⊢ |={E}=>
+  (j ⤇ (fill
+          K
+          (App
+             (Lam
+                (App ((CG_iter (# f)).[ren (+2)])
+                     (Snd (Pair ((# w).[ren (+2)]) (# v).[ren (+2)]))))
+             (App (# f) (# w)))))%I.
+  Proof.
+    intros HNE. iIntros "[#Hspec Hj]". unfold CG_iter.
+    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial.
+    rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
+    iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
+                    _ _ _ with "[Hj]") as "Hj"; eauto.
+    rewrite ?fill_app. simpl.
+    iFrame "Hspec Hj"; trivial.
+    rewrite ?fill_app. asimpl.
+    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial.
+    simpl. asimpl.
+    iPvs (step_case_inr _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial. asimpl.
+    iPvs (step_fst _ _ _ j (K ++ [AppRCtx (LamV _); AppRCtx f]) _ _ _ _
+                   _ _ with "[Hj]") as "Hj"; eauto.
+    rewrite ?fill_app. simpl.
+    iFrame "Hspec Hj"; trivial.
+    rewrite ?fill_app. simpl.
+    by iPvsIntro.
+    Unshelve.
+    all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
+  Qed.
+
+  Transparent CG_iter.
+
+  Lemma steps_CG_iter_end N E ρ j K f :
+    nclose N ⊆ E →
+    (((Spec_ctx N ρ)
+        ★ j ⤇ (fill K (App (CG_iter (# f)) (Fold (InjL Unit)))))%I)
+      ⊢ |={E}=>
+  (j ⤇ (fill K Unit))%I.
+  Proof.
+    intros HNE. iIntros "[#Hspec Hj]". unfold CG_iter.
+    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial.
+    rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
+    iPvs (step_Fold _ _ _ j (K ++ [AppRCtx (LamV _)])
+                    _ _ _ with "[Hj]") as "Hj"; eauto.
+    rewrite ?fill_app. simpl.
+    iFrame "Hspec Hj"; trivial.
+    rewrite ?fill_app. asimpl.
+    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial.
+    simpl. asimpl.
+    iPvs (step_case_inl _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial. asimpl.
+    by iPvsIntro.
+    Unshelve.
+    all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
+  Qed.
+
+  Global Opaque CG_iter.
+
+  Definition CG_snap_iter (st l : expr) : expr :=
+    Lam (App (CG_iter (Var 1)) (App (CG_snap st.[ren (+2)] l.[ren (+2)]) Unit)).
+
+  Lemma CG_snap_iter_type st l Γ τ :
+    typed Γ st (Tref (CG_StackType τ)) →
+    typed Γ l LockType →
+    typed Γ (CG_snap_iter st l)
+          (TArrow (TArrow τ TUnit) TUnit).
+  Proof.
+    intros H1 H2; repeat econstructor.
+    - eapply CG_iter_type; by constructor.
+    - eapply CG_snap_type; by eapply (context_weakening [_;_]).
+  Qed.
+
+  Lemma CG_snap_iter_closed (st l : expr) :
+    (∀ f, st.[f] = st) →
+    (∀ f, l.[f] = l) →
+    ∀ f, (CG_snap_iter st l).[f] = CG_snap_iter st l.
+  Proof.
+    intros H1 H2 f. unfold CG_snap_iter. asimpl. rewrite H1 H2.
+    rewrite CG_snap_closed; auto.
+  Qed.
+
+  Lemma CG_snap_iter_subst (st l : expr) g :
+  (CG_snap_iter st l).[g] = CG_snap_iter st.[g] l.[g].
+  Proof.
+    unfold CG_snap_iter; asimpl.
+    rewrite CG_snap_subst CG_iter_subst. by asimpl.
+  Qed.
+
+  Definition CG_stack_body (st l : expr) : expr :=
+    Pair (Pair (CG_locked_push st l) (CG_locked_pop st l))
+         (CG_snap_iter st l).
+
+  Lemma CG_stack_body_type st l Γ τ :
+    typed Γ st (Tref (CG_StackType τ)) →
+    typed Γ l LockType →
+    typed Γ (CG_stack_body st l)
+          (TProd
+             (TProd (TArrow τ TUnit) (TArrow TUnit (TSum TUnit τ)))
+             (TArrow (TArrow τ TUnit) TUnit)
+          ).
+  Proof.
+    intros H1 H2.
+    repeat (econstructor; eauto using CG_locked_push_type,
+                          CG_locked_pop_type, CG_snap_iter_type).
+  Qed.
+
+  Opaque CG_snap_iter.
+
+  Lemma CG_stack_body_closed (st l : expr) :
+    (∀ f, st.[f] = st) →
+    (∀ f, l.[f] = l) →
+    ∀ f, (CG_stack_body st l).[f] = CG_stack_body st l.
+  Proof.
+    intros H1 H2 f. unfold CG_stack_body. asimpl.
+    rewrite CG_locked_push_closed; trivial.
+    rewrite CG_locked_pop_closed; trivial.
+    by rewrite CG_snap_iter_closed.
+  Qed.
+
+  Definition CG_stack : expr :=
+    TLam (App (Lam (App (Lam (CG_stack_body (Var 1) (Var 3)))
+                  (Alloc (Fold (InjL Unit))))) newlock).
+
+  Lemma CG_stack_type Γ :
+    typed Γ (CG_stack)
+          (TForall
+             (TProd
+                (TProd
+                   (TArrow (TVar 0) TUnit)
+                   (TArrow TUnit (TSum TUnit (TVar 0)))
+                )
+                (TArrow (TArrow (TVar 0) TUnit) TUnit)
+          )).
+  Proof.
+    repeat econstructor.
+    - eapply CG_locked_push_type; constructor; simpl; eauto.
+    - eapply CG_locked_pop_type; constructor; simpl; eauto.
+    - eapply CG_snap_iter_type; constructor; by simpl.
+    - asimpl. repeat constructor.
+    - eapply newlock_type.
+  Qed.
+
+  Lemma CG_stack_closed f :
+    CG_stack.[f] = CG_stack.
+  Proof.
+    unfold CG_stack.
+    asimpl; rewrite ?CG_locked_push_subst ?CG_locked_pop_subst.
+    asimpl. rewrite ?CG_snap_iter_subst. by asimpl.
+  Qed.
+
+  Transparent CG_snap_iter.
 
 End CG_Stack.
