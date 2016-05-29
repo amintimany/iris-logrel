@@ -38,6 +38,19 @@ Section Rules.
     rewrite -stackR_self_op; trivial.
   Qed.
 
+  Lemma stack_mapstos_agree l v w:
+    (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w)%I ⊢ (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ∧ v = w)%I.
+  Proof.
+    iIntros "H".
+    rewrite -own_op.
+    iDestruct (own_valid _ with "H !") as "Hvalid".
+    iDestruct "Hvalid" as %Hvalid.
+    rewrite own_op. unfold stack_mapsto, auth_own.
+    iDestruct "H" as "[H1 H2]". iFrame "H1 H2".
+    specialize (Hvalid l). rewrite lookup_op ?lookup_singleton in Hvalid.
+    cbv -[decide] in Hvalid; destruct decide; trivial.
+  Qed.
+
   Program Definition StackLink_pre (Q : bivalC -n> iPropG lang Σ)
     {HQ : BiVal_to_IProp_Persistent Q} :
     (bivalC -n> iPropG lang Σ) -n> bivalC  -n> iPropG lang Σ :=
