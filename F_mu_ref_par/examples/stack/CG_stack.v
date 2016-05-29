@@ -94,7 +94,7 @@ Section CG_Stack.
   (CG_locked_push st l).[f] = CG_locked_push st.[f] l.[f].
   Proof. by rewrite with_lock_subst CG_push_subst. Qed.
 
-  Lemma steps_CG_locked_increment N E ρ j K st w v l :
+  Lemma steps_CG_locked_push N E ρ j K st w v l :
     nclose N ⊆ E →
     ((Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
                ★ j ⤇ (fill K (App (CG_locked_push (Loc st) (Loc l)) (# w))))%I)
@@ -388,6 +388,23 @@ Section CG_Stack.
       by (by asimpl).
     repeat econstructor.
   Qed.
+
+  Definition CG_iterV (f : expr) : val :=
+    LamV (Case (Unfold (Var 1))
+              Unit
+              (
+                App (Lam (App (Var 3) (Snd (Var 2))))
+                    (App f.[ren (+3)] (Fst (Var 0)))
+              )
+        ).
+
+  Lemma CG_iter_to_val f : to_val (CG_iter f) = Some (CG_iterV f).
+  Proof. trivial. Qed.
+
+  Lemma CG_iter_of_val f : of_val (CG_iterV f) = CG_iter f.
+  Proof. trivial. Qed.
+
+  Global Opaque CG_iterV.
 
   Lemma CG_iter_closed (f : expr) :
     (∀ g, f.[g] = f) → ∀ g, (CG_iter f).[g] = CG_iter f.

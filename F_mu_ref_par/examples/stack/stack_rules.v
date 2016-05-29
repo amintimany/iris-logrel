@@ -38,6 +38,19 @@ Section Rules.
     rewrite -stackR_self_op; trivial.
   Qed.
 
+  Lemma stack_mapstos_agree l v w:
+    (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w)%I ⊢ (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ∧ v = w)%I.
+  Proof.
+    iIntros "H".
+    rewrite -own_op.
+    iDestruct (own_valid _ with "H !") as "Hvalid".
+    iDestruct "Hvalid" as %Hvalid.
+    rewrite own_op. unfold stack_mapsto, auth_own.
+    iDestruct "H" as "[H1 H2]". iFrame "H1 H2".
+    specialize (Hvalid l). rewrite lookup_op ?lookup_singleton in Hvalid.
+    cbv -[decide] in Hvalid; destruct decide; trivial.
+  Qed.
+
   Program Definition StackLink_pre (Q : bivalC -n> iPropG lang Σ)
     {HQ : BiVal_to_IProp_Persistent Q} :
     (bivalC -n> iPropG lang Σ) -n> bivalC  -n> iPropG lang Σ :=
@@ -47,10 +60,11 @@ Section Rules.
         {|
           cofe_mor_car :=
             λ v, (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
-                                    ((w = InjLV UnitV ∧ v.2 = InjLV UnitV) ∨
+                                    ((w = InjLV UnitV ∧
+                                      v.2 = FoldV (InjLV UnitV)) ∨
                                      (∃ y1 z1 y2 z2,
-                                         (w = InjRV (PairV y1 z1))
-                                           ★ (v.2 = InjRV (PairV y2 z2))
+                                         (w = InjRV (PairV y1 (FoldV z1)))
+                                           ★ (v.2 = FoldV (InjRV (PairV y2 z2)))
                                            ★ Q (y1, y2) ★ ▷ P(z1, z2)
                                      )
                                     )
@@ -84,16 +98,17 @@ Section Rules.
 
   Lemma StackLink_unfold Q {HQ} v :
     @StackLink Q HQ v ≡
-              (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
-                                    ((w = InjLV UnitV ∧ v.2 = InjLV UnitV) ∨
-                                     (∃ y1 z1 y2 z2,
-                                         (w = InjRV (PairV y1 z1))
-                                           ★ (v.2 = InjRV (PairV y2 z2))
-                                           ★ Q (y1, y2)
-                                           ★ ▷ @StackLink Q HQ (z1, z2)
-                                     )
-                                    )
-              )%I.
+               (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
+                                  ((w = InjLV UnitV ∧
+                                    v.2 = FoldV (InjLV UnitV)) ∨
+                                   (∃ y1 z1 y2 z2,
+                                       (w = InjRV (PairV y1 (FoldV z1)))
+                                         ★ (v.2 = FoldV (InjRV (PairV y2 z2)))
+                                         ★ Q (y1, y2)
+                                         ★ ▷ @StackLink Q HQ (z1, z2)
+                                   )
+                                  )
+               )%I.
   Proof.
     unfold StackLink at 1.
     rewrite fixpoint_unfold; trivial.
@@ -319,5 +334,21 @@ Section Rules.
     rewrite insert_delete; auto using lookup_delete.
     unfold stack_owns. by iFrame "Hown Hl' Hall".
   Qed.
+
+  Lemma stack_owns_open_close h l v :
+    ((stack_owns h ★ l ↦ˢᵗᵏ v)%I)
+      ⊢ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))%I).
+  Proof.
+    iIntros "[Howns Hls]".
+    iDestruct (stack_owns_open with "[Howns Hls]") as "[Hh [Hm [Hl Hls]]]".
+    { by iFrame "Howns Hls". }
+    iFrame "Hl". iIntros "Hl".
+    iApply stack_owns_close. by iFrame "Hh Hm Hl Hls".
+  Qed.
+
+  Lemma stack_owns_later_open_close h l v :
+    ((▷ stack_owns h ★ l ↦ˢᵗᵏ v)%I)
+      ⊢ (▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))))%I.
+  Proof. iIntros "H". iNext. by iApply stack_owns_open_close. Qed.
 
 End Rules.
