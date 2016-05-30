@@ -1,6 +1,6 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
 From iris_logrel.F_mu_ref_par Require Import lang examples.lock typing
-     logrel_binary fundamental_binary rules_binary rules.
+     rules_binary rules.
 Import uPred.
 
 Section CG_Stack.

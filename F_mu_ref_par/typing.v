@@ -137,10 +137,61 @@ Proof. intros H1 H2. erewrite <- H1. by eapply context_weakening. Qed.
 
 Notation "# v" := (of_val v) (at level 20).
 
+Lemma n_closed_invariant n (e : expr) s1 s2 :
+  (∀ f, e.[iter n up f] = e) → (∀ x, x < n → s1 x = s2 x) → e.[s1] = e.[s2].
+Proof.
+  intros Hnc. specialize (Hnc (ren (+1))).
+  revert n Hnc s1 s2.
+  (induction e => m Hmc s1 s2 H1); asimpl in *; try f_equal;
+    try (match goal with H : _ |- _ => eapply H end; eauto;
+         try inversion Hmc; try match goal with H : _ |- _ => (by rewrite H) end;
+         fail).
+  - apply H1. rewrite iter_up in Hmc. destruct lt_dec; try omega.
+    asimpl in *. cbv in x. replace (m + (x - m)) with x in Hmc by omega.
+    inversion Hmc; omega.
+  - unfold upn in *.
+    change (e.[up (up (iter m up (ren (+1))))]) with
+    (e.[iter (S (S m)) up (ren (+1))]) in *.
+    apply (IHe (S (S m))).
+    + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
+    + intros [|[|x]] H2; [by cbv|by cbv |].
+      asimpl; rewrite H1; auto with omega.
+  - change (e1.[up (iter m up (ren (+1)))]) with
+    (e1.[iter (S m) up (ren (+1))]) in *.
+    apply (IHe0 (S m)).
+    + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
+    + intros [|x] H2; [by cbv |].
+      asimpl; rewrite H1; auto with omega.
+  - change (e2.[up (iter m up (ren (+1)))]) with
+    (e2.[iter (S m) up (ren (+1))]) in *.
+    apply (IHe1 (S m)).
+    + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
+    + intros [|x] H2; [by cbv |].
+      asimpl; rewrite H1; auto with omega.
+Qed.
+
+Lemma typed_n_closed Γ τ e :
+  typed Γ e τ -> (∀ f, e.[iter (List.length Γ) up f] = e).
+Proof.
+  intros H. induction H => f; asimpl; unfold upn; simpl in *; auto with f_equal.
+  - apply lookup_lt_Some in H. rewrite iter_up. destruct lt_dec; auto with omega.
+  - by f_equal; rewrite map_length in IHtyped.
+Qed.
+
+Lemma n_closed_subst_head_simpl n e w ws :
+  (∀ f, e.[iter n up f] = e) ->
+  S (List.length ws) = n →
+  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
+Proof.
+  intros H1 H2.
+  rewrite /env_subst. eapply n_closed_invariant; eauto=> /= -[|x] ? //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
+    by rewrite Hv.
+Qed.
+
 Lemma typed_subst_head_simpl Δ τ e w ws :
   typed Δ e τ -> List.length Δ = S (List.length ws) →
-  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
-.
+  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.
   rewrite /env_subst. eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
@@ -148,10 +199,19 @@ Proof.
     by rewrite Hv.
 Qed.
 
+Lemma n_closed_subst_head_simpl_2 n e w w' ws :
+  (∀ f, e.[iter n up f] = e) -> (S (S (List.length ws))) = n →
+  e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
+Proof.
+  intros H1 H2.
+  rewrite /env_subst. eapply n_closed_invariant; eauto => /= -[|[|x]] H3 //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
+    by rewrite Hv.
+Qed.
+
 Lemma typed_subst_head_simpl_2 Δ τ e w w' ws :
   typed Δ e τ -> List.length Δ = 2 + (List.length ws) →
-  e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)]
-.
+  e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
   intros H1 H2.
   rewrite /env_subst. eapply typed_subst_invariant; eauto => /= -[|[|x]] H3 //=.

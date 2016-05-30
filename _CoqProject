@@ -27,6 +27,7 @@ F_mu_ref_par/rules_binary.v
 F_mu_ref_par/logrel_binary.v
 F_mu_ref_par/fundamental_binary.v
 F_mu_ref_par/soundness_unary.v
+F_mu_ref_par/context_refinement.v
 F_mu_ref_par/soundness_binary.v
 F_mu_ref_par/examples/lock.v
 F_mu_ref_par/examples/counter.v

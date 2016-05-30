@@ -142,11 +142,12 @@ Section typed_interp.
     Unshelve. all: trivial.
   Qed.
 
-  Lemma typed_binary_interp_Case Δ Γ e0 e1 e2 e0' e1' e2' τ1 τ2 τ3 {HΔ : ✓✓ Δ}
-        (Htyped2 : typed (τ1 :: Γ) e1 τ3)
-        (Htyped3 : typed (τ2 :: Γ) e2 τ3)
-        (Htyped2' : typed (τ1 :: Γ) e1' τ3)
-        (Htyped3' : typed (τ2 :: Γ) e2' τ3)
+  Lemma typed_binary_interp_Case Δ Γ (e0 e1 e2 e0' e1' e2' : expr) τ1 τ2 τ3
+        {HΔ : ✓✓ Δ}
+        (Hclosed2 : ∀ f, e1.[iter (S (List.length Γ)) up f] = e1)
+        (Hclosed3 : ∀ f, e2.[iter (S (List.length Γ)) up f] = e2)
+        (Hclosed2' : ∀ f, e1'.[iter (S (List.length Γ)) up f] = e1')
+        (Hclosed3' : ∀ f, e2'.[iter (S (List.length Γ)) up f] = e2')
         (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TSum τ1 τ2)
         (IHHtyped2 : Δ ∥ τ1 :: Γ ⊩ e1 ≤log≤ e1' ∷ τ3)
         (IHHtyped3 : Δ ∥ τ2 :: Γ ⊩ e2 ≤log≤ e2' ∷ τ3)
@@ -165,7 +166,7 @@ Section typed_interp.
       iApply wp_case_inl; auto 1 using to_of_val.
       asimpl.
       specialize (IHHtyped2 (w::vs)); simpl in IHHtyped2.
-      erewrite <- ?typed_subst_head_simpl in IHHtyped2; eauto;
+      erewrite <- ?n_closed_subst_head_simpl in IHHtyped2; eauto;
         simpl; try rewrite map_length; eauto with f_equal. iNext.
       iApply IHHtyped2; auto 2.
       iFrame "Hheap Hspec Hw HΓ"; trivial.
@@ -177,7 +178,7 @@ Section typed_interp.
       iApply wp_case_inr; auto 1 using to_of_val.
       asimpl.
       specialize (IHHtyped3 (w::vs)); simpl in IHHtyped3.
-      erewrite <- ?typed_subst_head_simpl in IHHtyped3; eauto;
+      erewrite <- ?n_closed_subst_head_simpl in IHHtyped3; eauto;
         simpl; try rewrite map_length; eauto with f_equal. iNext.
       iApply IHHtyped3; auto 2.
       iFrame "Hheap Hspec Hw HΓ"; trivial.
@@ -228,9 +229,9 @@ Section typed_interp.
     Unshelve. all: eauto using to_of_val.
   Qed.
 
-  Lemma typed_binary_interp_Lam Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
-        (Htyped : typed (TArrow τ1 τ2 :: τ1 :: Γ) e τ2)
-        (Htyped' : typed (TArrow τ1 τ2 :: τ1 :: Γ) e' τ2)
+  Lemma typed_binary_interp_Lam Δ Γ (e e' : expr) τ1 τ2 {HΔ : ✓✓ Δ}
+        (Hclosed : ∀ f, e.[iter (S (S (List.length Γ))) up f] = e)
+        (Hclosed' : ∀ f, e'.[iter (S (S (List.length Γ))) up f] = e')
         (IHHtyped : Δ ∥ TArrow τ1 τ2 :: τ1 :: Γ ⊩ e ≤log≤ e' ∷ τ2)
     :
       Δ ∥ Γ ⊩ Lam e ≤log≤ Lam e' ∷  TArrow τ1 τ2.
@@ -246,7 +247,7 @@ Section typed_interp.
     specialize (IHHtyped ((LamV e.[upn 2 (env_subst (map fst vs))],
                            LamV e'.[upn 2 (env_subst (map snd vs))])
                             :: v :: vs)). simpl in IHHtyped.
-    erewrite <- ?typed_subst_head_simpl_2 in IHHtyped; eauto; simpl;
+    erewrite <- ?n_closed_subst_head_simpl_2 in IHHtyped; eauto; simpl;
       try rewrite map_length; auto.
     iApply IHHtyped; auto.
     repeat iSplitR; trivial. repeat iSplit; trivial.
@@ -561,9 +562,11 @@ Section typed_interp.
     - eapply typed_binary_interp_Snd; trivial.
     - eapply typed_binary_interp_InjL; trivial.
     - eapply typed_binary_interp_InjR; trivial.
-    - eapply typed_binary_interp_Case; eauto.
+    - eapply typed_binary_interp_Case; eauto;
+        match goal with H : _ |- _ => eapply (typed_n_closed _ _ _ H) end.
     - eapply typed_binary_interp_If; eauto.
-    - eapply typed_binary_interp_Lam; eauto.
+    - eapply typed_binary_interp_Lam; eauto;
+        match goal with H : _ |- _ => eapply (typed_n_closed _ _ _ H) end.
     - eapply typed_binary_interp_App; trivial.
     - eapply typed_binary_interp_TLam; trivial.
     - eapply typed_binary_interp_TApp; trivial.
