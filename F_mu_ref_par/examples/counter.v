@@ -1,6 +1,7 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
 From iris_logrel.F_mu_ref_par Require Import lang examples.lock typing
-     logrel_binary fundamental_binary rules_binary rules.
+     logrel_binary fundamental_binary rules_binary rules
+     soundness_binary context_refinement.
 Import uPred.
 
 Section CG_Counter.
@@ -334,7 +335,7 @@ Section CG_Counter.
         iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
       iInv> (N .@4) as {n} "[Hl [Hcnt Hcnt']]".
       iApply wp_load; [|iFrame "Hheap"].
-      { prove_disj N 2 4. }
+      { abstract prove_disj N 2 4. }
       iNext; iFrame "Hcnt"; iIntros "Hcnt".
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iApply wp_lam; trivial. asimpl. iNext.
@@ -354,7 +355,7 @@ Section CG_Counter.
                 _ _ _ _ _ _ _ _ _ with "[Hj Hl Hcnt']") as "[Hj [Hcnt' Hl]]".
         { iFrame "Hspec Hcnt' Hl Hj"; trivial. }
         iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"].
-        { prove_disj N 2 4. }
+        { abstract prove_disj N 2 4. }
         iNext; iFrame "Hcnt"; iIntros "Hcnt".
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_true. iNext. iApply wp_value; trivial.
@@ -363,7 +364,7 @@ Section CG_Counter.
         (* In this case, we perform a recursive call *)
         iApply (wp_cas_fail _ _ _ _ (♯v n')); simpl; trivial;
         [inversion 1; subst; auto | | iFrame "Hheap"].
-        { prove_disj N 2 4. }
+        { abstract prove_disj N 2 4. }
         iNext; iFrame "Hcnt"; iIntros "Hcnt".
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_false. iNext. iApply "Hlat". iNext; trivial.
@@ -381,12 +382,21 @@ Section CG_Counter.
               _ _ _ _ _ _ _ _ with "[Hj Hcnt']") as "[Hj Hcnt']".
       { by iFrame "Hspec Hcnt' Hj". }
       iApply wp_load; [|iFrame "Hheap"].
-      { prove_disj N 2 4. }
+      { abstract prove_disj N 2 4. }
       iNext. iFrame "Hcnt"; iIntros "Hcnt".
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iExists (♯v _); iFrame "Hj". iExists _; by iSplit.
       Unshelve.
-      all: prove_disj N 3 4.
+      all: abstract prove_disj N 3 4.
   Qed.
 
 End CG_Counter.
+
+Theorem counter_context_refinement :
+  context_refines
+    [] FG_counter CG_counter
+    (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)).
+Proof.
+  eapply Binary_Soundness;
+    auto using FG_counter_closed, CG_counter_closed, FG_CG_counter_refinement.
+Qed.
