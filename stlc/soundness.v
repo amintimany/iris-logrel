@@ -9,14 +9,14 @@ Require Import iris.program_logic.adequacy.
 Import uPred.
 
 Section Soundness.
-  Context {Σ : iFunctor}.
+  Definition Σ := #[].
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
     replace (env_subst []) with (ids) by reflexivity.
     asimpl; trivial.
   Qed.
 
-  Lemma wp_soundness e τ : typed [] e τ → True ⊢ WP e {{@interp Σ τ}}.
+  Lemma wp_soundness e τ : typed [] e τ → True ⊢ WP e {{@interp (globalF Σ) τ}}.
   Proof.
     iIntros {H} "".
     rewrite -(empty_env_subst e).
@@ -30,7 +30,8 @@ Section Soundness.
   Proof.
     intros H1 e' thp Hstp Hnr.
     apply wp_soundness in H1.
-    edestruct(@wp_adequacy_reducible lang Σ ⊤ (interp τ) e e' (e' :: thp) tt ∅)
+    edestruct(@wp_adequacy_reducible lang (globalF Σ) ⊤
+                                     (interp τ) e e' (e' :: thp) tt ∅)
       as [Ha|Ha]; eauto using cmra_unit_valid; try tauto.
     - iIntros "H". iApply H1.
     - constructor.
