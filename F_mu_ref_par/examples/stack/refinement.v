@@ -2,13 +2,13 @@ From iris.proofmode Require Import invariants ghost_ownership tactics.
 From iris.program_logic Require Import auth namespaces.
 From iris_logrel.F_mu_ref_par Require Import lang examples.lock
      examples.stack.CG_stack examples.stack.FG_stack examples.stack.stack_rules
-     typing logrel_binary fundamental_binary rules_binary rules.
+     typing logrel_binary fundamental_binary rules_binary rules
+context_refinement soundness_binary.
 Import uPred.
 
 Section Stack_refinement.
   Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}
           {iSTK : authG lang Σ stackR}.
-
   Ltac prove_disj N n n' :=
     let Hneq := fresh "Hneq" in
     let Hdsj := fresh "Hdsj" in
@@ -519,3 +519,24 @@ Section Stack_refinement.
   Qed.
 
 End Stack_refinement.
+
+Definition Σ := #[authGF heapR; authGF cfgR; authGF stackR].
+
+Theorem stack_context_refinement :
+  context_refines
+    [] FG_stack CG_stack
+    (TForall
+       (TProd
+          (TProd
+             (TArrow (TVar 0) TUnit)
+             (TArrow TUnit (TSum TUnit (TVar 0)))
+          )
+          (TArrow (TArrow (TVar 0) TUnit) TUnit)
+       )
+    ).
+Proof.
+  eapply (@Binary_Soundness Σ);
+    eauto using FG_stack_closed, CG_stack_closed.
+  all: try typeclasses eauto.
+  intros. apply FG_CG_counter_refinement.
+Qed.

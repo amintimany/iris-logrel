@@ -10,9 +10,11 @@ Require Import iris.program_logic.adequacy.
 Import uPred.
 
 Section Soundness.
-  Definition binlogΣ := #[auth.authGF heapR; auth.authGF cfgR].
+  Context {Σ : gFunctors}
+          {Hhp : auth.authG lang Σ heapR}
+          {Hcfg : auth.authG lang Σ cfgR}.
 
-  Definition free_type_context : varC -n> bivalC -n> iPropG lang binlogΣ :=
+  Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ :=
     {| cofe_mor_car := λ x, {| cofe_mor_car := λ y, (True)%I |} |}.
 
   Local Notation Δφ := free_type_context.
@@ -23,8 +25,8 @@ Section Soundness.
   Proof. intros x v; apply const_persistent. Qed.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ Σ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
-     (@ownership.ownP lang (globalF binlogΣ) ∅)
+    (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
+     (@ownership.ownP lang (globalF Σ) ∅)
       ⊢ WP e
       {{_, ■ (∃ thp' h v, rtc step ([e'], ∅) ((# v) :: thp', h))}}.
   Proof.
@@ -43,13 +45,13 @@ Section Soundness.
     }
     iDestruct "Hcfg" as {γ} "Hcfg". rewrite own_op.
     iDestruct "Hcfg" as "[Hcfg1 Hcfg2]".
-    iAssert (@auth.auth_inv _ binlogΣ _ _ _ γ (Spec_inv (to_cfg ([e'], ∅))))
+    iAssert (@auth.auth_inv _ Σ _ _ _ γ (Spec_inv (to_cfg ([e'], ∅))))
       as "Hinv" with "[Hcfg1]".
     { iExists _; iFrame "Hcfg1". apply const_intro; constructor. }
     iPvs (inv_alloc (nroot .@ "Fμ,ref,par" .@ 3) with "[Hinv]") as "#Hcfg";
       trivial.
     { iNext. iExact "Hinv". }
-    iPoseProof (H1 binlogΣ H (@CFGSG _ _ γ) _ Δφ _ [] _ _ 0 []
+    iPoseProof (H1 H (@CFGSG _ _ γ) _ Δφ _ [] _ _ 0 []
                 with "[Hcfg2]") as "HBR".
     { unfold Spec_ctx, auth.auth_ctx, tpool_mapsto, auth.auth_own.
       simpl. rewrite empty_env_subst. by iFrame "Hheap Hcfg Hcfg2". }
@@ -61,7 +63,7 @@ Section Soundness.
     iDestruct "Hp" as %Hp.
     unfold tpool_mapsto, auth.auth_own; simpl.
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (@own_valid _ binlogΣ (authR cfgR) _ γ _ with "Hown !")
+    iDestruct (@own_valid _ Σ (authR cfgR) _ γ _ with "Hown !")
       as "#Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' #Hb]";
       simpl; iClear "Hvalid".
@@ -84,7 +86,7 @@ Section Soundness.
   Qed.
 
   Lemma basic_soundness e e' τ :
-    (∀ Σ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
+    (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
     ∀ v thp hp,
       rtc step ([e], ∅) ((# v) :: thp, hp) →
       (∃ thp' hp' v', rtc step ([e'], ∅) ((# v') :: thp', hp')).
@@ -103,12 +105,12 @@ Section Soundness.
   Lemma Binary_Soundness Γ e e' τ :
     (∀ f, e.[iter (List.length Γ) up f] = e) →
     (∀ f, e'.[iter (List.length Γ) up f] = e') →
-    (∀ Σ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ Γ e e' τ HΔ) →
+    (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ Γ e e' τ HΔ) →
     context_refines Γ e e' τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.
     eapply basic_soundness; eauto.
-    intros Σ H H' N Δ HΔ.
+    intros H H' N Δ HΔ.
     eapply (bin_log_related_under_typed_context _ _ _ _ []); eauto.
   Qed.
 

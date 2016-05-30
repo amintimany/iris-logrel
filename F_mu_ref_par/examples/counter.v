@@ -392,11 +392,14 @@ Section CG_Counter.
 
 End CG_Counter.
 
+Definition Σ := #[auth.authGF heapR; auth.authGF cfgR].
+
 Theorem counter_context_refinement :
   context_refines
     [] FG_counter CG_counter
     (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)).
 Proof.
-  eapply Binary_Soundness;
+  eapply (@Binary_Soundness Σ);
     auto using FG_counter_closed, CG_counter_closed, FG_CG_counter_refinement.
+  all: typeclasses eauto.
 Qed.
