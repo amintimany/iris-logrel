@@ -9,14 +9,15 @@ Require Import iris.program_logic.adequacy.
 Import uPred.
 
 Section Soundness.
-  Context {Σ : iFunctor}.
+  Definition Σ := #[].
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
     replace (env_subst []) with (@ids expr _) by reflexivity.
     asimpl; trivial.
   Qed.
 
-  Definition free_type_context : leibniz_var -n> leibniz_val -n> iProp lang Σ :=
+  Definition free_type_context :
+    leibniz_var -n> leibniz_val -n> iProp lang (globalF Σ) :=
     {|
       cofe_mor_car :=
         λ x,
@@ -31,7 +32,7 @@ Section Soundness.
   Proof. intros x v; apply const_persistent. Qed.
 
   Lemma wp_soundness e τ
-    : typed [] e τ → True ⊢ WP e {{@interp Σ τ free_type_context}}.
+    : typed [] e τ → True ⊢ WP e {{@interp (globalF Σ) τ free_type_context}}.
   Proof.
     iIntros {H} "".
     rewrite -(empty_env_subst e).
@@ -46,7 +47,8 @@ Section Soundness.
   Proof.
     intros H1 e' thp Hstp Hnr.
     eapply wp_soundness in H1; eauto.
-    edestruct(@wp_adequacy_reducible lang Σ ⊤ (interp τ free_type_context)
+    edestruct(@wp_adequacy_reducible lang (globalF Σ) ⊤
+                                     (interp τ free_type_context)
                                      e e' (e' :: thp) tt ∅) as [Ha|Ha];
       eauto using cmra_unit_valid; try tauto.
     - iIntros "H". iApply H1.
