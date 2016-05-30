@@ -200,3 +200,92 @@ Definition context_refines Γ e e' τ :=
     ∀ thp h v, rtc step ([fill_ctx K e], ∅) ((# v) :: thp, h) →
                ∃ thp' h' v',
                  rtc step ([fill_ctx K e'], ∅) ((# v') :: thp', h').
+
+Section bin_log_related_under_typed_context.
+  Context {Σ : gFunctors}
+          {iI : heapIG Σ} {iS : cfgSG Σ}
+          {N : namespace}.
+
+  Lemma bin_log_related_under_typed_context Γ e e' τ Γ' τ' K :
+    (∀ f, e.[iter (List.length Γ) up f] = e) →
+    (∀ f, e'.[iter (List.length Γ) up f] = e') →
+    typed_context K Γ τ Γ' τ' →
+    (∀ Δ {HΔ : context_interp_Persistent Δ},
+        @bin_log_related _ _ _ N Δ Γ e e' τ HΔ) →
+    ∀ Δ {HΔ : context_interp_Persistent Δ},
+      @bin_log_related _ _ _ N Δ Γ' (fill_ctx K e) (fill_ctx K e') τ' HΔ.
+  Proof.
+    revert Γ τ Γ' τ' e e'.
+    induction K as [|k K]=> Γ τ Γ' τ' e e' H1 H2; simpl.
+    - inversion_clear 1; trivial.
+    - inversion_clear 1 as [|? ? ? ? ? ? ? ? Hx1 Hx2]. intros H3 Δ HΔ.
+      specialize (IHK _ _ _ _ e e' H1 H2 Hx2 H3).
+      inversion Hx1; subst; simpl.
+      + eapply typed_binary_interp_Lam; eauto;
+          match goal with
+            H : _ |- _ => eapply (typed_context_n_closed _ _ _ _ _ _ _ H)
+          end.
+      + eapply typed_binary_interp_App; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_App; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_Pair; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_Pair; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_Fst; eauto.
+      + eapply typed_binary_interp_Snd; eauto.
+      + eapply typed_binary_interp_InjL; eauto.
+      + eapply typed_binary_interp_InjR; eauto.
+      + match goal with
+          H : typed_context_item _ _ _ _ _ |- _ => inversion H; subst
+        end.
+        eapply typed_binary_interp_Case;
+          eauto using typed_binary_interp;
+          match goal with
+            H : _ |- _ => eapply (typed_n_closed _ _ _ H)
+          end.
+      + match goal with
+          H : typed_context_item _ _ _ _ _ |- _ => inversion H; subst
+        end.
+        eapply typed_binary_interp_Case;
+          eauto using typed_binary_interp;
+          try match goal with
+                H : _ |- _ => eapply (typed_n_closed _ _ _ H)
+              end;
+          match goal with
+            H : _ |- _ => eapply (typed_context_n_closed _ _ _ _ _ _ _ H)
+          end.
+      + match goal with
+          H : typed_context_item _ _ _ _ _ |- _ => inversion H; subst
+        end.
+        eapply typed_binary_interp_Case;
+          eauto using typed_binary_interp;
+          try match goal with
+                H : _ |- _ => eapply (typed_n_closed _ _ _ H)
+              end;
+          match goal with
+            H : _ |- _ => eapply (typed_context_n_closed _ _ _ _ _ _ _ H)
+          end.
+      + eapply typed_binary_interp_If;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_If;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_If;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_nat_bin_op;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_nat_bin_op;
+          eauto using typed_context_typed, typed_binary_interp.
+      + eapply typed_binary_interp_Fold; eauto.
+      + eapply typed_binary_interp_Unfold; eauto.
+      + eapply typed_binary_interp_TLam; eauto.
+      + eapply typed_binary_interp_TApp; trivial.
+      + eapply typed_binary_interp_Fork; trivial.
+      + eapply typed_binary_interp_Alloc; trivial.
+      + eapply typed_binary_interp_Load; trivial.
+      + eapply typed_binary_interp_Store; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_Store; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
+      + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
+        Unshelve. all: trivial.
+  Qed.
+
+End bin_log_related_under_typed_context.

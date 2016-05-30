@@ -186,6 +186,9 @@ Section lang_rules.
     Lemma of_empty_heap : of_heap ∅ = ∅.
     Proof. unfold of_heap; apply map_eq => i; rewrite !lookup_omap; f_equal. Qed.
 
+    Lemma to_empty_heap : to_heap ∅ ≡ ∅.
+    Proof. intros i. unfold to_heap. by rewrite lookup_fmap ?lookup_empty. Qed.
+
     Context `{HIGΣ : heapIG Σ}.
 
     (** Allocation *)
