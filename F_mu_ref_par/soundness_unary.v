@@ -9,14 +9,7 @@ Require Import iris.program_logic.adequacy.
 Import uPred.
 
 Section Soundness.
-  Context {Σ : gFunctors}
-          {i : heapIG Σ}
-          {S : namespace}.
-
-  Lemma empty_env_subst e : e.[env_subst []] = e.
-    replace (env_subst []) with (@ids expr _) by reflexivity.
-    asimpl; trivial.
-  Qed.
+  Definition Σ := #[ auth.authGF heapR ].
 
   Definition free_type_context: varC -n> valC -n> iPropG lang Σ :=
     {|
@@ -34,14 +27,23 @@ Section Soundness.
 
   Lemma wp_soundness e τ
     : typed [] e τ →
-      heapI_ctx (S .@ 2) ⊢ WP e {{@interp Σ _ (S .@ 1) τ free_type_context}}.
+      (ownership.ownP ∅)
+        ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1)
+                                 τ free_type_context v}}.
   Proof.
-    iIntros {H} "Hheap".
+    iIntros {H1} "Hemp".
+    iDestruct (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
+      as "Hp".
+    iPvs "Hp" as {H} "[Hheap Hemp]".
+    iApply wp_wand_l. iSplitR.
+    { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
     rewrite -(empty_env_subst e).
-    iPoseProof (@typed_interp _ _ (S .@ 1) (S .@ 2) _ _ []) as "Hi"; eauto;
-      try typeclasses eauto.
-    - intros l. apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
+    iPoseProof (@typed_interp _ H (nroot .@ "Fμ,ref,par" .@ 1)
+                              (nroot .@ "Fμ,ref,par" .@ 2) _ _ []) as "Hi";
+      eauto; try typeclasses eauto.
+    - intros l; apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
     - iApply "Hi"; iSplit; eauto.
+      Unshelve. all: trivial.
   Qed.
 
   Theorem Soundness e τ :
@@ -51,22 +53,16 @@ Section Soundness.
   Proof.
     intros H1 e' thp h Hstp Hnr.
     eapply wp_soundness in H1; eauto.
-    edestruct(@wp_adequacy_reducible lang _ ⊤
-                                     (@interp _ _ (S .@ 1) τ free_type_context)
-                                     e e' (e' :: thp) (of_heap ∅)
-                                     (to_globalF heapI_name (● ∅)) h)
+    edestruct(@wp_adequacy_reducible lang (globalF Σ) ⊤
+                                     (λ v,
+                                      (∃ H, @interp
+                                              Σ H (nroot .@ "Fμ,ref,par" .@ 1)
+                                              τ free_type_context v)%I)
+                                     e e' (e' :: thp) ∅ ∅ h)
       as [Ha|Ha]; eauto; try tauto.
-    - apply cmra_valid_validN => n.
-      apply iprod_singleton_validN, singleton_validN, cmra_transport_validN.
-      constructor; simpl; try rewrite cmra_unit_right_id; trivial.
-      apply cmra_unit_validN.
-    - iIntros "[Hp Hg]".
-      iAssert (ghost_ownership.own heapI_name (● ∅)) as "Hg" with "[Hg]";
-      [by unfold ghost_ownership.own|].
-      iPvs (inv_alloc (S .@ 2) _ (auth.auth_inv heapI_name heapI_inv)
-            with "[Hg Hp]") as "#Hown"; auto.
-      + iNext. iExists _; iFrame "Hp Hg"; trivial.
-      + iApply H1; by unfold heapI_ctx, auth.auth_ctx.
+    - apply cmra_unit_valid.
+    - iIntros "[Hp Hg]". by iApply H1.
+    - by rewrite of_empty_heap in Hstp.
     - constructor.
   Qed.
 

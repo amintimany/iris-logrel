@@ -183,6 +183,9 @@ Section lang_rules.
     Qed.
     Hint Resolve heap_store_valid.
 
+    Lemma of_empty_heap : of_heap ∅ = ∅.
+    Proof. unfold of_heap; apply map_eq => i; rewrite !lookup_omap; f_equal. Qed.
+
     Context `{HIGΣ : heapIG Σ}.
 
     (** Allocation *)
