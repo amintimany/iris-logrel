@@ -95,7 +95,7 @@ Section logrel.
             λ τ2i,
             {|
               cofe_mor_car :=
-                λ w, (∃ w1 w2, w = PairV w1 w2 ∧ ▷ τ1i w1 ∧ ▷ τ2i w2)%I
+                λ w, (∃ w1 w2, w = PairV w1 w2 ∧ τ1i w1 ∧ τ2i w2)%I
             |}
         |}
     |}.
@@ -115,8 +115,8 @@ Section logrel.
             λ τ2i,
             {|
               cofe_mor_car :=
-                λ w, ((∃ w1, w = InjLV w1 ∧ ▷ τ1i w1) ∨
-                      (∃ w2, w = InjRV w2 ∧ ▷ τ2i w2))%I
+                λ w, ((∃ w1, w = InjLV w1 ∧ τ1i w1) ∨
+                      (∃ w2, w = InjRV w2 ∧ τ2i w2))%I
             |}
         |}
     |}.
@@ -136,7 +136,7 @@ Section logrel.
             λ τ2i,
             {|
               cofe_mor_car :=
-                λ w, (□ ∀ v, ▷ τ1i v → WP (App (# w) (# v)) @ ⊤ {{τ2i}})%I
+                λ w, (□ ∀ v, τ1i v → WP (App (# w) (# v)) @ ⊤ {{τ2i}})%I
             |}
         |}
     |}.
@@ -159,7 +159,7 @@ Section logrel.
             (∃ e, w = TLamV e ∧
                   ∀ (τ'i : {f : (leibniz_val -n> iProp lang Σ) |
                             Val_to_IProp_Persistent f}),
-                    □ (▷ WP e @ ⊤ {{λ v, (τi (`τ'i) v)}}))%I
+                    □ (WP e @ ⊤ {{λ v, (τi (`τ'i) v)}}))%I
         |}
     |}.
   Next Obligation.
@@ -170,7 +170,7 @@ Section logrel.
   Next Obligation.
     intros n f g Hfg x; cbn. apply exist_ne => e; apply and_ne; auto.
     apply forall_ne=> P.
-    apply always_ne, (contractive_ne _), wp_ne => w.
+    apply always_ne, wp_ne => w.
     rewrite Hfg; trivial.
   Qed.
 

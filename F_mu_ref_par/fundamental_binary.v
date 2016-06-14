@@ -268,7 +268,7 @@ Section typed_interp.
     smart_wp_bind (AppRCtx v) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [AppRCtx v'])); cbn.
     iApply ("Hiv" $! j K (w, w')); simpl.
-    iNext; iFrame "Hw"; trivial.
+    iFrame "Hw"; trivial.
     (* unshelving *)
     Unshelve. all: trivial.
   Qed.
@@ -285,7 +285,7 @@ Section typed_interp.
     iExists (e.[env_subst (map fst vs)], e'.[env_subst (map snd vs)]).
     iSplit; trivial.
     iIntros {τi}; destruct τi as [τi τiPr].
-    iAlways. iNext. iIntros {j' K'} "Hv". simpl.
+    iAlways. iIntros {j' K'} "Hv". simpl.
     iApply IHHtyped; [rewrite map_length; trivial|].
     iFrame "Hheap Hspec Hv".
     rewrite zip_with_context_interp_subst; trivial.

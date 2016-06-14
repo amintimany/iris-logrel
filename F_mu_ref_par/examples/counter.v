@@ -326,7 +326,7 @@ Section CG_Counter.
     - (* refinement of increment *)
       iAlways. clear j K. iIntros {j K v} "[#Heq Hj]".
       rewrite CG_locked_increment_of_val. simpl.
-      iTimeless "Heq". destruct v; iDestruct "Heq" as "[% %]"; simpl in *;subst.
+      destruct v; iDestruct "Heq" as "[% %]"; simpl in *;subst.
       iLöb as "Hlat".
       iApply wp_lam; trivial. asimpl.
       iNext.
@@ -367,11 +367,11 @@ Section CG_Counter.
         { abstract prove_disj N 2 4. }
         iNext; iFrame "Hcnt"; iIntros "Hcnt".
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
-        iApply wp_if_false. iNext. iApply "Hlat". iNext; trivial.
+        iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of read *)
       iAlways. clear j K. iIntros {j K v} "[#Heq Hj]".
       rewrite ?counter_read_of_val.
-      iTimeless "Heq". destruct v; iDestruct "Heq" as "[% %]".
+      destruct v; iDestruct "Heq" as "[% %]".
       simpl in *; subst; simpl.
       Transparent counter_read.
       unfold counter_read at 2.

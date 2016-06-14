@@ -38,7 +38,7 @@ Section Stack_refinement.
     iExists (TLamV _); iFrame "Hj".
     iExists (_, _); iSplit; eauto.
     iIntros {τi}. destruct τi as [τi Hτ]; simpl.
-    iAlways. iNext. clear j K. iIntros {j K} "Hj".
+    iAlways. clear j K. iIntros {j K} "Hj".
     iPvs (steps_newlock _ _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
     rewrite fill_app; simpl.
@@ -163,11 +163,11 @@ Section Stack_refinement.
           iFrame "Hheap Hstk". iNext. iIntros "Hstk".
           iSplitR "Hj".
           { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl". }
-          iApply wp_if_false. iNext. iApply "Hlat". by iNext.
+          iApply wp_if_false. iNext. by iApply "Hlat".
       + (* refinement of pop *)
         iAlways. clear j K. iIntros {j K v}. destruct v as [v1 v2].
         iIntros "[#Hrel Hj]". simpl.
-        iTimeless "Hrel". iDestruct "Hrel" as "[% %]". subst.
+        iDestruct "Hrel" as "[% %]". subst.
         rewrite -(FG_pop_folding (Loc stk)).
         iLöb as "Hlat".
         rewrite -> (FG_pop_folding (Loc stk)) at 2.
@@ -302,10 +302,10 @@ Section Stack_refinement.
             iFrame "Hheap Hstk". iNext. iIntros "Hstk".
             iSplitR "Hj".
             { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk HLK Hl". }
-            iApply wp_if_false. iNext. iApply "Hlat". by iNext.
+            iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of iter *)
       iAlways. clear j K. iIntros {j K f}. destruct f as [f1 f2]. simpl.
-      rewrite -always_later. iIntros "[#Hfs Hj]".
+      iIntros "[#Hfs Hj]".
       iApply wp_lam; auto using to_of_val. iNext.
       iPvs (step_lam _ _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
       { by iFrame "Hspec Hj". }

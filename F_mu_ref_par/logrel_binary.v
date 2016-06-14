@@ -188,7 +188,7 @@ Section logrel.
             {|
               cofe_mor_car :=
                 λ w, (□ ∀ j K v,
-                           ▷ τ1i v ★ ▷ j ⤇ (fill K (App (# w.2) (# v.2))) →
+                           τ1i v ★ j ⤇ (fill K (App (# w.2) (# v.2))) →
                            WP (App (# w.1) (# v.1)) @ ⊤
                               {{z, ∃ z', j ⤇ (fill K (# z')) ★ τ2i (z, z')}})%I
             |}
@@ -227,7 +227,7 @@ Section logrel.
             (∃ e, w = (TLamV (e.1), TLamV (e.2)) ∧
                   ∀ (τ'i : {f : (bivalC -n> iPropG lang Σ) |
                             BiVal_to_IProp_Persistent f}),
-                    □ (▷ ∀ j K,
+                    □ (∀ j K,
                             j ⤇ (fill K (e.2)) →
                             WP e.1 @ ⊤
                                {{v, ∃ v', j ⤇ (fill K (# v')) ★
@@ -243,7 +243,7 @@ Section logrel.
   Next Obligation.
     intros n f g Hfg x; cbn. apply exist_ne => e; apply and_ne; auto.
     apply forall_ne=> P.
-    apply always_ne, (contractive_ne _).
+    apply always_ne.
     apply forall_ne => j; apply forall_ne => K.
     apply impl_ne; trivial. apply wp_ne => w; apply exist_ne => v'.
     rewrite Hfg; trivial.

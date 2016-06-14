@@ -74,12 +74,12 @@ Section typed_interp.
       smart_wp_bind (FstCtx) v "# Hv" IHHtyped; cbn.
       iApply double_exists; [|trivial].
       intros w w'; cbn; iIntros "#[% [H2 H3]]"; rewrite H; cbn.
-      iApply wp_fst; eauto using to_of_val; cbn.
+      iApply wp_fst; try iNext; eauto using to_of_val; cbn.
     - (* snd *)
       smart_wp_bind (SndCtx) v "# Hv" IHHtyped; cbn.
       iApply double_exists; [|trivial].
       intros w w'; cbn; iIntros "#[% [H2 H3]]"; rewrite H.
-      iApply wp_snd; eauto using to_of_val.
+      iApply wp_snd; try iNext; eauto using to_of_val.
     - (* injl *)
       smart_wp_bind (InjLCtx) v "# Hv" IHHtyped; cbn.
       value_case; iLeft; auto with itauto.
@@ -109,8 +109,9 @@ Section typed_interp.
     - (* TLam *)
       value_case; iApply exist_intro; iSplit; trivial.
       iIntros {τi}; destruct τi as [τi τiPr].
-      iPoseProof (always_intro with "HΓ") as "HP"; try typeclasses eauto; try iExact "HP".
-      iIntros "#HΓ"; iNext.
+      iPoseProof (always_intro with "HΓ") as "HP"; try typeclasses eauto;
+        try iExact "HP".
+      iIntros "#HΓ".
       iApply IHHtyped; [rewrite map_length|]; trivial.
       iRevert "HΓ".
       rewrite zip_with_context_interp_subst.
