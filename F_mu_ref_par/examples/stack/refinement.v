@@ -36,9 +36,12 @@ Section Stack_refinement.
     unfold CG_stack, FG_stack.
     iApply wp_value; eauto.
     iExists (TLamV _); iFrame "Hj".
-    iExists (_, _); iSplit; eauto.
     iIntros {τi}. destruct τi as [τi Hτ]; simpl.
     iAlways. clear j K. iIntros {j K} "Hj".
+    iPvs (step_Tlam _ _ _ j K with "[Hj]")
+      as "Hj"; eauto.
+    iFrame "Hspec Hj"; trivial.
+    iApply wp_TLam; iNext.
     iPvs (steps_newlock _ _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
     rewrite fill_app; simpl.

@@ -281,14 +281,18 @@ Section typed_interp.
       Δ ∥ Γ ⊩ TLam e ≤log≤ TLam e' ∷  TForall τ.
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-    value_case. iExists (TLamV _). iFrame "Htr"; simpl.
-    iExists (e.[env_subst (map fst vs)], e'.[env_subst (map snd vs)]).
-    iSplit; trivial.
+    value_case.
+    iExists (TLamV _). iFrame "Htr".
     iIntros {τi}; destruct τi as [τi τiPr].
     iAlways. iIntros {j' K'} "Hv". simpl.
+    iApply wp_TLam; iNext.
+    iPvs (step_Tlam _ _ _ j' K' (e'.[env_subst (map snd vs)]) _ with "* -")
+      as "Hz".
+    iFrame "Hspec Hv"; trivial.
     iApply IHHtyped; [rewrite map_length; trivial|].
-    iFrame "Hheap Hspec Hv".
-    rewrite zip_with_context_interp_subst; trivial.
+    iFrame "Hheap Hspec".
+    rewrite zip_with_context_interp_subst; by iFrame "HΓ".
+    Unshelve. all: trivial.
   Qed.
 
   Lemma typed_binary_interp_TApp Δ Γ e e' τ τ' {HΔ : ✓✓ Δ}
@@ -297,17 +301,12 @@ Section typed_interp.
       Δ ∥ Γ ⊩ TApp e ≤log≤ TApp e' ∷ τ.[τ'/].
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-    smart_wp_bind (TAppCtx) v v' "[Hv #Hiv]"
+    smart_wp_bind (TAppCtx) v v' "[Hj #Hv]"
                     (IHHtyped _ _ _ j (K ++ [TAppCtx])); cbn.
-    iDestruct "Hiv" as {e''} "[% He'']".
-    inversion H; subst.
-    iSpecialize ("He''" $! ((interp τ' Δ) ↾ _)); cbn.
-    iPvs (step_Tlam _ _ _ j K (e''.2) _ with "* -") as "Hz".
-    iFrame "Hspec Hv"; trivial.
-    iApply wp_TLam.
-    iRevert "He''"; iIntros "#He''". (*To get rid of □. Is this the best way?!*)
-    iNext.
-    iApply wp_wand_l; iSplitR; [|iApply "He''"; auto].
+    iSpecialize ("Hv" $! ((interp τ' Δ) ↾ _)); cbn.
+    iRevert "Hv"; iIntros "#Hv". (*To get rid of □. Is this the best way?!*)
+    iSpecialize ("Hv" $! j K); cbn.
+    iApply wp_wand_l; iSplitR; [|iApply "Hv"; auto].
     iIntros {w} "Hw". iDestruct "Hw" as {w'} "[Hw #Hiw]".
     iExists _; iFrame "Hw".
     rewrite -interp_subst; trivial.

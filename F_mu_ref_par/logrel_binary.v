@@ -224,24 +224,22 @@ Section logrel.
         {|
           cofe_mor_car :=
             λ w,
-            (∃ e, w = (TLamV (e.1), TLamV (e.2)) ∧
-                  ∀ (τ'i : {f : (bivalC -n> iPropG lang Σ) |
-                            BiVal_to_IProp_Persistent f}),
-                    □ (∀ j K,
-                            j ⤇ (fill K (e.2)) →
-                            WP e.1 @ ⊤
-                               {{v, ∃ v', j ⤇ (fill K (# v')) ★
-                                            (τi (`τ'i) (v, v'))}}))%I
+            (∀ (τ'i : {f : (bivalC -n> iPropG lang Σ) |
+                       BiVal_to_IProp_Persistent f}),
+                □ (∀ j K,
+                      j ⤇ (fill K (TApp (# w.2))) →
+                      WP TApp (# w.1) @ ⊤
+                         {{v, ∃ v', j ⤇ (fill K (# v')) ★
+                                      (τi (`τ'i) (v, v'))}}))%I
         |}
     |}.
   Next Obligation.
   Proof.
-    intros τi n [x1 x2] [y1 y2 ] [H1 H2].
-    apply exist_ne => e; apply and_ne; simpl in *; auto.
+    intros τi n [x1 x2] [y1 y2 ] [H1 H2]. simpl in *; auto.
     inversion H1; subst; inversion H2; subst; trivial.
   Qed.
   Next Obligation.
-    intros n f g Hfg x; cbn. apply exist_ne => e; apply and_ne; auto.
+    intros n f g Hfg x; cbn.
     apply forall_ne=> P.
     apply always_ne.
     apply forall_ne => j; apply forall_ne => K.

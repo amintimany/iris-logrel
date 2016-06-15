@@ -170,19 +170,17 @@ Section logrel.
         {|
           cofe_mor_car :=
             λ w,
-            (∃ e, w = TLamV e ∧
-                  ∀ (τ'i : {f : (valC -n> iPropG lang Σ) |
-                            Val_to_IProp_Persistent f}),
-                    □ (WP e @ ⊤ {{λ v, (τi (`τ'i) v)}}))%I
+            (∀ (τ'i : {f : (valC -n> iPropG lang Σ) |
+                       Val_to_IProp_Persistent f}),
+                □ (WP TApp (# w) @ ⊤ {{λ v, (τi (`τ'i) v)}}))%I
         |}
     |}.
   Next Obligation.
   Proof.
-    intros τ τ' x y Hxy; cbn. apply exist_ne => e; apply and_ne; auto.
-    rewrite Hxy; trivial.
+    intros τ τ' x y Hxy; cbn; rewrite Hxy; trivial.
   Qed.
   Next Obligation.
-    intros n f g Hfg x; cbn. apply exist_ne => e; apply and_ne; auto.
+    intros n f g Hfg x; cbn.
     apply forall_ne=> P.
     apply always_ne, wp_ne => w.
     rewrite Hfg; trivial.

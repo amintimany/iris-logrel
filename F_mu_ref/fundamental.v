@@ -119,25 +119,22 @@ Section typed_interp.
       smart_wp_bind (AppRCtx v) w "#Hw" IHHtyped2.
       iApply wp_mono; [|iApply "Hv"]; auto with itauto.
     - (* TLam *)
-      value_case; iApply exist_intro; iSplit; trivial.
+      value_case.
       iIntros {τi}; destruct τi as [τi τiPr].
       iRevert "Hheap".
       iPoseProof (always_intro with "HΓ") as "HP"; try typeclasses eauto;
         try (iApply always_impl; iExact "HP").
       iIntros "#HΓ #Hheap".
+      iApply wp_TLam; iNext.
       iApply IHHtyped; [rewrite map_length|]; trivial.
       iSplit; trivial.
       iRevert "Hheap HΓ". rewrite zip_with_context_interp_subst.
       iIntros "#Hheap #HΓ"; trivial.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
-      iDestruct "Hv" as {e'} "[% He']"; rewrite H.
-      iApply wp_TLam.
-      iSpecialize ("He'" $! ((interp τ' Δ) ↾ _)); cbn.
+      iSpecialize ("Hv" $! ((interp τ' Δ) ↾ _)); cbn.
       iApply always_elim. iApply always_mono; [|trivial].
-      iIntros "He'"; iNext.
-      iApply wp_mono; [|trivial].
-      iIntros {w} "#H". rewrite -interp_subst; trivial.
+      apply wp_mono => w. by rewrite -interp_subst; simpl.
     - (* Fold *)
       rewrite map_length in IHHtyped.
       iApply (@wp_bind _ _ _ [FoldCtx]).
