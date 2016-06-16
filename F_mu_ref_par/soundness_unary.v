@@ -9,7 +9,7 @@ Require Import iris.program_logic.adequacy.
 Import uPred.
 
 Section Soundness.
-  Definition Σ := #[ auth.authGF heapR ].
+  Definition Σ := #[ auth.authGF heapUR ].
 
   Definition free_type_context: varC -n> valC -n> iPropG lang Σ :=
     {|
@@ -27,7 +27,7 @@ Section Soundness.
 
   Lemma wp_soundness e τ
     : typed [] e τ →
-      (ownership.ownP ∅)
+      ownership.ownP ∅
         ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1)
                                  τ free_type_context v}}.
   Proof.
@@ -53,17 +53,16 @@ Section Soundness.
   Proof.
     intros H1 e' thp h Hstp Hnr.
     eapply wp_soundness in H1; eauto.
-    edestruct(@wp_adequacy_reducible lang (globalF Σ) ⊤
+    edestruct (@wp_adequacy_reducible lang (globalF Σ) ⊤
                                      (λ v,
                                       (∃ H, @interp
                                               Σ H (nroot .@ "Fμ,ref,par" .@ 1)
                                               τ free_type_context v)%I)
                                      e e' (e' :: thp) ∅ ∅ h)
       as [Ha|Ha]; eauto; try tauto.
-    - apply cmra_unit_valid.
+    - apply ucmra_unit_valid.
     - iIntros "[Hp Hg]". by iApply H1.
     - by rewrite of_empty_heap in Hstp.
     - constructor.
   Qed.
-
 End Soundness.

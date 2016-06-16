@@ -95,7 +95,7 @@ Proof.
 Qed.
 
 Definition env_subst (vs : list val) (x : var) : expr :=
-  from_option (Var x) (of_val <$> vs !! x).
+  from_option id (Var x) (of_val <$> vs !! x).
 
 Lemma context_gen_weakening ξ Γ' Γ e τ :
   typed (Γ' ++ Γ) e τ →
@@ -239,6 +239,7 @@ Proof.
 Qed.
 
 Lemma empty_env_subst e : e.[env_subst []] = e.
+Proof.
   replace (env_subst []) with (@ids expr _) by reflexivity.
   asimpl; trivial.
 Qed.

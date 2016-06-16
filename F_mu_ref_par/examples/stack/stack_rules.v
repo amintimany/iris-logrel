@@ -4,9 +4,9 @@ From iris.algebra Require Import gmap dec_agree auth upred_big_op.
 From iris.program_logic Require Import ownership auth.
 Import uPred.
 
-Definition stackR : cmraT := gmapR loc (dec_agreeR val).
+Definition stackUR : ucmraT := gmapUR loc (dec_agreeR val).
 
-Lemma stackR_self_op (h : stackR) : h ≡ h ⋅ h.
+Lemma stackR_self_op (h : stackUR) : h ≡ h ⋅ h.
 Proof.
   intros i. rewrite lookup_op.
   match goal with
@@ -18,7 +18,7 @@ Qed.
 
 Class stackG Σ :=
   StackG {
-      stack_inG :> authG lang Σ stackR;
+      stack_inG :> authG lang Σ stackUR;
       stack_name : gname
     }.
 
@@ -39,11 +39,11 @@ Section Rules.
   Qed.
 
   Lemma stack_mapstos_agree l v w:
-    (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w)%I ⊢ (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ∧ v = w)%I.
+    l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ⊢ l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ∧ v = w.
   Proof.
     iIntros "H".
     rewrite -own_op.
-    iDestruct (own_valid _ with "H !") as "Hvalid".
+    iDestruct (own_valid _ with "#H") as "Hvalid".
     iDestruct "Hvalid" as %Hvalid.
     rewrite own_op. unfold stack_mapsto, auth_own.
     iDestruct "H" as "[H1 H2]". iFrame "H1 H2".
@@ -151,7 +151,7 @@ Section Rules.
     @StackLink Q HQ v ⊢ (@StackLink Q HQ v ★ @StackLink Q HQ v)%I.
   Proof. iIntros "H"; by iApply StackLink_dup_lem. Qed.
 
-  Lemma stackR_valid (h : stackR) (i : loc) :
+  Lemma stackR_valid (h : stackUR) (i : loc) :
     ✓ h → h !! i = None ∨ ∃ v, h !! i = Some (DecAgree v).
   Proof.
     intros H; specialize (H i).
@@ -164,20 +164,16 @@ Section Rules.
     end.
   Qed.
 
-  Lemma stackR_alloc (h : stackR) (i : loc) (v : val) :
-    h !! i = None → (● h) ~~> (● (<[i := DecAgree v]> h)
+  Lemma stackR_alloc (h : stackUR) (i : loc) (v : val) :
+    h !! i = None → ● h ~~> (● (<[i := DecAgree v]> h)
                                ⋅ ◯ {[i := DecAgree v]}).
   Proof.
-    intros H1 n z H2. rewrite (insert_singleton_op h); auto.
-    destruct z as [[ze | |] zo];
+    intros H1; apply cmra_total_update.
+    intros n z H2. rewrite (insert_singleton_op h); auto.
+    destruct z as [[ze |] zo];
       unfold validN, cmra_validN in *; simpl in *; trivial.
     destruct H2 as [H21 H22]; split.
-    - destruct H21 as [u H21].
-      eexists ({[i := DecAgree v]} ⋅ u). rewrite H21.
-      rewrite ?cmra_unit_left_id.
-      rewrite ?assoc.
-      rewrite (comm _ _ zo). apply cmra_op_ne'; trivial.
-      rewrite -assoc. by rewrite -stackR_self_op.
+    - revert H21; rewrite !left_id. apply cmra_preservingN_l.
     - intros j. rewrite lookup_op.
       destruct (decide (i = j)) as [|Hneq]; subst.
       + rewrite H1. rewrite lookup_singleton. constructor.
@@ -206,14 +202,14 @@ Section Rules.
       cbv -[decide] in H1; try destruct decide; subst; simpl; intuition trivial.
   Qed.
 
-  Lemma stackR_auth_is_subheap (h h' : stackR) :
+  Lemma stackR_auth_is_subheap (h h' : stackUR) :
     ✓ (● h ⋅ ◯ h') → ∀ i x, h' !! i = Some x → h !! i = Some x.
   Proof.
     intros H1 i x H2.
     destruct H1 as [H11 H12]; simpl in H11.
     specialize (H11 1).
     destruct H11 as [z H11].
-    revert H11; rewrite cmra_unit_left_id => H11.
+    revert H11; rewrite ucmra_unit_left_id => H11.
     eapply cmra_extend in H11; [| by apply cmra_valid_validN].
     destruct H11 as [[z1 z2] [H31 [H32 H33]]]; simpl in *.
     specialize (H32 i).
@@ -244,21 +240,19 @@ Section Rules.
 
   Context {iI : heapIG Σ}.
 
-  Definition stack_owns (h : stackR) :=
-    (
-      (ghost_ownership.own stack_name (● h))
-        ★ Π★{map h} (λ l v, match v with
-                            | DecAgree v' => l ↦ᵢ v'
-                            | _ => True
-                            end)
-    )%I.
+  Definition stack_owns (h : stackUR) :=
+    (ghost_ownership.own stack_name (● h)
+        ★ [★ map] l ↦ v ∈ h, match v with
+                             | DecAgree v' => l ↦ᵢ v'
+                             | _ => True
+                             end)%I.
 
   Lemma stack_owns_alloc E h l v :
-    ((stack_owns h ★ l ↦ᵢ v)%I)
-      ⊢ |={E}=> (stack_owns (<[l := DecAgree v]> h) ★ l ↦ˢᵗᵏ v)%I.
+    stack_owns h ★ l ↦ᵢ v
+      ={E}=> stack_owns (<[l := DecAgree v]> h) ★ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[[Hown Hall] Hl]".
-    iDestruct (own_valid _ with "Hown !") as "Hvalid".
+    iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' Hb]";
       simpl; iClear "Hvalid".
     iDestruct "Hb" as %H1.
@@ -269,7 +263,7 @@ Section Rules.
       ✓ ?A => change A with (h' !! l) in H1
     end.
     destruct (h' !! l) as [[w|]|] eqn:Heq; inversion H1.
-    - rewrite <- (insert_delete _ _ _ Heq).
+    - rewrite -{2}(insert_id _ _ _ Heq) -insert_delete.
       rewrite big_sepM_insert; [|apply lookup_delete_None; auto].
       iDestruct "Hall" as "[Hl' Hall]".
       iExFalso. iApply heap_mapsto_dup_invalid; by iFrame "Hl Hl'".
@@ -283,44 +277,40 @@ Section Rules.
   Qed.
 
   Lemma stack_owns_open h l v :
-    ((stack_owns h ★ l ↦ˢᵗᵏ v)%I)
-      ⊢ ((ghost_ownership.own stack_name (● h))
-           ★ Π★{map delete l h}
-           (λ l v,
+    stack_owns h ★ l ↦ˢᵗᵏ v
+      ⊢ ghost_ownership.own stack_name (● h)
+           ★ ([★ map] l ↦ v ∈ delete l h,
             match v with
             | DecAgree v' => l ↦ᵢ v'
             | DecAgreeBot => True
-            end)
-           ★ l ↦ᵢ v ★ l ↦ˢᵗᵏ v)%I.
+            end) ★ l ↦ᵢ v ★ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[[Hown Hall] Hl]".
     unfold stack_mapsto, auth_own.
     iCombine "Hown" "Hl" as "Hown".
-    iDestruct (own_valid _ with "Hown !") as "Hvalid".
+    iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct "Hvalid" as %Hvalid.
     rewrite own_op. iDestruct "Hown" as "[Hown Hl]".
     assert (Heq : h !! l = Some (DecAgree v)).
     eapply stackR_auth_is_subheap; eauto using lookup_singleton.
-    rewrite <- (insert_delete _ _ _ Heq).
+    rewrite -{1}(insert_id _ _ _ Heq) -insert_delete.
     rewrite big_sepM_insert; [|apply lookup_delete_None; auto].
-    iDestruct "Hall" as "[Hl' Hall]".
-    iFrame "Hl' Hown Hl". rewrite delete_insert; auto using lookup_delete.
+    iDestruct "Hall" as "[$ $]"; by iFrame.
   Qed.
 
   Lemma stack_owns_close h l v :
-    ((ghost_ownership.own stack_name (● h))
-       ★ Π★{map delete l h}
-       (λ l v,
+    ghost_ownership.own stack_name (● h)
+       ★ ([★ map] l ↦ v ∈ delete l h,
         match v with
         | DecAgree v' => l ↦ᵢ v'
         | DecAgreeBot => True
         end)
-       ★ l ↦ᵢ v ★ l ↦ˢᵗᵏ v)%I ⊢ ((stack_owns h ★ l ↦ˢᵗᵏ v)%I).
+       ★ l ↦ᵢ v ★ l ↦ˢᵗᵏ v ⊢ stack_owns h ★ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[Hown [Hall [Hl Hl']]]".
     unfold stack_mapsto, auth_own.
     iCombine "Hown" "Hl'" as "Hown".
-    iDestruct (own_valid _ with "Hown !") as "Hvalid".
+    iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct "Hvalid" as %Hvalid.
     rewrite own_op. iDestruct "Hown" as "[Hown Hl']".
     assert (Heq : h !! l = Some (DecAgree v)).
@@ -331,24 +321,23 @@ Section Rules.
         | DecAgree v' => (l ↦ᵢ v')%I
         | DecAgreeBot => True%I
         end) _ _ (DecAgree v)); eauto using lookup_delete.
-    rewrite insert_delete; auto using lookup_delete.
-    unfold stack_owns. by iFrame "Hown Hl' Hall".
+    rewrite insert_delete insert_id; auto using lookup_delete.
+    unfold stack_owns. by iFrame.
   Qed.
 
   Lemma stack_owns_open_close h l v :
-    ((stack_owns h ★ l ↦ˢᵗᵏ v)%I)
-      ⊢ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))%I).
+    stack_owns h ★ l ↦ˢᵗᵏ v
+      ⊢ l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v)).
   Proof.
     iIntros "[Howns Hls]".
     iDestruct (stack_owns_open with "[Howns Hls]") as "[Hh [Hm [Hl Hls]]]".
     { by iFrame "Howns Hls". }
     iFrame "Hl". iIntros "Hl".
-    iApply stack_owns_close. by iFrame "Hh Hm Hl Hls".
+    iApply stack_owns_close. by iFrame.
   Qed.
 
   Lemma stack_owns_later_open_close h l v :
-    ((▷ stack_owns h ★ l ↦ˢᵗᵏ v)%I)
-      ⊢ (▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))))%I.
+    ▷ stack_owns h ★ l ↦ˢᵗᵏ v
+      ⊢ ▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))).
   Proof. iIntros "H". iNext. by iApply stack_owns_open_close. Qed.
-
 End Rules.

@@ -10,26 +10,25 @@ Require Import iris.proofmode.tactics iris.proofmode.invariants.
 Import uPred.
 
 Section lang_rules.
-  Definition heapR : cmraT := gmapR loc (fracR (dec_agreeR val)).
+  Definition heapUR : ucmraT := gmapUR loc (prodR fracR (dec_agreeR val)).
 
   (** The CMRA for the heap of the implementation. This is linked to the
       physical heap. *)
   Class heapIG Σ :=
     HeapIG {
-        heapI_inG :> authG lang Σ heapR;
+        heapI_inG :> authG lang Σ heapUR;
         heapI_name : gname
       }.
 
-  Definition to_heap : state → heapR := fmap (λ v, Frac 1 (DecAgree v)).
-  Definition of_heap : heapR → state :=
-    omap (mbind (maybe DecAgree ∘ snd) ∘ maybe2 Frac).
+  Definition to_heap : state → heapUR := fmap (λ v, (1%Qp, DecAgree v)).
+  Definition of_heap : heapUR → state := omap (maybe DecAgree ∘ snd).
 
   Section definitionsI.
     Context `{iI : heapIG Σ}.
 
     Definition heapI_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
-      auth_own heapI_name {[ l := Frac q (DecAgree v) ]}.
-    Definition heapI_inv (h : heapR) : iPropG lang Σ :=
+      auth_own heapI_name {[ l := (q, DecAgree v) ]}.
+    Definition heapI_inv (h : heapUR) : iPropG lang Σ :=
       ownP (of_heap h).
     Definition heapI_ctx (N : namespace) : iPropG lang Σ :=
       auth_ctx heapI_name N heapI_inv.
@@ -51,7 +50,7 @@ Section lang_rules.
     Implicit Types P Q : iPropG lang Σ.
     Implicit Types Φ : val → iPropG lang Σ.
     Implicit Types σ : state.
-    Implicit Types h g : heapR.
+    Implicit Types h g : heapUR.
 
     Lemma wp_bind {E e} K Φ :
       WP e @ E {{ (λ v, WP (fill K (of_val v)) @ E {{Φ}}) }}
@@ -149,36 +148,35 @@ Section lang_rules.
     Lemma to_heap_valid σ : ✓ to_heap σ.
     Proof. intros l. rewrite lookup_fmap. by case (σ !! l). Qed.
     Lemma of_heap_insert l v h :
-      of_heap (<[l:=Frac 1 (DecAgree v)]> h) = <[l:=v]> (of_heap h).
-    Proof. by rewrite /of_heap -(omap_insert _ _ _ (Frac 1 (DecAgree v))). Qed.
+      of_heap (<[l:=(1%Qp, DecAgree v)]> h) = <[l:=v]> (of_heap h).
+    Proof. by rewrite /of_heap -(omap_insert _ _ _ (1%Qp, DecAgree v)). Qed.
     Lemma of_heap_singleton_op l q v h :
-      ✓ ({[l := Frac q (DecAgree v)]} ⋅ h) →
-      of_heap ({[l := Frac q (DecAgree v)]} ⋅ h) = <[l:=v]> (of_heap h).
+      ✓ ({[l := (q, DecAgree v)]} ⋅ h) →
+      of_heap ({[l := (q, DecAgree v)]} ⋅ h) = <[l:=v]> (of_heap h).
     Proof.
       intros Hv. apply map_eq=> l'; destruct (decide (l' = l)) as [->|].
       - move: (Hv l). rewrite /of_heap lookup_insert
                               lookup_omap (lookup_op _ h) lookup_singleton.
-        case _:(h !! l)=>[[q' [v'|]|]|] //=; last by move=> [??].
+        case _:(h !! l)=>[[q' [v'|]]|] //=; last by move=> [??].
         move=> [? /dec_agree_op_inv [->]]. by rewrite dec_agree_idemp.
       - rewrite /of_heap lookup_insert_ne // !lookup_omap.
-          by rewrite (lookup_op _ h) lookup_singleton_ne // left_id.
+        by rewrite (lookup_op _ h) lookup_singleton_ne // left_id_L.
     Qed.
     Lemma to_heap_insert l v σ :
-      to_heap (<[l:=v]> σ) = <[l:=Frac 1 (DecAgree v)]> (to_heap σ).
+      to_heap (<[l:=v]> σ) = <[l:=(1%Qp, DecAgree v)]> (to_heap σ).
     Proof. by rewrite /to_heap -fmap_insert. Qed.
-    Lemma of_heap_None h l :
-      ✓ h → of_heap h !! l = None → h !! l = None ∨ h !! l ≡ Some FracUnit.
+    Lemma of_heap_None h l : ✓ h → of_heap h !! l = None → h !! l = None.
     Proof.
       move=> /(_ l). rewrite /of_heap lookup_omap.
-        by case: (h !! l)=> [[q [v|]|]|] //=; destruct 1; auto.
+        by case: (h !! l)=> [[q [v|]]|] //=; destruct 1; auto.
     Qed.
     Lemma heap_store_valid l h v1 v2 :
-      ✓ ({[l := Frac 1 (DecAgree v1)]} ⋅ h) →
-      ✓ ({[l := Frac 1 (DecAgree v2)]} ⋅ h).
+      ✓ ({[l := (1%Qp, DecAgree v1)]} ⋅ h) →
+      ✓ ({[l := (1%Qp, DecAgree v2)]} ⋅ h).
     Proof.
       intros Hv l'; move: (Hv l'). destruct (decide (l' = l)) as [->|].
       - rewrite !lookup_op !lookup_singleton.
-        case: (h !! l)=>[x|]; [|done]=> /frac_valid_inv_l=>-> //.
+        by case: (h !! l)=> [x|] // /Some_valid/exclusive_l.
       - by rewrite !lookup_op !lookup_singleton_ne.
     Qed.
     Hint Resolve heap_store_valid.
@@ -193,8 +191,8 @@ Section lang_rules.
 
     (** Allocation *)
     Lemma heap_alloc N E σ :
-      authG lang Σ heapR → nclose N ⊆ E →
-      ownP σ ⊢ (|={E}=> ∃ _ : heapIG Σ, heapI_ctx N ∧ Π★{map σ} (λ l v, l ↦ᵢ v)).
+      authG lang Σ heapUR → nclose N ⊆ E →
+      ownP σ ={E}=> ∃ _ : heapIG Σ, heapI_ctx N ∧ [★ map] l ↦ v ∈ σ, l ↦ᵢ v.
     Proof.
       intros. rewrite -{1}(from_to_heap σ). etrans.
       { rewrite [ownP _]later_intro.
@@ -209,45 +207,39 @@ Section lang_rules.
       rewrite (insert_singleton_op (to_heap σ));
         last rewrite lookup_fmap Hl; auto.
         (* FIXME: investigate why we have to unfold auth_own here. *)
-        by rewrite auth_own_op IH.
+        by rewrite auth_own_op IH. 
     Qed.
 
     (** General properties of mapsto *)
-    Lemma heap_mapsto_op_eq l q1 q2 v :
-      (l ↦ᵢ{q1} v ★ l ↦ᵢ{q2} v)%I ≡ (l ↦ᵢ{q1+q2} v)%I.
-    Proof. by rewrite -auth_own_op op_singleton Frac_op dec_agree_idemp. Qed.
+    Lemma heap_mapsto_op_eq l q1 q2 v : l ↦ᵢ{q1} v ★ l ↦ᵢ{q2} v ⊣⊢ l ↦ᵢ{q1+q2} v.
+    Proof. by rewrite -auth_own_op op_singleton pair_op dec_agree_idemp. Qed.
 
     Lemma heap_mapsto_op l q1 q2 v1 v2 :
-      (l ↦ᵢ{q1} v1 ★ l ↦ᵢ{q2} v2)%I ≡ (v1 = v2 ∧ l ↦ᵢ{q1+q2} v1)%I.
+      l ↦ᵢ{q1} v1 ★ l ↦ᵢ{q2} v2 ⊣⊢ v1 = v2 ∧ l ↦ᵢ{q1+q2} v1.
     Proof.
       destruct (decide (v1 = v2)) as [->|].
       { by rewrite heap_mapsto_op_eq const_equiv // left_id. }
-      rewrite -auth_own_op op_singleton Frac_op dec_agree_ne //.
+      rewrite -auth_own_op op_singleton pair_op dec_agree_ne //.
       apply (anti_symm (⊢)); last by apply const_elim_l.
       rewrite auth_own_valid gmap_validI (forall_elim l) lookup_singleton.
-      rewrite option_validI frac_validI discrete_valid. by apply const_elim_r.
+      rewrite option_validI prod_validI frac_validI discrete_valid.
+      by apply const_elim_r.
     Qed.
 
-    Lemma heap_mapsto_dup_invalid l v1 v2 :
-      (l ↦ᵢ v1 ★ l ↦ᵢ v2)%I ⊢ False%I.
+    Lemma heap_mapsto_dup_invalid l v1 v2 : l ↦ᵢ v1 ★ l ↦ᵢ v2 ⊢ False%I.
     Proof.
-      iIntros "Hl".
-      rewrite heap_mapsto_op. iDestruct "Hl" as "[% Hl]".
-      iDestruct (own_valid _ with "[Hl]")
-        as "Hvalid"; [unfold heapI_mapsto, auth_own; trivial|].
-      iDestruct "Hvalid" as %valid.
-      specialize (valid l); simpl in valid. rewrite lookup_singleton in valid.
-      inversion valid as [Hv1 Hv2]. cbv in Hv1; tauto.
+      rewrite heap_mapsto_op /heapI_mapsto auth_own_valid.
+      iIntros "[_ Hv]". iDestruct "Hv" as %Hv.
+      revert Hv; rewrite singleton_valid=> -[H ?]; by destruct H.
     Qed.
 
-    Lemma heap_mapsto_op_split l q v :
-      (l ↦ᵢ{q} v)%I ≡ (l ↦ᵢ{q/2} v ★ l ↦ᵢ{q/2} v)%I.
+    Lemma heap_mapsto_op_split l q v : l ↦ᵢ{q} v ⊣⊢ l ↦ᵢ{q/2} v ★ l ↦ᵢ{q/2} v.
     Proof. by rewrite heap_mapsto_op_eq Qp_div_2. Qed.
 
     (** Base axioms for core primitives of the language: Stateful reductions. *)
     Lemma wp_alloc_pst E σ e v Φ :
       to_val e = Some v →
-      (▷ ownP σ ★ ▷ (∀ l, σ !! l = None ∧ ownP (<[l:=v]>σ) -★ Φ (LocV l)))
+      ▷ ownP σ ★ ▷ (∀ l, σ !! l = None ∧ ownP (<[l:=v]>σ) -★ Φ (LocV l))
         ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
       intros. set (φ e' σ' ef :=
@@ -267,7 +259,7 @@ Section lang_rules.
 
     Lemma wp_load_pst E σ l v Φ :
       σ !! l = Some v →
-      (▷ ownP σ ★ ▷ (ownP σ -★ Φ v)) ⊢ WP Load (Loc l) @ E {{ Φ }}.
+      ▷ ownP σ ★ ▷ (ownP σ -★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
     Proof.
       intros.
       rewrite -(wp_lift_atomic_det_step σ v σ None) ?right_id //; cbn; eauto.
@@ -276,8 +268,7 @@ Section lang_rules.
 
     Lemma wp_store_pst E σ l e v v' Φ :
       to_val e = Some v → σ !! l = Some v' →
-      (▷ ownP σ ★ ▷ (ownP (<[l:=v]>σ) -★ Φ (UnitV)))
-        ⊢ WP Store (Loc l) e @ E {{ Φ }}.
+      ▷ ownP σ ★ ▷ (ownP (<[l:=v]>σ) -★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
       intros. rewrite -(wp_lift_atomic_det_step σ (UnitV) (<[l:=v]>σ) None)
                          ?right_id //; cbn; eauto.
@@ -286,8 +277,7 @@ Section lang_rules.
 
     Lemma wp_cas_fail_pst E σ l e1 v1 e2 v2 v' Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 → σ !! l = Some v' → v' ≠ v1 →
-      (▷ ownP σ ★ ▷ (ownP σ -★ Φ (♭v false)))
-        ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
+      ▷ ownP σ ★ ▷ (ownP σ -★ Φ (♭v false)) ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
     Proof.
       intros. rewrite -(wp_lift_atomic_det_step σ (♭v false) σ None)
                          ?right_id //; last (by intros; inv_step; eauto);
@@ -296,7 +286,7 @@ Section lang_rules.
 
     Lemma wp_cas_suc_pst E σ l e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 → σ !! l = Some v1 →
-      (▷ ownP σ ★ ▷ (ownP (<[l:=v2]>σ) -★ Φ (♭v true)))
+      ▷ ownP σ ★ ▷ (ownP (<[l:=v2]>σ) -★ Φ (♭v true))
         ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
     Proof.
       intros. rewrite -(wp_lift_atomic_det_step
@@ -308,76 +298,75 @@ Section lang_rules.
     (** Weakest precondition *)
     Lemma wp_alloc N E e v Φ :
       to_val e = Some v → nclose N ⊆ E →
-      (heapI_ctx N ★ ▷  ∀ l, l ↦ᵢ v -★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
+      heapI_ctx N ★ ▷ (∀ l, l ↦ᵢ v -★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
       iIntros {??} "[#Hinv HΦ]". rewrite /heapI_ctx.
       iPvs (auth_empty heapI_name) as "Hheap".
-      iApply (auth_fsa heapI_inv (wp_fsa (Alloc e)) _ N); simpl; eauto.
-      iFrame "Hinv Hheap". iIntros {h}. rewrite [∅ ⋅ h]left_id.
+      iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
+      iFrame "Hinv Hheap". iIntros {h}. rewrite left_id.
       iIntros "[% Hheap]". rewrite /heapI_inv.
       iApply wp_alloc_pst; first done. iFrame "Hheap". iNext.
-      iIntros {l} "[% Hheap]". iExists (op {[ l := Frac 1 (DecAgree v) ]}), _, _.
-      rewrite [{[ _ := _ ]} ⋅ ∅]right_id.
+      iIntros {l} "[% Hheap]". iExists {[ l := (1%Qp, DecAgree v) ]}.
       rewrite -of_heap_insert -(insert_singleton_op h); last by apply of_heap_None.
-      iFrame "Hheap". iSplit.
-      { iPureIntro; split; first done. by apply (insert_valid h). }
+      iFrame "Hheap". iSplit; first iPureIntro.
+      { by apply alloc_unit_singleton_local_update; first apply of_heap_None. }
       iIntros "Hheap". iApply "HΦ". by rewrite /heapI_mapsto.
     Qed.
 
     Lemma wp_load N E l q v Φ :
       nclose N ⊆ E →
-      (heapI_ctx N ★ ▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v -★ Φ v))
-        ⊢ WP Load (Loc l) @ E {{ Φ }}.
+      heapI_ctx N ★ ▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v -★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
     Proof.
       iIntros {?} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-      iApply (auth_fsa' heapI_inv (wp_fsa _) id _ N _
-                        heapI_name {[ l := Frac q (DecAgree v) ]}); simpl; eauto.
+      iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
       iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
       iApply (wp_load_pst _ (<[l:=v]>(of_heap h)));first by rewrite lookup_insert.
-      rewrite of_heap_singleton_op //. iFrame "Hl". iNext.
-      iIntros "$". by iSplit.
+      rewrite of_heap_singleton_op //. iFrame "Hl".
+      iIntros "> Hown". iExists _; iSplit; first done.
+      rewrite of_heap_singleton_op //. by iFrame.
     Qed.
 
     Lemma wp_store N E l v' e v Φ :
       to_val e = Some v → nclose N ⊆ E →
-      (heapI_ctx N ★ ▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v -★ Φ UnitV))
-        ⊢ WP Store (Loc l) e @ E {{ Φ }}.
+      heapI_ctx N ★ ▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v -★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
       iIntros {??} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-      iApply (auth_fsa' heapI_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v)) l) _
-                        N _ heapI_name {[ l := Frac 1 (DecAgree v') ]}); simpl; eauto.
+      iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
       iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
       iApply (wp_store_pst _ (<[l:=v']>(of_heap h))); rewrite ?lookup_insert //.
-      rewrite alter_singleton insert_insert !of_heap_singleton_op; eauto.
-      iFrame "Hl". iNext. iIntros "$". iFrame "HΦ". iPureIntro; naive_solver.
+      rewrite insert_insert !of_heap_singleton_op; eauto. iFrame "Hl".
+      iIntros "> Hown". iExists {[l := (1%Qp, DecAgree v)]}; iSplit.
+      { iPureIntro; by apply singleton_local_update, exclusive_local_update. }
+      rewrite of_heap_singleton_op //; eauto. by iFrame.
     Qed.
 
     Lemma wp_cas_fail N E l q v' e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose N ⊆ E →
-      (heapI_ctx N ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' -★ Φ (♭v false)))
+      heapI_ctx N ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' -★ Φ (♭v false))
         ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
     Proof.
       iIntros {????} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-      iApply (auth_fsa' heapI_inv (wp_fsa _) id _ N _
-                        heapI_name {[ l := Frac q (DecAgree v') ]}); simpl; eauto 10.
+      iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto 10.
       iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
       iApply (wp_cas_fail_pst _ (<[l:=v']>(of_heap h))); rewrite ?lookup_insert //.
-      rewrite of_heap_singleton_op //. iFrame "Hl". iNext.
-      iIntros "$". by iSplit.
+      rewrite of_heap_singleton_op //. iFrame "Hl".
+      iIntros "> Hown". iExists _; iSplit; first done.
+      rewrite of_heap_singleton_op //. by iFrame.
     Qed.
 
     Lemma wp_cas_suc N E l e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-      (heapI_ctx N ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 -★ Φ (♭v true)))
+      heapI_ctx N ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 -★ Φ (♭v true))
         ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
     Proof.
       iIntros {???} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-      iApply (auth_fsa' heapI_inv (wp_fsa _) (alter (λ _, Frac 1 (DecAgree v2)) l)
-                        _ N _ heapI_name {[ l := Frac 1 (DecAgree v1) ]}); simpl; eauto 10.
+      iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto 10.
       iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
       iApply (wp_cas_suc_pst _ (<[l:=v1]>(of_heap h))); rewrite ?lookup_insert //.
-      rewrite alter_singleton insert_insert !of_heap_singleton_op; eauto.
-      iFrame "Hl". iNext. iIntros "$". iFrame "HΦ". iPureIntro; naive_solver.
+      rewrite insert_insert !of_heap_singleton_op; eauto. iFrame "Hl".
+      iIntros "> Hown". iExists {[l := (1%Qp, DecAgree v2)]}; iSplit.
+      { iPureIntro; by apply singleton_local_update, exclusive_local_update. }
+      rewrite of_heap_singleton_op //; eauto. by iFrame.
     Qed.
 
     (** Helper Lemmas for weakestpre. *)
@@ -454,7 +443,7 @@ Section lang_rules.
     Qed.
 
     Lemma wp_fork E e Φ :
-      (▷ Φ UnitV ★ ▷ WP e {{ _, True }}) ⊢ WP Fork e @ E {{ Φ }}.
+      ▷ Φ UnitV ★ ▷ WP e {{ _, True }} ⊢ WP Fork e @ E {{ Φ }}.
     Proof.
       (rewrite -(wp_lift_pure_det_step (Fork e) Unit (Some e)) //=);
         last by intros; inv_step; eauto.
@@ -485,9 +474,7 @@ Section lang_rules.
       - rewrite right_id; auto using uPred.later_mono, wp_value'.
       - intros. inv_step; auto.
     Qed.
-
   End heap.
-
 End lang_rules.
 
 Notation "l ↦ᵢ{ q } v" := (heapI_mapsto l q v)

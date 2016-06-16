@@ -2,7 +2,6 @@ Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.F_mu.lang.
 
-
 Section lang_rules.
   Context {Σ : iFunctor}.
   Implicit Types P : iProp lang Σ.

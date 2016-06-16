@@ -11,8 +11,8 @@ Import uPred.
 
 Section Soundness.
   Context {Σ : gFunctors}
-          {Hhp : auth.authG lang Σ heapR}
-          {Hcfg : auth.authG lang Σ cfgR}.
+          {Hhp : auth.authG lang Σ heapUR}
+          {Hcfg : auth.authG lang Σ cfgUR}.
 
   Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ :=
     {| cofe_mor_car := λ x, {| cofe_mor_car := λ y, (True)%I |} |}.
@@ -34,19 +34,17 @@ Section Soundness.
     iDestruct (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
       as "Hp".
     iPvs "Hp" as {H} "[#Hheap _]".
-    iPvs (own_alloc
-            (● ((to_cfg ([e'], ∅) : cfgR))
-                  ⋅ ◯ (({[ 0 := Frac 1 (DecAgree e' : dec_agreeR _) ]} : tpoolR,
-                       ∅ : heapR): cfgR))) as "Hcfg".
+    iPvs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
+                  ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as "Hcfg".
     { constructor; eauto.
       - intros n; simpl. exists ∅. unfold to_cfg; simpl. rewrite to_empty_heap.
-          by rewrite cmra_unit_left_id cmra_unit_right_id.
-      - repeat constructor; simpl; auto.
+          by rewrite left_id right_id.
+      - repeat constructor; simpl; by auto.
     }
     iDestruct "Hcfg" as {γ} "Hcfg". rewrite own_op.
     iDestruct "Hcfg" as "[Hcfg1 Hcfg2]".
-    iAssert (@auth.auth_inv _ Σ _ _ _ γ (Spec_inv (to_cfg ([e'], ∅))))
-      as "Hinv" with "[Hcfg1]".
+    iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv (to_cfg ([e'], ∅))))
+      with "[Hcfg1]" as "Hinv".
     { iExists _; iFrame "Hcfg1". apply const_intro; constructor. }
     iPvs (inv_alloc (nroot .@ "Fμ,ref,par" .@ 3) with "[Hinv]") as "#Hcfg";
       trivial.
@@ -63,7 +61,7 @@ Section Soundness.
     iDestruct "Hp" as %Hp.
     unfold tpool_mapsto, auth.auth_own; simpl.
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (@own_valid _ Σ (authR cfgR) _ γ _ with "Hown !")
+    iDestruct (@own_valid _ Σ (authR cfgUR) _ γ _ with "#Hown")
       as "#Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' #Hb]";
       simpl; iClear "Hvalid".
@@ -73,7 +71,7 @@ Section Soundness.
     iPvsIntro; iSplitL.
     - iExists _. rewrite own_op. iDestruct "Hown" as "[Ho1 Ho2]".
       iSplitL; trivial.
-    - iApply const_intro; eauto.
+    - iPureIntro.
       rewrite from_to_cfg in Hp.
       destruct ρ' as [th hp]; unfold op, cmra_op in *; simpl in *.
       unfold prod_op, of_cfg in *; simpl in *.
@@ -81,7 +79,7 @@ Section Soundness.
       destruct Hb as [Hx1 Hx2]. simpl in *.
       destruct r as [q r|]; simpl in *; eauto.
       inversion Hx1 as [|? ? Hx]; subst.
-      apply frac_valid_inv_l in Hx. inversion Hx.
+      destruct q as [?|]. by move: Hx=> [/exclusive_r ??]. done.
       Unshelve. all: trivial.
   Qed.
 
@@ -96,7 +94,7 @@ Section Soundness.
       |- ?A =>
       eapply (@wp_adequacy_result lang _ ⊤ (λ _, A) e v thp ∅ ∅ hp); eauto
     end.
-    - apply cmra_unit_valid.
+    - apply ucmra_unit_valid.
     - iIntros "[Hp Hg]".
       iApply wp_wand_l; iSplitR; [| by iApply wp_basic_soundness].
         by iIntros {w} "H".
@@ -113,5 +111,4 @@ Section Soundness.
     intros H H' N Δ HΔ.
     eapply (bin_log_related_under_typed_context _ _ _ _ []); eauto.
   Qed.
-
 End Soundness.

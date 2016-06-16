@@ -10,31 +10,28 @@ Section logrel.
   Context {Σ : iFunctor}.
   Notation "# v" := (of_val v) (at level 20).
 
-  Canonical Structure leibniz_val := leibnizC val.
-  Canonical Structure leibniz_var := leibnizC var.
-
-  Class Val_to_IProp_Persistent (f : leibniz_val -n> iProp lang Σ) :=
-    val_to_iprop_persistent : ∀ v : val, PersistentP ((cofe_mor_car _ _ f) v).
+  Class Val_to_IProp_Persistent (f : valC -n> iProp lang Σ) :=
+    val_to_iprop_persistent : ∀ v : val, PersistentP (f v).
 
   Arguments Val_to_IProp_Persistent /.
 
   (** Just to get nicer closed forms, we define extend_context_interp in three steps. *)
   Program Definition extend_context_interp_fun1
-    (τi : leibniz_val -n> iProp lang Σ)
-    (f : leibniz_var -n> leibniz_val -n> iProp lang Σ) :
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+    (τi : valC -n> iProp lang Σ)
+    (f : varC -n> valC -n> iProp lang Σ) :
+    (varC -n> valC -n> iProp lang Σ) :=
     {| cofe_mor_car :=
          λ x,
-         match x return leibniz_val -n> iProp lang Σ with
+         match x return valC -n> iProp lang Σ with
          | O => τi
          | S x' => f x'
          end
     |}.
 
   Program Definition extend_context_interp_fun2
-    (τi : leibniz_val -n> iProp lang Σ) :
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+    (τi : valC -n> iProp lang Σ) :
+    (varC -n> valC -n> iProp lang Σ) -n>
+    (varC -n> valC -n> iProp lang Σ) :=
     {|
       cofe_mor_car := λ f, extend_context_interp_fun1 τi f
     |}.
@@ -42,9 +39,9 @@ Section logrel.
   Proof. intros ???? Hfg x; destruct x; cbn; trivial. Qed.
 
   Program Definition extend_context_interp :
-    (leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+    (valC -n> iProp lang Σ) -n>
+    (varC -n> valC -n> iProp lang Σ) -n>
+    (varC -n> valC -n> iProp lang Σ) :=
     {|
       cofe_mor_car := λ τi, extend_context_interp_fun2 τi
     |}.
@@ -52,10 +49,10 @@ Section logrel.
   Proof. intros n g h H Δ x y. destruct x; cbn; auto. Qed.
 
   Program Definition extend_context_interp_apply :
-    ((leibniz_var -n> leibniz_val -n> iProp lang Σ)) -n>
-    ((leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
-     leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) :=
+    ((varC -n> valC -n> iProp lang Σ)) -n>
+    ((varC -n> valC -n> iProp lang Σ) -n>
+     valC -n> iProp lang Σ) -n>
+    (valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ) :=
     {|
       cofe_mor_car := λ Δ,
         {|
@@ -79,14 +76,14 @@ Section logrel.
     destruct y; trivial.
   Qed.
 
-  Definition interp_unit : leibniz_val -n> iProp lang Σ :=
+  Definition interp_unit : valC -n> iProp lang Σ :=
     {|
       cofe_mor_car := λ w, (w = UnitV)%I
     |}.
 
   Program Definition interp_prod :
-    (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) -n>
-    leibniz_val -n> iProp lang Σ :=
+    (valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ) -n>
+    valC -n> iProp lang Σ :=
     {|
       cofe_mor_car :=
         λ τ1i,
@@ -105,8 +102,8 @@ Section logrel.
         try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
 
   Program Definition interp_sum :
-    (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) -n>
-    leibniz_val -n> iProp lang Σ :=
+    (valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ) -n>
+    valC -n> iProp lang Σ :=
     {|
       cofe_mor_car :=
         λ τ1i,
@@ -126,8 +123,8 @@ Section logrel.
         try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
 
   Program Definition interp_arrow :
-    (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ) -n>
-    leibniz_val -n> iProp lang Σ :=
+    (valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ) -n>
+    valC -n> iProp lang Σ :=
     {|
       cofe_mor_car :=
         λ τ1i,
@@ -136,7 +133,7 @@ Section logrel.
             λ τ2i,
             {|
               cofe_mor_car :=
-                λ w, (□ ∀ v, τ1i v → WP (App (# w) (# v)) @ ⊤ {{τ2i}})%I
+                λ w, (□ ∀ v, τ1i v → WP App (# w) (# v) {{τ2i}})%I
             |}
         |}
     |}.
@@ -148,17 +145,17 @@ Section logrel.
           try match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
 
   Program Definition interp_forall :
-    ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
-    leibniz_val -n> iProp lang Σ :=
+    ((valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ)) -n>
+    valC -n> iProp lang Σ :=
     {|
       cofe_mor_car :=
         λ τi,
         {|
           cofe_mor_car :=
             λ w,
-            (∀ (τ'i : {f : (leibniz_val -n> iProp lang Σ) |
+            (∀ (τ'i : {f : (valC -n> iProp lang Σ) |
                        Val_to_IProp_Persistent f}),
-                □ (WP TApp (# w) @ ⊤ {{λ v, (τi (`τ'i) v)}}))%I
+                □ WP TApp (# w) {{λ v, (τi (`τ'i) v)}})%I
         |}
     |}.
   Next Obligation.
@@ -173,9 +170,9 @@ Section logrel.
   Qed.
 
   Program Definition interp_rec_pre :
-    ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
-    (leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_val -n> iProp lang Σ) :=
+    ((valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ)) -n>
+    (valC -n> iProp lang Σ) -n>
+    (valC -n> iProp lang Σ) :=
     {|
       cofe_mor_car :=
         λ τi,
@@ -202,7 +199,7 @@ Section logrel.
   Qed.
 
   Global Instance interp_rec_pre_contr
-           (τi : (leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ))
+           (τi : (valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ))
     :
       Contractive (interp_rec_pre τi).
   Proof.
@@ -213,8 +210,8 @@ Section logrel.
   Qed.
 
   Program Definition interp_rec :
-    ((leibniz_val -n> iProp lang Σ) -n> (leibniz_val -n> iProp lang Σ)) -n>
-    (leibniz_val -n> iProp lang Σ)
+    ((valC -n> iProp lang Σ) -n> (valC -n> iProp lang Σ)) -n>
+    (valC -n> iProp lang Σ)
     :=
       {|
         cofe_mor_car := λ τi, fixpoint (interp_rec_pre τi)
@@ -223,7 +220,7 @@ Section logrel.
   Proof. intros n f g H; apply fixpoint_ne => z; rewrite H; trivial. Qed.
 
   Program Fixpoint interp (τ : type) {struct τ}
-    : (leibniz_var -n> (leibniz_val -n> iProp lang Σ)) -n> leibniz_val -n> iProp lang Σ
+    : (varC -n> (valC -n> iProp lang Σ)) -n> valC -n> iProp lang Σ
     :=
       match τ with
         | TUnit => {| cofe_mor_car := λ Δ, interp_unit |}
@@ -232,7 +229,7 @@ Section logrel.
         | TSum τ1 τ2 => {| cofe_mor_car := λ Δ,interp_sum (interp τ1 Δ) (interp τ2 Δ)|}
         | TArrow τ1 τ2 => {|cofe_mor_car := λ Δ, interp_arrow (interp τ1 Δ) (interp τ2 Δ)|}
         | TVar v => {| cofe_mor_car :=
-                        λ Δ : (leibniz_var -n> (leibniz_val -n> iProp lang Σ)), (Δ v) |}
+                        λ Δ : (varC -n> (valC -n> iProp lang Σ)), (Δ v) |}
         | TForall τ' =>
           {| cofe_mor_car := λ Δ,
                              interp_forall (extend_context_interp_apply Δ (interp τ'))|}
@@ -243,18 +240,18 @@ Section logrel.
   Solve Obligations with
   repeat intros ?; match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
 
-  Class context_interp_Persistent (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+  Class context_interp_Persistent (Δ : varC -n> valC -n> iProp lang Σ) :=
     contextinterppersistent : ∀ v : var, Val_to_IProp_Persistent (Δ v).
 
   Global Instance Val_to_IProp_Persistent_Persistent
-           (f : leibniz_val -n> iProp lang Σ)
+           (f : valC -n> iProp lang Σ)
            {Hf : Val_to_IProp_Persistent f}
            (v : val)
     : PersistentP (f v).
   Proof. apply Hf. Qed.
 
   Global Instance interp_Persistent
-         τ (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+         τ (Δ : varC -n> valC -n> iProp lang Σ)
          {HΔ : context_interp_Persistent Δ}
     : Val_to_IProp_Persistent (interp τ Δ).
   Proof.
@@ -267,7 +264,7 @@ Section logrel.
 
   Global Instance Persistent_context_interp_rel Δ Γ vs
            {HΔ : context_interp_Persistent Δ}
-    : PersistentP (Π∧ zip_with(λ τ v, interp τ Δ v) Γ vs)%I.
+    : PersistentP ([∧] zip_with(λ τ v, interp τ Δ v) Γ vs)%I.
   Proof. typeclasses eauto. Qed.
 
   Global Program Instance extend_context_interp_Persistent f Δ
@@ -294,7 +291,7 @@ Section logrel.
 
   Lemma interp_unused_contex_irrel
         (m n : nat)
-        (Δ Δ' : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (Δ Δ' : varC -n> valC -n> iProp lang Σ)
         (HΔ : ∀ v, Δ (if lt_dec v m then v else (n + v)) ≡
                      Δ' (if lt_dec v m then v else (n + v)))
         (τ : type)
@@ -341,8 +338,8 @@ Section logrel.
   Qed.
 
   Program Definition hop_context_interp (m n : nat) :
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+    (varC -n> valC -n> iProp lang Σ) -n>
+    (varC -n> valC -n> iProp lang Σ) :=
     {| cofe_mor_car :=
          λ Δ,
          {| cofe_mor_car := λ v, if lt_dec v m then Δ v else Δ (v - n) |}
@@ -355,8 +352,8 @@ Section logrel.
   Qed.
 
   Lemma extend_bofore_hop_context_interp (m n : nat)
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
-        (τi : leibniz_val -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
+        (τi : valC -n> iProp lang Σ)
         (v : var)
     :
       (extend_context_interp τi (hop_context_interp m n Δ)
@@ -375,7 +372,7 @@ Section logrel.
 
   Lemma interp_subst_weaken
         (m n : nat)
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
         (τ : type)
     : interp τ Δ ≡ interp τ.[iter m up (ren (+n))] (hop_context_interp m n Δ).
   Proof.
@@ -412,8 +409,8 @@ Section logrel.
   Qed.
 
   Lemma interp_ren_S (τ : type)
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
-        (τi : leibniz_val -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
+        (τi : valC -n> iProp lang Σ)
     : interp τ Δ ≡ interp τ.[ren (+1)] (extend_context_interp τi Δ).
   Proof.
     rewrite (interp_subst_weaken 0 1).
@@ -424,9 +421,9 @@ Section logrel.
   Local Opaque eq_nat_dec.
 
   Program Definition context_interp_insert (m : nat) :
-    (leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) -n>
-    (leibniz_var -n> leibniz_val -n> iProp lang Σ) :=
+    (valC -n> iProp lang Σ) -n>
+    (varC -n> valC -n> iProp lang Σ) -n>
+    (varC -n> valC -n> iProp lang Σ) :=
     {| cofe_mor_car :=
          λ τi,
          {| cofe_mor_car :=
@@ -451,9 +448,9 @@ Section logrel.
   Qed.
 
   Lemma extend_context_interp_insert (m : nat)
-        (τi : leibniz_val -n> iProp lang Σ)
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
-        (Ti : leibniz_val -n> iProp lang Σ)
+        (τi : valC -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
+        (Ti : valC -n> iProp lang Σ)
     :
       (extend_context_interp Ti (context_interp_insert m τi Δ))
         ≡ (context_interp_insert (S m) τi (extend_context_interp Ti Δ)).
@@ -466,8 +463,8 @@ Section logrel.
   Qed.
 
   Lemma context_interp_insert_O_extend
-        (τi : leibniz_val -n> iProp lang Σ)
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (τi : valC -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
     :
       (context_interp_insert O τi Δ)
         ≡ (extend_context_interp τi Δ).
@@ -498,7 +495,7 @@ Section logrel.
 
   Lemma interp_subst_iter_up
         (m : nat)
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
         (τ : type)
         (τ' : type)
     : interp τ (context_interp_insert m (interp τ'.[ren (+m)] Δ) Δ)
@@ -532,7 +529,7 @@ Section logrel.
   Qed.
 
   Lemma interp_subst
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ)
+        (Δ : varC -n> valC -n> iProp lang Σ)
         (τ : type)
         (τ' : type)
     : interp τ (extend_context_interp (interp τ' Δ) Δ) ≡ interp τ.[τ'/] Δ.
@@ -543,10 +540,10 @@ Section logrel.
   Qed.
 
   Lemma zip_with_context_interp_subst
-        (Δ : leibniz_var -n> leibniz_val -n> iProp lang Σ) (Γ : list type)
-        (vs : list leibniz_val) (τi : leibniz_val -n> iProp lang Σ) :
-    ((Π∧ zip_with (λ τ v, interp τ Δ v) Γ vs)%I)
-      ≡ (Π∧ zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
+        (Δ : varC -n> valC -n> iProp lang Σ) (Γ : list type)
+        (vs : list valC) (τi : valC -n> iProp lang Σ) :
+    (([∧] zip_with (λ τ v, interp τ Δ v) Γ vs)%I)
+      ≡ ([∧] zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
                     (map (λ t : type, t.[ren (+1)]) Γ) vs)%I.
   Proof.
     revert Δ vs τi.
@@ -556,5 +553,4 @@ Section logrel.
     - apply interp_ren_S.
     - apply IHΓ.
   Qed.
-
 End logrel.

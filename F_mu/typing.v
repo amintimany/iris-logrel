@@ -58,14 +58,13 @@ Proof.
 Qed.
 
 Definition env_subst (vs : list val) (x : var) : expr :=
-  from_option (Var x) (of_val <$> vs !! x).
+  from_option id (Var x) (of_val <$> vs !! x).
 
 Notation "# v" := (of_val v) (at level 20).
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
   typed Δ e τ -> List.length Δ = S (List.length ws) →
-  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)]
-.
+  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.
   rewrite /env_subst. eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
@@ -73,11 +72,9 @@ Proof.
     by rewrite Hv.
 Qed.
 
-
 Local Opaque eq_nat_dec.
 
-Lemma iter_up_subst_type (m : nat) (τ : type) (x : var)
-  :
+Lemma iter_up_subst_type (m : nat) (τ : type) (x : var) :
     (iter m up (τ .: ids) x) =
     if lt_dec x m then ids x else
       if eq_nat_dec x m then τ.[ren (+m)] else ids (x - 1).

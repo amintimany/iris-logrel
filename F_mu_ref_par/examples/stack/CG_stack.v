@@ -40,7 +40,7 @@ Section CG_Stack.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_push.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_load _ _ _ j (K ++ [StoreRCtx (LocV _); FoldCtx;
                                    InjRCtx; PairRCtx _])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
@@ -50,7 +50,7 @@ Section CG_Stack.
     iPvs (step_store _ _ _ j K _ _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     iFrame "Hspec Hj"; trivial.
-    iPvsIntro. iFrame "Hj Hx"; trivial.
+    iPvsIntro. by iFrame.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
     simpl; by rewrite ?to_of_val.
@@ -103,10 +103,9 @@ Section CG_Stack.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_push.
     iPvs (steps_with_lock
-            _ _ _ j K _ _ _ _ UnitV _ _ _ with "[Hj Hx Hl]") as "Hj"; eauto.
-    - intros K'.
-      iIntros "[#Hspec [Hx Hj]]".
-      iApply steps_CG_push; eauto. iFrame "Hspec Hj Hx"; trivial.
+            _ _ _ j K _ _ _ _ UnitV _ _ _ with "[Hj Hx Hl]") as "Hj"; last done.
+    - iIntros {K'} "[#Hspec [Hx Hj]]".
+      iApply steps_CG_push; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
   Qed.
@@ -143,19 +142,18 @@ Section CG_Stack.
     (∀ f, st.[f] = st) → ∀ f, (CG_pop st).[f] = CG_pop st.
   Proof. intros H f. unfold CG_pop. asimpl. rewrite ?H; trivial. Qed.
 
-  Lemma CG_pop_subst (st : expr) f :
-  (CG_pop st).[f] = CG_pop st.[f].
+  Lemma CG_pop_subst (st : expr) f : (CG_pop st).[f] = CG_pop st.[f].
   Proof. unfold CG_pop; asimpl; trivial. Qed.
 
   Lemma steps_CG_pop_suc N E ρ j K st v w :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ (FoldV (InjRV (PairV w v))) ★
-               j ⤇ (fill K (App (CG_pop (Loc st)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (InjR (# w))) ★ st ↦ₛ v)%I.
+    Spec_ctx N ρ ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★
+               j ⤇ fill K (App (CG_pop (Loc st)) Unit)
+      ={E}=> j ⤇ fill K (InjR (# w)) ★ st ↦ₛ v.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_load _ _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
@@ -167,7 +165,7 @@ Section CG_Stack.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
     iPvs (step_case_inr _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_snd _ _ _ j (K ++ [AppRCtx (LamV _); StoreRCtx (LocV _)]) _ _ _ _
                    _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
@@ -178,7 +176,7 @@ Section CG_Stack.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_fst _ _ _ j (K ++ [InjRCtx]) _ _ _ _ _ _
           with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
@@ -192,13 +190,13 @@ Section CG_Stack.
 
   Lemma steps_CG_pop_fail N E ρ j K st :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ (FoldV (InjLV UnitV)) ★
-               j ⤇ (fill K (App (CG_pop (Loc st)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (InjL Unit)) ★ st ↦ₛ (FoldV (InjLV UnitV)))%I.
+    Spec_ctx N ρ ★ st ↦ₛ FoldV (InjLV UnitV) ★
+               j ⤇ fill K (App (CG_pop (Loc st)) Unit)
+      ={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV).
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
+    iIntros {HNE} "[#Hspec [Hx Hj]]". unfold CG_pop.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_load _ _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
@@ -210,7 +208,7 @@ Section CG_Stack.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
     iPvs (step_case_inl _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvsIntro. iFrame "Hj Hx"; trivial.
     Unshelve.
     all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
@@ -257,34 +255,30 @@ Section CG_Stack.
 
   Lemma steps_CG_locked_pop_suc N E ρ j K st v w l :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ (FoldV (InjRV (PairV w v))) ★ l ↦ₛ (♭v false)
-               ★ j ⤇ (fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (InjR (# w))) ★ st ↦ₛ v
-                 ★ l ↦ₛ (♭v false))%I.
+    Spec_ctx N ρ ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★ l ↦ₛ (♭v false)
+               ★ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
+      ={E}=> j ⤇ fill K (InjR (# w)) ★ st ↦ₛ v ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
+    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
     iPvs (steps_with_lock _ _ _ j K _ _ _ _ (InjRV w) UnitV _ _
-          with "[Hj Hx Hl]") as "Hj"; eauto.
-    - intros K'.
-      iIntros "[#Hspec [Hx Hj]]".
-      iApply steps_CG_pop_suc; eauto. iFrame "Hspec Hj Hx"; trivial.
+          with "[Hj Hx Hl]") as "Hj"; last done.
+    - iIntros {K'} "[#Hspec [Hx Hj]]".
+      iApply steps_CG_pop_suc; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
   Qed.
 
   Lemma steps_CG_locked_pop_fail N E ρ j K st l :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ (FoldV (InjLV UnitV)) ★ l ↦ₛ (♭v false)
-               ★ j ⤇ (fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (InjL Unit)) ★ st ↦ₛ (FoldV (InjLV UnitV))
-                 ★ l ↦ₛ (♭v false))%I.
+    Spec_ctx N ρ ★ st ↦ₛ FoldV (InjLV UnitV) ★ l ↦ₛ (♭v false)
+               ★ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
+      ={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV) ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
+    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
     iPvs (steps_with_lock _ _ _ j K _ _ _ _ (InjLV UnitV) UnitV _ _
-          with "[Hj Hx Hl]") as "Hj"; eauto.
-    - intros K'.
-      iIntros "[#Hspec [Hx Hj]]". simpl.
-      iApply steps_CG_pop_fail; eauto. iFrame "Hspec Hj Hx"; trivial.
+          with "[Hj Hx Hl]") as "Hj"; last done.
+    - iIntros {K'} "[#Hspec [Hx Hj]]". simpl.
+      iApply steps_CG_pop_fail; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
   Qed.
@@ -326,22 +320,21 @@ Section CG_Stack.
   Qed.
 
   Lemma CG_snap_subst (st l : expr) f :
-  (CG_snap st l).[f] = CG_snap st.[f] l.[f].
+    (CG_snap st l).[f] = CG_snap st.[f] l.[f].
   Proof. unfold CG_snap; rewrite ?with_lock_subst. by asimpl. Qed.
 
   Lemma steps_CG_snap N E ρ j K st v l :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
-               ★ j ⤇ (fill K (App (CG_snap (Loc st) (Loc l)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (# v)) ★ st ↦ₛ v ★ l ↦ₛ (♭v false))%I.
+    Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
+               ★ j ⤇ fill K (App (CG_snap (Loc st) (Loc l)) Unit)
+      ={E}=> j ⤇ (fill K (# v)) ★ st ↦ₛ v ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_snap.
+    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]". unfold CG_snap.
     iPvs (steps_with_lock _ _ _ j K _ _ _ _ v UnitV _ _
-          with "[Hj Hx Hl]") as "Hj"; eauto; [|by iFrame "Hspec Hx Hl Hj"].
-    intros K'.
-    iIntros "[#Hspec [Hx Hj]]".
+          with "[Hj Hx Hl]") as "Hj"; last done; [|by iFrame "Hspec Hx Hl Hj"].
+    iIntros {K'} "[#Hspec [Hx Hj]]".
     iPvs (step_lam _ _ _ j K' _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_load _ _ _ j K' _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     - by iFrame "Hspec Hj Hx".
@@ -416,32 +409,29 @@ Section CG_Stack.
 
   Lemma steps_CG_iter N E ρ j K f v w :
     nclose N ⊆ E →
-    (((Spec_ctx N ρ)
-        ★ j ⤇
-        (fill K (App (CG_iter (# f)) (Fold (InjR (Pair (# w) (# v)))))))%I)
-      ⊢ |={E}=>
-  (j ⤇ (fill
-          K
+    Spec_ctx N ρ
+        ★ j ⤇ fill K (App (CG_iter (# f)) (Fold (InjR (Pair (# w) (# v)))))
+      ={E}=>
+    j ⤇ fill K
           (App
              (Lam
                 (App ((CG_iter (# f)).[ren (+2)])
                      (Snd (Pair ((# w).[ren (+2)]) (# v).[ren (+2)]))))
-             (App (# f) (# w)))))%I.
+             (App (# f) (# w))).
   Proof.
-    intros HNE. iIntros "[#Hspec Hj]". unfold CG_iter.
+    iIntros {HNE} "[#Hspec Hj]". unfold CG_iter.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
     iPvs (step_Fold _ _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
-    rewrite ?fill_app. simpl.
+    rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. asimpl.
     iPvs (step_case_inr _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_fst _ _ _ j (K ++ [AppRCtx (LamV _); AppRCtx f]) _ _ _ _
                    _ _ with "[Hj]") as "Hj"; eauto.
-    rewrite ?fill_app. simpl.
+    rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
     by iPvsIntro.
@@ -453,23 +443,18 @@ Section CG_Stack.
 
   Lemma steps_CG_iter_end N E ρ j K f :
     nclose N ⊆ E →
-    (((Spec_ctx N ρ)
-        ★ j ⤇ (fill K (App (CG_iter (# f)) (Fold (InjL Unit)))))%I)
-      ⊢ |={E}=>
-  (j ⤇ (fill K Unit))%I.
+    Spec_ctx N ρ ★ j ⤇ fill K (App (CG_iter (# f)) (Fold (InjL Unit)))
+      ={E}=> j ⤇ fill K Unit.
   Proof.
-    intros HNE. iIntros "[#Hspec Hj]". unfold CG_iter.
+    iIntros {HNE} "[#Hspec Hj]". unfold CG_iter.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
     iPvs (step_Fold _ _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
-    rewrite ?fill_app. simpl.
+    rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. asimpl.
     iPvs (step_case_inl _ _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
-    by iPvsIntro.
     Unshelve.
     all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
   Qed.
@@ -569,5 +554,4 @@ Section CG_Stack.
   Qed.
 
   Transparent CG_snap_iter.
-
 End CG_Stack.

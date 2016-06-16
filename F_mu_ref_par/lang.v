@@ -375,6 +375,9 @@ other words, [e] also contains the reducible expression *)
     head_step e1 σ1 e2 σ2 ef → to_val e1 = None.
   Proof. destruct 1; naive_solver. Qed.
 
+  Canonical Structure stateC := leibnizC state.
+  Canonical Structure valC := leibnizC val.
+  Canonical Structure exprC := leibnizC expr.
 End lang.
 
 (** Language *)

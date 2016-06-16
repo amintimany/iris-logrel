@@ -12,6 +12,7 @@ Section Soundness.
   Definition Σ := #[].
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
+  Proof.
     replace (env_subst []) with (ids) by reflexivity.
     asimpl; trivial.
   Qed.
@@ -32,7 +33,7 @@ Section Soundness.
     apply wp_soundness in H1.
     edestruct(@wp_adequacy_reducible lang (globalF Σ) ⊤
                                      (interp τ) e e' (e' :: thp) tt ∅)
-      as [Ha|Ha]; eauto using cmra_unit_valid; try tauto.
+      as [Ha|Ha]; eauto using ucmra_unit_valid; try tauto.
     - iIntros "H". iApply H1.
     - constructor.
   Qed.

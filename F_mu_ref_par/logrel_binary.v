@@ -15,9 +15,7 @@ Section logrel.
   Context {Σ : gFunctors}.
   Notation "# v" := (of_val v) (at level 20).
 
-  Canonical Structure valC := leibnizC val.
   Canonical Structure bivalC := prodC valC valC.
-  Definition varC := natC.
 
   Class BiVal_to_IProp_Persistent (f : bivalC -n> iPropG lang Σ) :=
     val_to_iprop_persistent :
@@ -189,7 +187,7 @@ Section logrel.
               cofe_mor_car :=
                 λ w, (□ ∀ j K v,
                            τ1i v ★ j ⤇ (fill K (App (# w.2) (# v.2))) →
-                           WP (App (# w.1) (# v.1)) @ ⊤
+                           WP App (# w.1) (# v.1)
                               {{z, ∃ z', j ⤇ (fill K (# z')) ★ τ2i (z, z')}})%I
             |}
         |}
@@ -228,8 +226,7 @@ Section logrel.
                        BiVal_to_IProp_Persistent f}),
                 □ (∀ j K,
                       j ⤇ (fill K (TApp (# w.2))) →
-                      WP TApp (# w.1) @ ⊤
-                         {{v, ∃ v', j ⤇ (fill K (# v')) ★
+                      WP TApp (# w.1) {{v, ∃ v', j ⤇ (fill K (# v')) ★
                                       (τi (`τ'i) (v, v'))}}))%I
         |}
     |}.
@@ -300,8 +297,7 @@ Section logrel.
   Next Obligation.
   Proof. intros n f g H; apply fixpoint_ne => z; rewrite H; trivial. Qed.
 
-  Context `{i : heapIG Σ}.
-  Context `{L : namespace}.
+  Context `{i : heapIG Σ} (L : namespace).
 
   Program Definition interp_ref_pred (l : loc * loc) :
     (bivalC -n> iPropG lang Σ) -n> iPropG lang Σ :=
@@ -386,7 +382,7 @@ Section logrel.
 
   Global Instance Persistent_context_interp_rel Δ Γ vs
            {HΔ : context_interp_Persistent Δ}
-    : PersistentP (Π∧ zip_with(λ τ v, interp τ Δ v) Γ vs)%I.
+    : PersistentP ([∧] zip_with(λ τ v, interp τ Δ v) Γ vs).
   Proof. typeclasses eauto. Qed.
 
   Global Program Instance extend_context_interp_Persistent f Δ
@@ -671,8 +667,8 @@ Section logrel.
   Lemma zip_with_context_interp_subst
         (Δ : varC -n> bivalC -n> iPropG lang Σ) (Γ : list type)
         (vs : list bivalC) (τi : bivalC -n> iPropG lang Σ) :
-    ((Π∧ zip_with (λ τ v, interp τ Δ v) Γ vs)%I)
-      ≡ (Π∧ zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
+    ([∧] zip_with (λ τ v, interp τ Δ v) Γ vs)%I
+      ≡ ([∧] zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
                     (map (λ t : type, t.[ren (+1)]) Γ) vs)%I.
   Proof.
     revert Δ vs τi.
@@ -708,5 +704,4 @@ Section logrel.
         rewrite IHEqType2.
         iDestruct "H1" as "%". subst; trivial.
   Qed.
-
 End logrel.

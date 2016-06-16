@@ -33,12 +33,15 @@ Global Opaque with_lockV.
 
 Lemma newlock_closed f : newlock.[f] = newlock.
 Proof. by asimpl. Qed.
+Hint Rewrite newlock_closed : autosubst.
 
 Lemma acquire_closed f : acquire.[f] = acquire.
 Proof. by asimpl. Qed.
+Hint Rewrite acquire_closed : autosubst.
 
 Lemma release_closed f : release.[f] = release.
 Proof. by asimpl. Qed.
+Hint Rewrite release_closed : autosubst.
 
 Lemma with_lock_subst (e l : expr) f :
   (with_lock e l).[f] = with_lock e.[f] l.[f].
@@ -79,27 +82,22 @@ Section proof.
 
   Lemma steps_newlock N E ρ j K :
     nclose N ⊆ E →
-    (((Spec_ctx N ρ ★ j ⤇ (fill K (newlock)))%I)
-      ⊢ |={E}=>(∃ l, j ⤇ (fill K (Loc l)) ★ l ↦ₛ (♭v false))%I).
+    Spec_ctx N ρ ★ j ⤇ fill K newlock
+      ={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE.
-    iIntros "[#Hspec Hj]".
-    iPvs (step_alloc _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    Unshelve. all: trivial.
+    iIntros {HNE} "[#Hspec Hj]".
+    by iPvs (step_alloc _ _ _ j K with "[Hj]") as "Hj"; eauto.
   Qed.
 
   Global Opaque newlock.
 
   Lemma steps_acquire N E ρ j K l :
     nclose N ⊆ E →
-    (((Spec_ctx N ρ ★ l ↦ₛ (♭v false) ★ j ⤇ (fill K (App acquire (Loc l))))%I)
-      ⊢ |={E}=>(j ⤇ (fill K Unit) ★ l ↦ₛ (♭v true))%I).
+    Spec_ctx N ρ ★ l ↦ₛ (♭v false) ★ j ⤇ fill K (App acquire (Loc l))
+      ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (♭v true).
   Proof.
-    intros HNE.
-    iIntros "[#Hspec [Hl Hj]]". unfold acquire.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
+    iIntros {HNE} "[#Hspec [Hl Hj]]". unfold acquire.
+    iPvs (step_lam _ _ _ j K with "[Hj]") as "Hj"; eauto. done.
     iPvs (step_cas_suc _ _ _ j (K ++ [IfCtx _ _])
                        _ _ _ _ _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; trivial.
     rewrite ?fill_app. simpl.
@@ -116,13 +114,11 @@ Section proof.
 
   Lemma steps_release N E ρ j K l b:
     nclose N ⊆ E →
-    (((Spec_ctx N ρ ★ l ↦ₛ (♭v b) ★ j ⤇ (fill K (App release (Loc l))))%I)
-      ⊢ |={E}=>(j ⤇ (fill K Unit) ★ l ↦ₛ (♭v false))%I).
+    Spec_ctx N ρ ★ l ↦ₛ (♭v b) ★ j ⤇ fill K (App release (Loc l))
+      ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE.
-    iIntros "[#Hspec [Hl Hj]]". unfold release.
-    iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
+    iIntros {HNE} "[#Hspec [Hl Hj]]". unfold release.
+    iPvs (step_lam _ _ _ j K with "[Hj]") as "Hj"; eauto; try done.
     iPvs (step_store _ _ _ j K _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     iFrame "Hspec Hj"; trivial.
     iPvsIntro. iFrame "Hj Hl"; trivial.
@@ -133,43 +129,35 @@ Section proof.
 
   Lemma steps_with_lock N E ρ j K e l P Q v w:
     nclose N ⊆ E →
-    (∀ f, e.[f] = e) (* e is a closed term *)
-    →
-    (∀ K', ((Spec_ctx N ρ ★ P ★ j ⤇ (fill K' (App e (# w))))%I)
-            ⊢ |={E}=>(j ⤇ (fill K' (# v)) ★ Q)%I)
-    →
-    (((Spec_ctx N ρ ★ P ★ l ↦ₛ (♭v false)
-                ★ j ⤇ (fill K (App (with_lock e (Loc l)) (# w))))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (# v)) ★ Q ★ l ↦ₛ (♭v false))%I).
+    (∀ f, e.[f] = e) (* e is a closed term *) →
+    (∀ K', Spec_ctx N ρ ★ P ★ j ⤇ fill K' (App e (# w))
+            ={E}=> j ⤇ fill K' (# v) ★ Q) →
+    Spec_ctx N ρ ★ P ★ l ↦ₛ (♭v false)
+                ★ j ⤇ fill K (App (with_lock e (Loc l)) (# w))
+      ={E}=> j ⤇ fill K (# v) ★ Q ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE H1 H2.
-    iIntros "[#Hspec [HP [Hl Hj]]]".
+    iIntros {HNE H1 H2} "[#Hspec [HP [Hl Hj]]]".
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
-    rewrite ?acquire_closed ?release_closed ?H1. asimpl.
+    asimpl. rewrite H1.
     iPvs (steps_acquire _ _ _ j (K ++ [AppRCtx (LamV _)])
                    _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     rewrite fill_app; simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
-    rewrite ?release_closed ?H1. asimpl.
+    asimpl. rewrite H1.
     iPvs (H2 (K ++ [AppRCtx (LamV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
-    rewrite ?fill_app. simpl.
-    iFrame "Hspec Hj"; trivial.
-    rewrite ?fill_app. simpl.
+    rewrite ?fill_app /=.
+    iFrame "Hspec HP"; trivial.
+    rewrite ?fill_app /=.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
-    rewrite release_closed. asimpl.
+    asimpl.
     iPvs (steps_release _ _ _ j (K ++ [AppRCtx (LamV _)]) _ _ with "[Hj Hl]")
       as "[Hj Hl]"; eauto.
-    rewrite ?fill_app. simpl.
-    iFrame "Hspec Hl Hj"; trivial.
-    rewrite ?fill_app. simpl.
+    rewrite ?fill_app /=. by iFrame.
+    rewrite ?fill_app /=.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
-    iPvsIntro. iFrame "Hj HQ Hl"; trivial.
+    asimpl. iPvsIntro; by iFrame.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
     trivial.

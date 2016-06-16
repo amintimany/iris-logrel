@@ -221,6 +221,9 @@ other words, [e] also contains the reducible expression *)
     eauto using fill_item_no_val_inj, values_head_stuck, fill_not_val.
   Qed.
 
+  Canonical Structure stateC := leibnizC state.
+  Canonical Structure valC := leibnizC val.
+  Canonical Structure exprC := leibnizC expr.
 End lang.
 
 (** Language *)

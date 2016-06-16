@@ -30,13 +30,11 @@ Section CG_Counter.
 
   Lemma steps_CG_increment N E ρ j K x n:
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ x ↦ₛ (♯v n) ★
-               j ⤇ (fill K (App (CG_increment (Loc x)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (Unit)) ★ x ↦ₛ (♯v (S n)))%I.
+    Spec_ctx N ρ ★ x ↦ₛ (♯v n) ★ j ⤇ fill K (App (CG_increment (Loc x)) Unit)
+      ={E}=> j ⤇ fill K (Unit) ★ x ↦ₛ (♯v (S n)).
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_increment.
+    iIntros {HNE} "[#Hspec [Hx Hj]]". unfold CG_increment.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
     iPvs (step_load _ _ _ j (K ++ [StoreRCtx (LocV _); NBOPRCtx _ (♯v _)])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
@@ -98,17 +96,16 @@ Section CG_Counter.
 
   Lemma steps_CG_locked_increment N E ρ j K x n l :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ x ↦ₛ (♯v n) ★ l ↦ₛ (♭v false)
-               ★ j ⤇ (fill K (App
-                                (CG_locked_increment (Loc x) (Loc l)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (Unit)) ★ x ↦ₛ (♯v S n) ★ l ↦ₛ (♭v false))%I.
+    Spec_ctx N ρ ★ x ↦ₛ (♯v n) ★ l ↦ₛ (♭v false)
+               ★ j ⤇ fill K (App
+                                (CG_locked_increment (Loc x) (Loc l)) Unit)
+      ={E}=> j ⤇ fill K Unit ★ x ↦ₛ (♯v S n) ★ l ↦ₛ (♭v false).
   Proof.
-    intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]".
+    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]".
     iPvs (steps_with_lock
-            _ _ _ j K _ _ _ _ UnitV UnitV _ _ with "[Hj Hx Hl]") as "Hj"; eauto.
-    - intros K'.
-      iIntros "[#Hspec [Hx Hj]]".
-      iApply steps_CG_increment; eauto. iFrame "Hspec Hj Hx"; trivial.
+            _ _ _ j K _ _ _ _ UnitV UnitV _ _ with "[Hj Hx Hl]") as "Hj"; last done.
+    - iIntros {K'} "[#Hspec [Hx Hj]]".
+      iApply steps_CG_increment; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
   Qed.
@@ -145,13 +142,13 @@ Section CG_Counter.
 
   Lemma steps_counter_read N E ρ j K x n :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ x ↦ₛ (♯v n)
-               ★ j ⤇ (fill K (App (counter_read (Loc x)) Unit)))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (♯ n)) ★ x ↦ₛ (♯v n))%I.
+    Spec_ctx N ρ ★ x ↦ₛ (♯v n)
+               ★ j ⤇ fill K (App (counter_read (Loc x)) Unit)
+      ={E}=> j ⤇ fill K (♯ n) ★ x ↦ₛ (♯v n).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold counter_read.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. asimpl.
+    asimpl.
     iPvs (step_load _ _ _ j K _ _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     iFrame "Hspec Hj"; trivial.
     iPvsIntro. iFrame "Hj Hx"; trivial.
@@ -289,7 +286,6 @@ Section CG_Counter.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
     asimpl. rewrite CG_locked_increment_subst; simpl.
     rewrite counter_read_subst; simpl.
     iPvs (step_alloc _ _ _ j (K ++ [AppRCtx (LamV _)]) _ _ _ _ with "[Hj]")
@@ -298,7 +294,6 @@ Section CG_Counter.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
     asimpl. rewrite CG_locked_increment_subst; simpl.
     rewrite counter_read_subst; simpl.
     Unshelve.
@@ -310,7 +305,7 @@ Section CG_Counter.
     simpl.
     (* establishing the invariant *)
     iAssert ((∃ n, l ↦ₛ (♭v false) ★ cnt ↦ᵢ (♯v n) ★ cnt' ↦ₛ (♯v n) )%I)
-      as "Hinv" with "[Hl Hcnt Hcnt']".
+      with "[Hl Hcnt Hcnt']" as "Hinv".
     { iExists _. iFrame "Hl Hcnt Hcnt'"; trivial. }
     iPvs (inv_alloc (N .@ 4) with "[Hinv]") as "#Hinv"; trivial.
     { iNext; iExact "Hinv". }
@@ -389,10 +384,9 @@ Section CG_Counter.
       Unshelve.
       all: abstract prove_disj N 3 4.
   Qed.
-
 End CG_Counter.
 
-Definition Σ := #[auth.authGF heapR; auth.authGF cfgR].
+Definition Σ := #[auth.authGF heapUR; auth.authGF cfgUR].
 
 Theorem counter_context_refinement :
   context_refines

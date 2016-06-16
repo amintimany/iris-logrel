@@ -4,19 +4,19 @@ Require Export Autosubst.Autosubst.
 
 Module lang.
   Inductive expr :=
-  | Var (x : var)
-  | Lam (e : {bind 1 of expr})
-  | App (e1 e2 : expr)
-  (* Unit *)
-  | Unit
-  (* Products *)
-  | Pair (e1 e2 : expr)
-  | Fst (e : expr)
-  | Snd (e : expr)
-  (* Sums *)
-  | InjL (e : expr)
-  | InjR (e : expr)
-  | Case (e0 : expr) (e1 : {bind expr}) (e2 : {bind expr}).
+    | Var (x : var)
+    | Lam (e : {bind 1 of expr})
+    | App (e1 e2 : expr)
+    (* Unit *)
+    | Unit
+    (* Products *)
+    | Pair (e1 e2 : expr)
+    | Fst (e : expr)
+    | Snd (e : expr)
+    (* Sums *)
+    | InjL (e : expr)
+    | InjR (e : expr)
+    | Case (e0 : expr) (e1 : {bind expr}) (e2 : {bind expr}).
 
   Instance Ids_expr : Ids expr. derive. Defined.
   Instance Rename_expr : Rename expr. derive. Defined.
@@ -24,11 +24,11 @@ Module lang.
   Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
 
   Inductive val :=
-  | LamV (e : {bind 1 of expr})
-  | UnitV
-  | PairV (v1 v2 : val)
-  | InjLV (v : val)
-  | InjRV (v : val).
+    | LamV (e : {bind 1 of expr})
+    | UnitV
+    | PairV (v1 v2 : val)
+    | InjLV (v : val)
+    | InjRV (v : val).
 
   Fixpoint of_val (v : val) : expr :=
     match v with

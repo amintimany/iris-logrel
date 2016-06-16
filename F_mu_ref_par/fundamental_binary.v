@@ -12,8 +12,7 @@ Require Import iris.proofmode.tactics iris.proofmode.invariants.
 Import uPred.
 
 Section typed_interp.
-  Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ}
-          {N : namespace}.
+  Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ} {N : namespace}.
 
   Implicit Types P Q R : iPropG lang Σ.
   Notation "# v" := (of_val v) (at level 20).
@@ -23,8 +22,8 @@ Section typed_interp.
     iApply (@wp_bind _ _ _ [ctx]);
     iApply wp_wand_l; iSplitR;
     [|iApply Hp; rewrite fill_app; simpl; repeat iSplitR; trivial];
-    iIntros {v} "Htemporary";
-    iDestruct "Htemporary" as {w} Hv;
+    let Htmp := iFresh in
+    iIntros {v} Htmp; iDestruct Htmp as {w} Hv;
     rewrite fill_app; simpl.
 
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
@@ -37,16 +36,14 @@ Section typed_interp.
   Qed.
 
   Definition bin_log_related Δ Γ e e' τ
-             {HΔ : context_interp_Persistent Δ}
-    :=
+             {HΔ : context_interp_Persistent Δ} :=
       ∀ vs,
         List.length Γ = List.length vs →
         ∀ ρ j K,
-          ((heapI_ctx (N .@ 2) ★ Spec_ctx (N .@ 3) ρ ★
-                      Π∧ zip_with (λ τ v, @interp Σ iS iI (N .@ 1) τ Δ v) Γ vs
+          heapI_ctx (N .@ 2) ★ Spec_ctx (N .@ 3) ρ ★
+                      [∧] zip_with (λ τ v, @interp Σ iS iI (N .@ 1) τ Δ v) Γ vs
                                   ★ j ⤇ (fill K (e'.[env_subst (map snd vs)]))
-           )%I)
-            ⊢ WP (e.[env_subst (map fst vs)]) @ ⊤
+            ⊢ WP e.[env_subst (map fst vs)]
             {{ λ v, ∃ v', j ⤇ (fill K (# v')) ★
                             (@interp Σ iS iI (N .@ 1)
                                      τ Δ (v, v')) }}.
@@ -64,7 +61,7 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Pair e1 e2 ≤log≤ Pair e1' e2' ∷ TProd τ1 τ2.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (PairLCtx e2.[env_subst (map fst vs)]) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j
                              (K ++ [PairLCtx e2'.[env_subst (map snd vs)] ])).
@@ -87,10 +84,9 @@ Section typed_interp.
     iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]".
     inversion H; subst.
     iPvs (step_fst _ _ _ j K (# (w2.1)) (w2.1) (# (w2.2)) (w2.2)
-                   _ _ _ with "* -") as "Hw".
+                   _ _ _ with "* [-]") as "Hw".
     iFrame "Hspec Hv"; trivial.
     iApply wp_fst; eauto using to_of_val; cbn.
-    iNext. iExists _; iSplitL; trivial.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
   Qed.
@@ -106,10 +102,9 @@ Section typed_interp.
     iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]".
     inversion H; subst.
     iPvs (step_snd _ _ _ j K (# (w2.1)) (w2.1) (# (w2.2)) (w2.2)
-                   _ _ _ with "* -") as "Hw".
+                   _ _ _ with "* [-]") as "Hw".
     iFrame "Hspec Hv"; trivial.
     iApply wp_snd; eauto using to_of_val; cbn.
-    iNext. iExists _; iSplitL; trivial.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
   Qed.
@@ -154,34 +149,29 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Case e0 e1 e2 ≤log≤ Case e0' e1' e2' ∷ τ3.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (CaseCtx _ _) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j (K ++ [CaseCtx _ _])); cbn.
     iDestruct "Hiv" as "[Hiv|Hiv]".
-    + iDestruct "Hiv" as {w} "[% Hw]".
-      inversion H; subst.
+    + iDestruct "Hiv" as {w} "[% Hw]"; simplify_eq.
       iPvs (step_case_inl _ _ _ j K (# (w.2)) (w.2) _ _
-                          _ _ with "* -") as "Hz".
+                          _ _ with "* [-]") as "Hz".
       iFrame "Hspec Hv"; trivial.
       iApply wp_case_inl; auto 1 using to_of_val.
       asimpl.
       specialize (IHHtyped2 (w::vs)); simpl in IHHtyped2.
       erewrite <- ?n_closed_subst_head_simpl in IHHtyped2; eauto;
         simpl; try rewrite map_length; eauto with f_equal. iNext.
-      iApply IHHtyped2; auto 2.
-      iFrame "Hheap Hspec Hw HΓ"; trivial.
-    + iDestruct "Hiv" as {w} "[% Hw]".
-      inversion H; subst.
-      iPvs (step_case_inr _ _ _ j K (# (w.2)) (w.2) _ _
-                          _ _ with "* -") as "Hz".
+      iApply IHHtyped2; eauto.
+    + iDestruct "Hiv" as {w} "[% Hw]"; simplify_eq.
+      iPvs (step_case_inr _ _ _ j K (# (w.2)) (w.2) _ _ _ _ with "* [-]") as "Hz".
       iFrame "Hspec Hv"; trivial.
       iApply wp_case_inr; auto 1 using to_of_val.
       asimpl.
       specialize (IHHtyped3 (w::vs)); simpl in IHHtyped3.
       erewrite <- ?n_closed_subst_head_simpl in IHHtyped3; eauto;
         simpl; try rewrite map_length; eauto with f_equal. iNext.
-      iApply IHHtyped3; auto 2.
-      iFrame "Hheap Hspec Hw HΓ"; trivial.
+      iApply IHHtyped3; eauto 10.
       (* unshelving *)
       Unshelve. all: eauto using to_of_val.
   Qed.
@@ -193,16 +183,16 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ If e0 e1 e2 ≤log≤ If e0' e1' e2' ∷ τ.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (IfCtx _ _) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j (K ++ [IfCtx _ _])); cbn.
-    iDestruct "Hiv" as {b} "[% %]"; subst; destruct b; simpl.
-    + iPvs (step_if_true _ _ _ j K _ _ _ with "* -") as "Hz".
+    iDestruct "Hiv" as { [] } "[% %]"; simplify_eq/=.
+    + iPvs (step_if_true _ _ _ j K _ _ _ with "* [-]") as "Hz".
       iFrame "Hspec Hv"; trivial. iApply wp_if_true. iNext.
-      iApply IHHtyped2; trivial. iFrame "Hheap Hspec HΓ"; trivial.
-    + iPvs (step_if_false _ _ _ j K _ _ _ with "* -") as "Hz".
+      iApply IHHtyped2; eauto.
+    + iPvs (step_if_false _ _ _ j K _ _ _ with "* [-]") as "Hz".
       iFrame "Hspec Hv"; trivial. iApply wp_if_false. iNext.
-      iApply IHHtyped3; trivial. iFrame "Hheap Hspec HΓ"; trivial.
+      iApply IHHtyped3; eauto.
       (* unshelving *)
       Unshelve. all: eauto using to_of_val.
   Qed.
@@ -213,14 +203,14 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ NBOP op e1 e2 ≤log≤ NBOP op e1' e2' ∷ (NatBinOP_res_type op).
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (NBOPLCtx _ _) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j (K ++ [NBOPLCtx _ _])); cbn.
     smart_wp_bind (NBOPRCtx _ _) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [NBOPRCtx _ _])); cbn.
     iDestruct "Hiv" as {n} "[% %]"; subst; simpl.
     iDestruct "Hiw" as {n'} "[% %]"; subst; simpl.
-    iPvs (step_nat_bin_op _ _ _ j K _ _ _ _ with "* -") as "Hz".
+    iPvs (step_nat_bin_op _ _ _ j K _ _ _ _ with "* [-]") as "Hz".
     iFrame "Hspec Hw"; trivial. iApply wp_nat_bin_op. iNext.
     iExists _; iSplitL; eauto.
     destruct op; simpl; try destruct eq_nat_dec; try destruct le_dec;
@@ -236,12 +226,11 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Lam e ≤log≤ Lam e' ∷  TArrow τ1 τ2.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-    value_case. iExists (LamV _). iFrame "Htr".
-    iApply löb. rewrite -always_later. iIntros "#Hlat".
-    iAlways. iIntros {j' K' v} "[#Hiv Hv]".
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
+    value_case. iExists (LamV _). iFrame "Htr". iAlways.
+    iLöb as "IH". iIntros {j' K' v} "[#Hiv Hv]".
     iApply wp_lam; auto 1 using to_of_val. iNext.
-    iPvs (step_lam _ _ _ j' K' _ (# (v.2)) (v.2) _ _ with "* -") as "Hz".
+    iPvs (step_lam _ _ _ j' K' _ (# (v.2)) (v.2) _ _ with "* [-]") as "Hz".
     iFrame "Hspec Hv"; trivial.
     asimpl.
     specialize (IHHtyped ((LamV e.[upn 2 (env_subst (map fst vs))],
@@ -249,8 +238,7 @@ Section typed_interp.
                             :: v :: vs)). simpl in IHHtyped.
     erewrite <- ?n_closed_subst_head_simpl_2 in IHHtyped; eauto; simpl;
       try rewrite map_length; auto.
-    iApply IHHtyped; auto.
-    repeat iSplitR; trivial. repeat iSplit; trivial.
+    iApply IHHtyped; auto. repeat iSplitR; eauto.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
   Qed.
@@ -261,14 +249,13 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ App e1 e2 ≤log≤ App e1' e2' ∷  τ2.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (AppLCtx (e2.[env_subst (map fst vs)])) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j
                      (K ++ [(AppLCtx (e2'.[env_subst (map snd vs)]))])); cbn.
     smart_wp_bind (AppRCtx v) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [AppRCtx v'])); cbn.
-    iApply ("Hiv" $! j K (w, w')); simpl.
-    iFrame "Hw"; trivial.
+    iApply ("Hiv" $! j K (w, w')); simpl; eauto.
     (* unshelving *)
     Unshelve. all: trivial.
   Qed.
@@ -280,36 +267,32 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ TLam e ≤log≤ TLam e' ∷  TForall τ.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-    value_case.
-    iExists (TLamV _). iFrame "Htr".
-    iIntros {τi}; destruct τi as [τi τiPr].
-    iAlways. iIntros {j' K'} "Hv". simpl.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
+    value_case. iExists (TLamV _). iFrame "Htr"; simpl.
+    iIntros { [τi τiPr] } "!"; iIntros {j' K'} "Hv /=".
     iApply wp_TLam; iNext.
-    iPvs (step_Tlam _ _ _ j' K' (e'.[env_subst (map snd vs)]) _ with "* -")
+    iPvs (step_Tlam _ _ _ j' K' (e'.[env_subst (map snd vs)]) _ with "* [-]")
       as "Hz".
     iFrame "Hspec Hv"; trivial.
     iApply IHHtyped; [rewrite map_length; trivial|].
     iFrame "Hheap Hspec".
     rewrite zip_with_context_interp_subst; by iFrame "HΓ".
     Unshelve. all: trivial.
-  Qed.
+Qed.
 
   Lemma typed_binary_interp_TApp Δ Γ e e' τ τ' {HΔ : ✓✓ Δ}
         (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TForall τ)
     :
       Δ ∥ Γ ⊩ TApp e ≤log≤ TApp e' ∷ τ.[τ'/].
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (TAppCtx) v v' "[Hj #Hv]"
                     (IHHtyped _ _ _ j (K ++ [TAppCtx])); cbn.
-    iSpecialize ("Hv" $! ((interp τ' Δ) ↾ _)); cbn.
-    iRevert "Hv"; iIntros "#Hv". (*To get rid of □. Is this the best way?!*)
-    iSpecialize ("Hv" $! j K); cbn.
+    iSpecialize ("Hv" $! (interp (N .@ 1) τ' Δ) ↾ _); cbn.
+    iDestruct "Hv" as "#Hv".
     iApply wp_wand_l; iSplitR; [|iApply "Hv"; auto].
     iIntros {w} "Hw". iDestruct "Hw" as {w'} "[Hw #Hiw]".
-    iExists _; iFrame "Hw".
-    rewrite -interp_subst; trivial.
+    iExists _; rewrite -interp_subst; eauto.
     (* unshelving *)
     Unshelve. all: trivial. simpl; typeclasses eauto.
   Qed.
@@ -319,7 +302,7 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Fold e ≤log≤ Fold e' ∷  TRec τ.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     iApply (@wp_bind _ _ _ [FoldCtx]);
       iApply wp_wand_l; iSplitR;
         [|iApply (IHHtyped _ _ _ j (K ++ [FoldCtx]));
@@ -329,7 +312,7 @@ Section typed_interp.
     value_case. iExists (FoldV w); iFrame "Hv".
     rewrite fixpoint_unfold; cbn.
     rewrite -interp_subst; trivial.
-    iAlways; iExists (_, _); iSplit; try iNext; trivial.
+    iAlways; iExists (_, _); eauto.
     (* unshelving *)
     Unshelve. all: trivial.
   Qed.
@@ -339,17 +322,16 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Unfold e ≤log≤ Unfold e' ∷ τ.[(TRec τ)/].
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     iApply (@wp_bind _ _ _ [UnfoldCtx]);
       iApply wp_wand_l; iSplitR;
         [|iApply (IHHtyped _ _ _ j (K ++ [UnfoldCtx]));
           rewrite fill_app; simpl; repeat iSplitR; trivial].
     iIntros {v} "Hv". iDestruct "Hv" as {w} "[Hw #Hiw]"; rewrite fill_app.
     simpl. rewrite fixpoint_unfold; simpl.
-    iRevert "Hiw"; iIntros "#Hiw". (*To get rid of □. Is this the best way?!*)
     change (fixpoint _) with (@interp _ _ _ (N .@ 1) (TRec τ) Δ).
-    iDestruct "Hiw" as {z} "[% #Hiz]"; inversion H; subst.
-    iPvs (step_Fold _ _ _ j K (# (z.2)) (z.2) _ _ with "* -") as "Hz".
+    iDestruct "Hiw" as {z} "#[% Hiz]"; simplify_eq/=.
+    iPvs (step_Fold _ _ _ j K (# (z.2)) (z.2) _ _ with "* [-]") as "Hz".
     iFrame "Hspec Hw"; trivial.
     iApply wp_Fold; cbn; auto using to_of_val.
     iNext. iExists _; iFrame "Hz".
@@ -363,17 +345,11 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Fork e ≤log≤ Fork e' ∷ TUnit.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-    iPvs (step_fork _ _ _ j K _ _ with "* -") as "Hz".
-    iFrame "Hspec Htr"; trivial.
-    iDestruct "Hz" as {j'} "[Hz1 Hz2]".
-    iApply wp_fork.
-    iSplitL "Hz1".
-    + iNext. iExists UnitV; iFrame "Hz1"; iSplit; trivial.
-    + iNext. iApply wp_wand_l; iSplitR;
-               [|iApply (IHHtyped _ _ _ _ [])]; trivial.
-      * iIntros {w} "Hw"; trivial.
-      * iFrame "Hheap Hspec HΓ"; trivial.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
+    iPvs (step_fork _ _ _ j K _ _ with "* [-]") as {j'} "[Hz1 Hz2]"; first by iFrame.
+    iApply wp_fork; iNext; iSplitL "Hz1".
+    + iExists UnitV; iFrame "Hz1"; eauto.
+    + iApply wp_wand_l; iSplitR; [|iApply (IHHtyped _ _ _ _ [])]; eauto.
     (* unshelving *)
     Unshelve. all: trivial.
   Qed.
@@ -383,20 +359,17 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Alloc e ≤log≤ Alloc e' ∷ (Tref τ).
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [AllocCtx])).
     iApply wp_atomic; cbn; trivial; [rewrite to_of_val; auto|].
     iPvsIntro.
-    iPvs (step_alloc _ _ _ j K (# v') v' _ _ with "* -") as "Hz".
-    iFrame "Hspec Hv"; trivial.
-    iDestruct "Hz" as {l'} "[Hj Hl']".
+    iPvs (step_alloc _ _ _ j K (# v') v' _ _ with "* [-]") as {l'} "[Hj Hl']"; eauto.
     iApply wp_alloc; auto 1 using to_of_val.
-    iFrame "Hheap". iNext.
-    iIntros {l} "Hl".
+    iFrame "Hheap". iNext. iIntros {l} "Hl".
     iAssert ((∃ w : val * val, l ↦ᵢ w.1 ★ l' ↦ₛ w.2 ★
                                  ((@interp _ _ _ (N .@ 1) τ) Δ) w)%I)
-      as "Hinv" with "[Hl Hl']".
+      with "[Hl Hl']" as "Hinv".
     { iExists (v, v'); iFrame "Hl Hl' Hiv"; trivial. }
     iPvs (inv_alloc _ with "[Hinv]") as "HN"; eauto 1.
     { iNext; iExact "Hinv". }
@@ -425,11 +398,10 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Load e ≤log≤ Load e' ∷ τ.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (LoadCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [LoadCtx])).
-    iDestruct "Hiv" as {l} "[% Hinv]".
-    inversion H; subst.
+    iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
     iApply wp_atomic; cbn; trivial.
     iPvsIntro.
     iInv (N .@ 1 .@ l) as {w} "[Hw1 [Hw2 #Hw3]]".
@@ -438,11 +410,10 @@ Section typed_interp.
     iFrame "Hspec Hv"; trivial.
     iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
     SolveDisj 2 l.
-    iNext. iFrame "Hw1". iIntros "Hw1".
-    iSplitL "Hw1 Hw2".
-    + iNext; iExists w; iFrame "Hw1 Hw2 Hw3"; trivial.
+    iFrame "Hw1". iIntros "> Hw1". iSplitL "Hw1 Hw2".
+    + iNext; iExists w; by iFrame.
     + iPvsIntro.
-      destruct w as [w1 w2]; iExists (w2); iFrame "Hv Hw3"; trivial.
+      destruct w as [w1 w2]; iExists w2; iFrame "Hv Hw3"; trivial.
       (* unshelving *)
       Unshelve. all: eauto using to_of_val.
       SolveDisj 3 l.
@@ -454,13 +425,12 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ Store e1 e2 ≤log≤ Store e1' e2' ∷ TUnit.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (StoreLCtx _) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j (K ++ [StoreLCtx _])).
     smart_wp_bind (StoreRCtx _) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [StoreRCtx _])).
-    iDestruct "Hiv" as {l} "[% Hinv]".
-    inversion H; subst.
+    iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
     iApply wp_atomic; trivial;
       [eapply bool_decide_spec; eauto using to_of_val|].
     iPvsIntro.
@@ -472,9 +442,9 @@ Section typed_interp.
     iFrame "Hspec Hw Hw2"; trivial.
     iApply (wp_store (N .@ 2)); auto using to_of_val.
     SolveDisj 2 l.
-    iFrame "Hheap Hw1". iNext. iIntros "Hw1".
+    iFrame "Hheap Hw1". iIntros "> Hw1".
     iSplitL "Hw1 Hw2".
-    + iNext; iExists (w, w'); iFrame "Hw1 Hw2 Hiw"; trivial.
+    + iNext; iExists (w, w'); by iFrame.
     + iPvsIntro. iExists UnitV; iFrame "Hw" ; iSplit; trivial.
       (* unshelving *)
       Unshelve. all: eauto using to_of_val.
@@ -489,22 +459,20 @@ Section typed_interp.
     :
       Δ ∥ Γ ⊩ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' ∷ TBool.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (CasLCtx _ _) v v' "[Hv #Hiv]"
                   (IHHtyped1 _ _ _ j (K ++ [CasLCtx _ _])).
     smart_wp_bind (CasMCtx _ _) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [CasMCtx _ _])).
     smart_wp_bind (CasRCtx _ _) u u' "[Hu #Hiu]"
                   (IHHtyped3 _ _ _ j (K ++ [CasRCtx _ _])).
-    iDestruct "Hiv" as {l} "[% Hinv]".
-    inversion H; subst.
+    iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
     iApply wp_atomic; trivial;
       [cbn; eauto 10 using to_of_val|].
     iPvsIntro.
-    iInv (N .@ 1 .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
+    iInv (N .@ 1 .@ l) as { [z1 z2] } "[Hw1 [Hw2 #Hw3]]".
     eapply bool_decide_spec; eauto 10 using to_of_val.
     iTimeless "Hw2".
-    destruct z as [z1 z2]; simpl.
     destruct (val_dec_eq z1 w) as [|Hneq]; subst.
     + iPvs (step_cas_suc _ _ _ j K (l.2) (# w') w' z2 (# u') u' _ _ _
             with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
@@ -514,22 +482,18 @@ Section typed_interp.
         repeat subst; trivial. }
       iApply (wp_cas_suc (N .@ 2)); eauto using to_of_val.
       SolveDisj 2 l.
-      iFrame "Hheap Hw1".
-      iNext. iIntros "Hw1".
+      iFrame "Hheap Hw1". iIntros "> Hw1".
       iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
-      * iPvsIntro. iExists (♭v true); iFrame "Hw". iExists _; iSplit; trivial.
+      * iPvsIntro. iExists (♭v true); iFrame "Hw"; eauto.
     + iPvs (step_cas_fail _ _ _ j K (l.2) 1 (z2) (# w') w' (# u') u' _ _ _
             with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
       { iFrame "Hspec Hu Hw2". iNext.
         rewrite ?EqType_related_eq; trivial.
-        iDestruct "Hiw" as "%". iDestruct "Hw3" as "%".
-        repeat subst; trivial. }
+        iDestruct "Hiw" as "%". iDestruct "Hw3" as "%"; subst; eauto. }
       iApply (wp_cas_fail (N .@ 2)); eauto using to_of_val.
       SolveDisj 2 l.
-      iFrame "Hheap Hw1".
-      iNext. iIntros "Hw1".
-      iSplitL "Hw1 Hw2".
+      iFrame "Hheap Hw1". iIntros "> Hw1". iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
       * iPvsIntro. iExists (♭v false); iFrame "Hw". iExists _; iSplit; trivial.
         (* unshelving *)
@@ -540,7 +504,7 @@ Section typed_interp.
         (Htyped : typed Γ e τ) : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
   Proof.
     revert Δ HΔ; induction Htyped; intros Δ HΔ.
-    - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    - iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst. repeat rewrite map_lookup. rewrite Hv; simpl.
@@ -549,12 +513,12 @@ Section typed_interp.
       iApply (big_and_elem_of with "HΓ").
       apply elem_of_list_lookup_2 with x.
       rewrite lookup_zip_with; simplify_option_eq; destruct v; trivial.
-    - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-      value_case. iExists UnitV; iFrame "Htr"; iSplit; trivial.
-    - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-      value_case. iExists (♯v _); iFrame "Htr"; iExists _; iSplit; trivial.
-    - intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
-      value_case. iExists (♭v _); iFrame "Htr"; iExists _; iSplit; trivial.
+    - iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
+      value_case. iExists UnitV; eauto.
+    - iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
+      value_case. iExists (♯v _); eauto.
+    - iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
+      value_case. iExists (♭v _); eauto.
     - apply typed_binary_interp_nat_bin_op; trivial.
     - apply typed_binary_interp_Pair; trivial.
     - eapply typed_binary_interp_Fst; trivial.

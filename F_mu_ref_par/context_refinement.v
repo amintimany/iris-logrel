@@ -287,5 +287,4 @@ Section bin_log_related_under_typed_context.
       + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
         Unshelve. all: trivial.
   Qed.
-
 End bin_log_related_under_typed_context.

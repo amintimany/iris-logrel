@@ -8,7 +8,7 @@ Import uPred.
 
 Section Stack_refinement.
   Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}
-          {iSTK : authG lang Σ stackR}.
+          {iSTK : authG lang Σ stackUR}.
   Ltac prove_disj N n n' :=
     let Hneq := fresh "Hneq" in
     let Hdsj := fresh "Hdsj" in
@@ -38,9 +38,7 @@ Section Stack_refinement.
     iExists (TLamV _); iFrame "Hj".
     iIntros {τi}. destruct τi as [τi Hτ]; simpl.
     iAlways. clear j K. iIntros {j K} "Hj".
-    iPvs (step_Tlam _ _ _ j K with "[Hj]")
-      as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial.
+    iPvs (step_Tlam _ _ _ j K with "[Hj]") as "Hj"; eauto.
     iApply wp_TLam; iNext.
     iPvs (steps_newlock _ _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
@@ -48,7 +46,7 @@ Section Stack_refinement.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
+    simpl.
     rewrite CG_locked_push_subst CG_locked_pop_subst
             CG_iter_subst CG_snap_subst. simpl. asimpl.
     iPvs (step_alloc _ _ _ j (K ++ [AppRCtx (LamV _)]) _ _ _ _ with "[Hj]")
@@ -57,7 +55,7 @@ Section Stack_refinement.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iFrame "Hspec Hj"; trivial. simpl.
+    simpl.
     rewrite CG_locked_push_subst CG_locked_pop_subst
             CG_iter_subst CG_snap_subst. simpl. asimpl.
     Unshelve.
@@ -72,19 +70,19 @@ Section Stack_refinement.
     simpl. iApply wp_lam; trivial. iNext. simpl.
     rewrite FG_push_subst FG_pop_subst FG_iter_subst. simpl. asimpl.
     (* establishing the invariant *)
-    iPvs (own_alloc (● (∅ : stackR))) as "Hemp".
-    { constructor; eauto. eapply cmra_unit_valid. }
+    iPvs (own_alloc (● (∅ : stackUR))) as "Hemp".
+    { constructor; eauto. eapply ucmra_unit_valid. }
     iDestruct "Hemp" as {γ} "Hemp".
     set (istkG := StackG _ _ γ).
     change γ with (@stack_name _ istkG).
     change iSTK with (@stack_inG _ istkG).
     clearbody istkG. clear γ.
-    iAssert (@stack_owns _ istkG _ ∅) as "Hoe" with "[Hemp]".
+    iAssert (@stack_owns _ istkG _ ∅) with "[Hemp]" as "Hoe".
     { unfold stack_owns; rewrite big_sepM_empty; iFrame "Hemp"; trivial. }
     iPvs (stack_owns_alloc ⊤ _ _ _ with "[Hoe Histk]") as "[Hoe Hls]".
     { by iFrame "Hoe Histk". }
     iAssert (StackLink τi (LocV istk, FoldV (InjLV UnitV)))
-      as "HLK" with "[Hls]".
+      with "[Hls]" as "HLK".
     { rewrite StackLink_unfold.
       iExists _, _. iSplitR; simpl; trivial.
       iFrame "Hls". iLeft. iSplit; trivial.
@@ -94,7 +92,7 @@ Section Stack_refinement.
                          ★ stk ↦ᵢ (FoldV (LocV istk))
                          ★ StackLink τi (LocV istk, v)
                          ★ l ↦ₛ (♭v false)
-             )%I) as "Hinv" with "[Hoe Hstk Hstk' HLK Hl]".
+             )%I) with "[Hoe Hstk Hstk' HLK Hl]" as "Hinv".
     { iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl HLK". }
     iPvs (inv_alloc (N .@ 4) with "[Hinv]") as "#Hinv"; trivial.
     { iNext; iExact "Hinv". }
@@ -523,7 +521,7 @@ Section Stack_refinement.
 
 End Stack_refinement.
 
-Definition Σ := #[authGF heapR; authGF cfgR; authGF stackR].
+Definition Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR].
 
 Theorem stack_context_refinement :
   context_refines
