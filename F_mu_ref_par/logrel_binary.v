@@ -7,8 +7,15 @@ From iris.program_logic Require Export lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Export invariants ghost_ownership.
 From iris.program_logic Require Import ownership auth.
-Require Import iris.proofmode.pviewshifts.
+Require Import iris.proofmode.pviewshifts iris.proofmode.invariants.
 Import uPred.
+
+Lemma Disjoint_after_dot : ∀ L j k (l : loc * loc),
+    j ≠ k → L .@ j ⊥ L .@ k .@ l.
+Proof.
+  intros L j k l h.
+  apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
+Qed.
 
 (** interp : is a unary logical relation. *)
 Section logrel.
@@ -683,30 +690,143 @@ Section logrel.
     - apply IHΓ.
   Qed.
 
-  Lemma EqType_related_eq τ {H : EqType τ} v v' Δ
+  Lemma EqType_related_eq τ {H : EqType τ} l w1 w2 v1 v1' v2 v2' Δ
         {HΔ : context_interp_Persistent Δ} :
-    interp τ Δ (v, v') ⊢ ■ (v = v').
+    ((interp τ Δ (v1, v1') ∧ interp τ Δ (v2, v2'))
+       ★ l.1 ↦ᵢ w1 ★ l.2 ↦ₛ w2
+    )%I ⊢
+     |={⊤ ∖ (nclose (L .@ l))}=>
+  l.1 ↦ᵢ w1 ★ l.2 ↦ₛ w2 ★ ▷ ■ (v1 = v2 ↔ v1' = v2').
   Proof.
-    revert v v'; induction H => v v'; iIntros "#H1".
-    - simpl; iDestruct "H1" as "[% %]"; subst; trivial.
-    - simpl; iDestruct "H1" as {n} "[% %]"; subst; trivial.
-    - simpl; iDestruct "H1" as {b} "[% %]"; subst; trivial.
-    - iDestruct "H1" as {w1 w2} "[% [H1 H2]]".
-      destruct w1; destruct w2; simpl in *.
-      inversion H1; subst.
-      rewrite IHEqType1 IHEqType2.
-      iDestruct "H1" as "%". iDestruct "H2" as "%". subst; trivial.
-    - iDestruct "H1" as "[H1|H1]".
-      + iDestruct "H1" as {w} "[% H1]".
-        destruct w; simpl in *.
-        inversion H1; subst.
-        rewrite IHEqType1.
-        iDestruct "H1" as "%". subst; trivial.
-      + iDestruct "H1" as {w} "[% H1]".
-        destruct w; simpl in *.
-        inversion H1; subst.
-        rewrite IHEqType2.
-        iDestruct "H1" as "%". subst; trivial.
+    revert l w1 w2 v1 v1' v2 v2';
+      induction H => l w1 w2 v1 v1' v2 v2'; iIntros "(#[H1 H2] & Hl1 & Hl2)".
+    - iFrame "Hl1 Hl2"; iPvsIntro; iNext.
+      iDestruct "H1" as "[% %]"; iDestruct "H2" as "[% %]"; by simplify_eq/=.
+    - iFrame "Hl1 Hl2"; iPvsIntro; iNext.
+      iDestruct "H1" as {n} "[% %]"; iDestruct "H2" as {n'} "[% %]"; by simplify_eq/=.
+    - iFrame "Hl1 Hl2";  iPvsIntro; iNext.
+      iDestruct "H1" as {b} "[% %]"; iDestruct "H2" as {b'} "[% %]"; by simplify_eq/=.
+    - iDestruct "H1" as {wx1 wx2} "[% [H11 H12]]".
+      iDestruct "H2" as {wx1' wx2'} "[% [H21 H22]]"; simplify_eq/=.
+      iDestruct (IHEqType1 with "[Hl1 Hl2]") as "H3".
+      (by iFrame "Hl1 Hl2 H11 H21").
+      iPvs ("H3") as "H3". iDestruct "H3" as "[Hl1 [Hl2 H3]]".
+      iDestruct (IHEqType2 with "[Hl1 Hl2]") as "H4".
+      (by iFrame "Hl1 Hl2 H12 H22").
+      iPvs ("H4") as "H4". iDestruct "H4" as "[Hl1 [Hl2 H4]]".
+      iFrame "Hl1 Hl2".
+      iPvsIntro; iNext.
+      iDestruct "H3" as %[H11 H12]. iDestruct "H4" as %[H21 H22].
+      iPureIntro; split; intros [= ??]; f_equal; auto.
+    - iDestruct "H1" as "#[H1|H1]"; iDestruct "H2" as "#[H2|H2]";
+        iDestruct "H1" as { [w11 w12] } "#[% H1]";
+        iDestruct "H2" as { [w21 w22] } "#[% H2]";
+        (simplify_eq/=);
+      try (iDestruct (IHEqType1 with "[Hl1 Hl2]") as "H3";
+           [by iFrame "Hl1 Hl2 H1 H2"|]; iPvs ("H3") as "H3";
+           iDestruct "H3" as "[Hl1 [Hl2 H3]]");
+      try (iDestruct (IHEqType2 with "[Hl1 Hl2]") as "H4";
+           [by iFrame "Hl1 Hl2 H1 H2"|]; iPvs ("H4") as "H4";
+           iDestruct "H4" as "[Hl1 [Hl2 H4]]"
+          ); iFrame "Hl1 Hl2";
+        try iPvs ("H3") as "H3"; try iPvs ("H4") as "H4";
+          iPvsIntro; iNext;
+            try (iDestruct "H3" as %[H11 H12]);
+            try (iDestruct "H4" as %[H21 H22]);
+            iPureIntro; split; intros [=]; f_equal; auto.
+    - iDestruct "H1" as { [l1 l1'] } "[H11 H1]";
+        iDestruct "H2" as { [l2 l2'] } "[H12 H2]".
+      iDestruct "H11" as %H1; iDestruct "H12" as %H2; simplify_eq/=.
+      destruct (decide (l1 = l2)) as [Heq|Hneq];
+        destruct (decide (l1' = l2')) as [Heq'|Hneq']; subst.
+      + iFrame "Hl1 Hl2";iPvsIntro; iNext; iPureIntro; split; eauto; congruence.
+      + iInv (L .@ (l2, l1')) as { [v1 v1'] } "(H1i & H1s & H1rel)".
+        assert (nclose (L .@ (l2, l2')) ⊆ ⊤ ∖ nclose (L .@ (l2, l1'))).
+        { assert (H : (l2, l2') ≠ (l2, l1')) by congruence; clear Hneq'.
+          apply (ndot_ne_disjoint L) in H.
+          revert H.
+          generalize (L .@ (l2, l2')); generalize (L .@ (l2, l1')).
+          intros n1 n2 Hn.
+          set_solver_ndisj.
+        }
+        iInv (L .@ (l2, l2'))  as { [v2 v2'] } "(H2i & H2s & H2rel)".
+        iPvsIntro; iNext; iExFalso.
+        iApply heap_mapsto_dup_invalid; by iFrame "H1i H2i".
+      + iInv (L .@ (l1, l2')) as { [v1 v1'] } "(H1i & H1s & H1rel)".
+        assert (nclose (L .@ (l2, l2')) ⊆ ⊤ ∖ nclose (L .@ (l1, l2'))).
+        { assert (H : (l2, l2') ≠ (l1, l2')) by congruence; clear Hneq.
+          apply (ndot_ne_disjoint L) in H.
+          revert H.
+          generalize (L .@ (l2, l2')); generalize (L .@ (l1, l2')).
+          intros n1 n2 Hn.
+          set_solver_ndisj.
+        }
+        iInv (L .@ (l2, l2'))  as { [v2 v2'] } "(H2i & H2s & H2rel)".
+        iPvsIntro; iNext; iExFalso.
+        iApply heapS_mapsto_dup_invalid; by iFrame "H1s H2s".
+      + iPvsIntro; iNext; iPureIntro; split => H3; simplify_eq.
+  Qed.
+
+  Lemma EqType_related_eq τ {H : EqType τ} v1 v1' v2 v2' Δ
+        {HΔ : context_interp_Persistent Δ} :
+    (interp τ Δ (v1, v1') ∧ interp τ Δ (v2, v2'))%I ⊢
+   |={⊤}=> ▷ ■ (v1 = v2 ↔ v1' = v2').
+  Proof.
+    revert v1 v1' v2 v2'; induction H => v1 v1' v2 v2'; iIntros "#[H1 H2]".
+    - iPvsIntro; iNext.
+      iDestruct "H1" as "[% %]"; iDestruct "H2" as "[% %]"; by simplify_eq/=.
+    - iPvsIntro; iNext.
+      iDestruct "H1" as {n} "[% %]"; iDestruct "H2" as {n'} "[% %]"; by simplify_eq/=.
+    - iPvsIntro; iNext.
+      iDestruct "H1" as {b} "[% %]"; iDestruct "H2" as {b'} "[% %]"; by simplify_eq/=.
+    - iDestruct "H1" as {w1 w2} "[% [H11 H12]]".
+      iDestruct "H2" as {w1' w2'} "[% [H21 H22]]"; simplify_eq/=.
+      iPvs (IHEqType1 with "#") as "H1". by iFrame "H11 H21".
+      iPvs (IHEqType2 with "#") as "H2". by iFrame "H12 H22".
+      iPvsIntro; iNext.
+      iDestruct "H1" as %[H11 H12]. iDestruct "H2" as %[H21 H22].
+      iPureIntro; split; intros [= ??]; f_equal; auto.
+    - iDestruct "H1" as "#[H1|H1]"; iDestruct "H2" as "#[H2|H2]";
+        iDestruct "H1" as { [w11 w12] } "#[% H1]";
+        iDestruct "H2" as { [w21 w22] } "#[% H2]";
+        (simplify_eq/=);
+      try (iPvs (IHEqType1 with "#") as "Hi1"; [by iFrame "H1 H2"|]);
+        try (iPvs (IHEqType2 with "#") as "Hi2"; [by iFrame "H1 H2"|]);
+        iPvsIntro; iNext;
+          try (iDestruct "Hi1" as %[H11 H12]);
+          try (iDestruct "Hi2" as %[H21 H22]);
+          iPureIntro; split; intros [=]; f_equal; auto.
+    - iDestruct "H1" as { [l1 l1'] } "[H11 H1]";
+        iDestruct "H2" as { [l2 l2'] } "[H12 H2]".
+      iDestruct "H11" as %H1; iDestruct "H12" as %H2; simplify_eq/=.
+      destruct (decide (l1 = l2)) as [Heq|Hneq];
+        destruct (decide (l1' = l2')) as [Heq'|Hneq']; subst.
+      + iPvsIntro; iNext; iPureIntro; split; eauto; congruence.
+      + iInv (L .@ (l2, l1')) as { [v1 v1'] } "(H1i & H1s & H1rel)".
+        assert (nclose (L .@ (l2, l2')) ⊆ ⊤ ∖ nclose (L .@ (l2, l1'))).
+        { assert (H : (l2, l2') ≠ (l2, l1')) by congruence; clear Hneq'.
+          apply (ndot_ne_disjoint L) in H.
+          revert H.
+          generalize (L .@ (l2, l2')); generalize (L .@ (l2, l1')).
+          intros n1 n2 Hn.
+          set_solver_ndisj.
+        }
+        iInv (L .@ (l2, l2'))  as { [v2 v2'] } "(H2i & H2s & H2rel)".
+        iPvsIntro; iNext; iExFalso.
+        iApply heap_mapsto_dup_invalid; by iFrame "H1i H2i".
+      + iInv (L .@ (l1, l2')) as { [v1 v1'] } "(H1i & H1s & H1rel)".
+        assert (nclose (L .@ (l2, l2')) ⊆ ⊤ ∖ nclose (L .@ (l1, l2'))).
+        { assert (H : (l2, l2') ≠ (l1, l2')) by congruence; clear Hneq.
+          apply (ndot_ne_disjoint L) in H.
+          revert H.
+          generalize (L .@ (l2, l2')); generalize (L .@ (l1, l2')).
+          intros n1 n2 Hn.
+          set_solver_ndisj.
+        }
+        iInv (L .@ (l2, l2'))  as { [v2 v2'] } "(H2i & H2s & H2rel)".
+        iPvsIntro; iNext; iExFalso.
+        iApply heapS_mapsto_dup_invalid; by iFrame "H1s H2s".
+      + iPvsIntro; iNext; iPureIntro; split => H3; simplify_eq.
   Qed.
 
 End logrel.

@@ -156,6 +156,41 @@ Section lang_rules.
 
     Context`{icfg : cfgSG Σ}.
 
+    Lemma heapS_mapsto_op_eq l q1 q2 v :
+      (l ↦ₛ{q1} v ★ l ↦ₛ{q2} v)%I ≡ (l ↦ₛ{q1+q2} v)%I.
+    Proof.
+      rewrite -auth_own_op. unfold op, cmra_op; simpl; unfold prod_op; simpl.
+      by rewrite op_singleton Frac_op dec_agree_idemp left_id.
+    Qed.
+
+    Lemma heapS_mapsto_op l q1 q2 v1 v2 :
+      (l ↦ₛ{q1} v1 ★ l ↦ₛ{q2} v2)%I ≡ (v1 = v2 ∧ l ↦ₛ{q1+q2} v1)%I.
+    Proof.
+      destruct (decide (v1 = v2)) as [->|].
+      { by rewrite heapS_mapsto_op_eq const_equiv // left_id. }
+      rewrite -auth_own_op. unfold op, cmra_op; simpl; unfold prod_op; simpl.
+      rewrite op_singleton Frac_op dec_agree_ne // left_id.
+      apply (anti_symm (⊢)); last by apply const_elim_l.
+      rewrite auth_own_valid prod_validI; simpl.
+      rewrite list_validI. iIntros "#[_ H2]".
+      rewrite gmap_validI (forall_elim l) lookup_singleton.
+      rewrite option_validI frac_validI discrete_valid.
+      rewrite const_elim_r; eauto. inversion 1.
+    Qed.
+
+    Lemma heapS_mapsto_dup_invalid l v1 v2 :
+      (l ↦ₛ v1 ★ l ↦ₛ v2)%I ⊢ False%I.
+    Proof.
+      iIntros "Hl".
+      rewrite heapS_mapsto_op. iDestruct "Hl" as "[% Hl]".
+      unfold heapS_mapsto.
+      iDestruct (own_valid _ with "[Hl]")
+        as "Hvalid"; [unfold heapI_mapsto, auth_own; trivial|].
+      iDestruct "Hvalid" as %[_ valid]; simpl in *.
+      specialize (valid l); simpl in valid. rewrite lookup_singleton in valid.
+      inversion valid as [Hv1 Hv2]. cbv in Hv1; tauto.
+    Qed.
+
     Lemma tpool_update_validN n j e e' tp :
       ✓{n} ({[ j := (Frac 1 (DecAgree e : dec_agreeR _)) ]} ⋅ tp) →
       ✓{n} ({[ j := (Frac 1 (DecAgree e' : dec_agreeR _)) ]} ⋅ tp).

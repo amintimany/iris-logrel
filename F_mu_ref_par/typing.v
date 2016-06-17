@@ -31,6 +31,7 @@ Inductive EqType : type → Prop :=
 | EqTBool : EqType TBool
 | EqTProd τ τ' : EqType τ → EqType τ' → EqType (TProd τ τ')
 | EqSum τ τ' : EqType τ → EqType τ' → EqType (TSum τ τ')
+| EqRef τ : EqType (Tref τ)
 .
 
 Inductive typed (Γ : list type) : expr → type → Prop :=

@@ -496,11 +496,7 @@ Section typed_interp.
                   (IHHtyped2 _ _ _ j (K ++ [CasMCtx _ _])).
     smart_wp_bind (CasRCtx _ _) u u' "[Hu #Hiu]"
                   (IHHtyped3 _ _ _ j (K ++ [CasRCtx _ _])).
-    iDestruct "Hiv" as {l} "[% Hinv]".
-    inversion H; subst.
-    iApply wp_atomic; trivial;
-      [cbn; eauto 10 using to_of_val|].
-    iPvsIntro.
+    iDestruct "Hiv" as {l} "[% Hinv]". simplify_eq.
     iInv (N .@ 1 .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
     eapply bool_decide_spec; eauto 10 using to_of_val.
     iTimeless "Hw2".
