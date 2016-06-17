@@ -9,6 +9,8 @@ Import uPred.
 Section Stack_refinement.
   Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}
           {iSTK : authG lang Σ stackUR}.
+  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
+
   Ltac prove_disj N n n' :=
     let Hneq := fresh "Hneq" in
     let Hdsj := fresh "Hdsj" in
@@ -16,7 +18,7 @@ Section Stack_refinement.
     set (Hdsj := ndot_ne_disjoint N n n' Hneq); set_solver_ndisj.
 
   Lemma FG_CG_counter_refinement N Δ
-        {HΔ : context_interp_Persistent Δ}
+        {HΔ : ∀ x vw, PersistentP (Δ x vw)}
     :
       (@bin_log_related _ _ _ N Δ [] FG_stack CG_stack
                         (TForall

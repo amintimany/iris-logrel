@@ -10,11 +10,6 @@ Section logrel.
   Context {Σ : iFunctor}.
   Notation "# v" := (of_val v) (at level 20).
 
-  Class Val_to_IProp_Persistent (f : valC -n> iProp lang Σ) :=
-    val_to_iprop_persistent : ∀ v : val, PersistentP (f v).
-
-  Arguments Val_to_IProp_Persistent /.
-
   (** Just to get nicer closed forms, we define extend_context_interp in three steps. *)
   Program Definition extend_context_interp_fun1
     (τi : valC -n> iProp lang Σ)
@@ -153,8 +148,7 @@ Section logrel.
         {|
           cofe_mor_car :=
             λ w,
-            (∀ (τ'i : {f : (valC -n> iProp lang Σ) |
-                       Val_to_IProp_Persistent f}),
+            (∀ (τ'i : {f : (valC -n> iProp lang Σ) | ∀ v, PersistentP (f v)}%type),
                 □ WP TApp (# w) {{λ v, (τi (`τ'i) v)}})%I
         |}
     |}.
@@ -240,41 +234,23 @@ Section logrel.
   Solve Obligations with
   repeat intros ?; match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
 
-  Class context_interp_Persistent (Δ : varC -n> valC -n> iProp lang Σ) :=
-    contextinterppersistent : ∀ v : var, Val_to_IProp_Persistent (Δ v).
-
-  Global Instance Val_to_IProp_Persistent_Persistent
-           (f : valC -n> iProp lang Σ)
-           {Hf : Val_to_IProp_Persistent f}
-           (v : val)
-    : PersistentP (f v).
-  Proof. apply Hf. Qed.
-
   Global Instance interp_Persistent
          τ (Δ : varC -n> valC -n> iProp lang Σ)
-         {HΔ : context_interp_Persistent Δ}
-    : Val_to_IProp_Persistent (interp τ Δ).
+         {HΔ : ∀ x v, PersistentP (Δ x v)}
+    : ∀ v, PersistentP (interp τ Δ v).
   Proof.
     revert Δ HΔ.
     induction τ; cbn; intros Δ HΔ v; try apply _.
-    - rewrite /PersistentP /interp_rec fixpoint_unfold /interp_rec_pre; cbn.
-      apply always_intro'; trivial.
-    - apply Val_to_IProp_Persistent_Persistent; apply HΔ.
+    rewrite /PersistentP /interp_rec fixpoint_unfold /interp_rec_pre; cbn.
+    apply always_intro'; trivial.
   Qed.
 
-  Global Instance Persistent_context_interp_rel Δ Γ vs
-           {HΔ : context_interp_Persistent Δ}
-    : PersistentP ([∧] zip_with(λ τ v, interp τ Δ v) Γ vs)%I.
-  Proof. typeclasses eauto. Qed.
-
-  Global Program Instance extend_context_interp_Persistent f Δ
-           (Hf : Val_to_IProp_Persistent f)
-           {HΔ : context_interp_Persistent Δ}
-    : context_interp_Persistent (@extend_context_interp f Δ).
-  Next Obligation.
-    intros f Δ Hf HΔ v w; destruct v; cbn; trivial.
-    apply HΔ.
-  Qed.
+  Global Instance extend_context_interp_Persistent
+    (f : valC -n> iProp lang Σ) (Δ : varC -n> valC -n> iProp lang Σ)
+           (Hf : ∀ v, PersistentP (f v))
+           {HΔ : ∀ x v, PersistentP (Δ x v)}
+    : ∀ x v, PersistentP (@extend_context_interp f Δ x v).
+  Proof. intros x v. destruct x; cbn; trivial. Qed.
 
   Local Ltac properness :=
     repeat
@@ -542,8 +518,8 @@ Section logrel.
   Lemma zip_with_context_interp_subst
         (Δ : varC -n> valC -n> iProp lang Σ) (Γ : list type)
         (vs : list valC) (τi : valC -n> iProp lang Σ) :
-    (([∧] zip_with (λ τ v, interp τ Δ v) Γ vs)%I)
-      ≡ ([∧] zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
+    (([∧] zip_with (λ τ, interp τ Δ) Γ vs)%I)
+      ≡ ([∧] zip_with (λ τ, interp τ (extend_context_interp τi Δ))
                     (map (λ t : type, t.[ren (+1)]) Γ) vs)%I.
   Proof.
     revert Δ vs τi.

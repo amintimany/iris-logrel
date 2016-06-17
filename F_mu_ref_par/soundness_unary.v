@@ -21,28 +21,21 @@ Section Soundness.
         |}
     |}.
 
-  Global Instance free_context_interp_Persistent :
-    context_interp_Persistent free_type_context.
-  Proof. intros x v; apply const_persistent. Qed.
-
   Lemma wp_soundness e τ
     : typed [] e τ →
       ownership.ownP ∅
         ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1)
-                                 τ free_type_context v}}.
+                                 τ free_type_context v }}.
   Proof.
     iIntros {H1} "Hemp".
-    iDestruct (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
-      as "Hp".
-    iPvs "Hp" as {H} "[Hheap Hemp]".
+    iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
+      as {H} "[Hheap Hemp]".
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
     rewrite -(empty_env_subst e).
-    iPoseProof (@typed_interp _ H (nroot .@ "Fμ,ref,par" .@ 1)
-                              (nroot .@ "Fμ,ref,par" .@ 2) _ _ []) as "Hi";
-      eauto; try typeclasses eauto.
-    - intros l; apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
-    - iApply "Hi"; iSplit; eauto.
+    iApply (@typed_interp _ H (nroot .@ "Fμ,ref,par" .@ 1)
+                              (nroot .@ "Fμ,ref,par" .@ 2) _ _ []); eauto.
+    intros l; apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
       Unshelve. all: trivial.
   Qed.
 

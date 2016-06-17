@@ -17,12 +17,6 @@ Section logrel.
 
   Canonical Structure bivalC := prodC valC valC.
 
-  Class BiVal_to_IProp_Persistent (f : bivalC -n> iPropG lang Σ) :=
-    val_to_iprop_persistent :
-      ∀ v : (val * val), PersistentP ((cofe_mor_car _ _ f) v).
-
-  Arguments BiVal_to_IProp_Persistent /.
-
   (** Just to get nicer closed forms, we define extend_context_interp in
       three steps. *)
   Program Definition extend_context_interp_fun1
@@ -193,12 +187,10 @@ Section logrel.
         |}
     |}.
   Next Obligation.
-  Proof.
     intros τ1i τ2i n [x1 x2] [y1 y2] [H1 H2]; simpl in *.
     rewrite H1 H2; trivial.
   Qed.
   Next Obligation.
-  Proof.
     intros τ1i n τi τi' Hτi z; simpl in *.
     apply always_ne;
       apply forall_ne =>j; apply forall_ne =>K; apply forall_ne =>v.
@@ -206,7 +198,6 @@ Section logrel.
     apply wp_ne => t; apply exist_ne => h. rewrite Hτi; trivial.
   Qed.
   Next Obligation.
-  Proof.
     intros n τi τi' Hτi τ2i z; simpl in *.
     apply always_ne;
       apply forall_ne =>j; apply forall_ne =>K; apply forall_ne =>v.
@@ -223,7 +214,7 @@ Section logrel.
           cofe_mor_car :=
             λ w,
             (∀ (τ'i : {f : (bivalC -n> iPropG lang Σ) |
-                       BiVal_to_IProp_Persistent f}),
+                       ∀ vw, PersistentP (f vw)}%type),
                 □ (∀ j K,
                       j ⤇ (fill K (TApp (# w.2))) →
                       WP TApp (# w.1) {{v, ∃ v', j ⤇ (fill K (# v')) ★
@@ -231,7 +222,6 @@ Section logrel.
         |}
     |}.
   Next Obligation.
-  Proof.
     intros τi n [x1 x2] [y1 y2 ] [H1 H2]. simpl in *; auto.
     inversion H1; subst; inversion H2; subst; trivial.
   Qed.
@@ -261,17 +251,14 @@ Section logrel.
         |}
     |}.
   Next Obligation.
-  Proof.
     intros τi rec_appr n [x1 x2] [y1 y2] [H1 H2]; simpl in *.
     inversion H1; inversion H2; subst; trivial.
   Qed.
   Next Obligation.
-  Proof.
     intros τi n f g Hfg x. cbn.
     apply always_ne, exist_ne =>w; rewrite Hfg; trivial.
   Qed.
   Next Obligation.
-  Proof.
     intros n τi τi' Hτi f x. cbn.
     apply always_ne, exist_ne =>w; rewrite Hτi; trivial.
   Qed.
@@ -318,12 +305,10 @@ Section logrel.
         |}
     |}.
   Next Obligation.
-  Proof.
     intros τi n [x1 x2] [y1 y2] [H1 H2]; simpl in *.
     inversion H1; inversion H2; subst; trivial.
   Qed.
   Next Obligation.
-  Proof.
     intros n τi τi' Hτi z; simpl in *.
     apply exist_ne=>w; apply and_ne; trivial; cbn.
     apply (contractive_ne _); apply exist_ne=>w'; rewrite Hτi; trivial.
@@ -358,41 +343,23 @@ Section logrel.
   with repeat intros ?;
               match goal with [H : _ ≡{_}≡ _|- _] => rewrite H end; trivial.
 
-  Class context_interp_Persistent (Δ : varC -n> bivalC -n> iPropG lang Σ) :=
-    contextinterppersistent : ∀ v : var, BiVal_to_IProp_Persistent (Δ v).
-
-  Global Instance Val_to_IProp_Persistent_Persistent
-         (f : bivalC -n> iPropG lang Σ)
-         {Hf : BiVal_to_IProp_Persistent f}
-         (v : val * val)
-    : PersistentP (f v).
-  Proof. apply Hf. Qed.
-
   Global Instance interp_Persistent
          τ (Δ : varC -n> bivalC -n> iPropG lang Σ)
-         {HΔ : context_interp_Persistent Δ}
-    : BiVal_to_IProp_Persistent (interp τ Δ).
+         {HΔ : ∀ x vw, PersistentP (Δ x vw)}
+    : ∀ vw, PersistentP (interp τ Δ vw).
   Proof.
     revert Δ HΔ.
     induction τ; cbn; intros Δ HΔ v; try apply _.
-    - rewrite /PersistentP /interp_rec fixpoint_unfold /interp_rec_pre; cbn.
-      apply always_intro'; trivial.
-    - apply Val_to_IProp_Persistent_Persistent; apply HΔ.
+    rewrite /PersistentP /interp_rec fixpoint_unfold /interp_rec_pre; cbn.
+    apply always_intro'; trivial.
   Qed.
 
-  Global Instance Persistent_context_interp_rel Δ Γ vs
-           {HΔ : context_interp_Persistent Δ}
-    : PersistentP ([∧] zip_with(λ τ v, interp τ Δ v) Γ vs).
-  Proof. typeclasses eauto. Qed.
-
-  Global Program Instance extend_context_interp_Persistent f Δ
-           (Hf : BiVal_to_IProp_Persistent f)
-           {HΔ : context_interp_Persistent Δ}
-    : context_interp_Persistent (@extend_context_interp f Δ).
-  Next Obligation.
-    intros f Δ Hf HΔ v w; destruct v; cbn; trivial.
-    apply HΔ.
-  Qed.
+  Global Instance extend_context_interp_Persistent
+    (f : bivalC -n> iPropG lang Σ) (Δ : varC -n> bivalC -n> iPropG lang Σ)
+           (Hf : ∀ vw, PersistentP (f vw))
+           {HΔ : ∀ x vw, PersistentP (Δ x vw)}
+    : ∀ x vw, PersistentP (@extend_context_interp f Δ x vw).
+  Proof. intros x v. destruct x; cbn; trivial. Qed.
 
   Local Ltac properness :=
     repeat
@@ -468,7 +435,6 @@ Section logrel.
   Next Obligation.
   Proof. intros ?????? Hxy; destruct Hxy; trivial. Qed.
   Next Obligation.
-  Proof.
     intros ????? Hfg ?; cbn. destruct lt_dec; rewrite Hfg; trivial.
   Qed.
 
@@ -667,8 +633,8 @@ Section logrel.
   Lemma zip_with_context_interp_subst
         (Δ : varC -n> bivalC -n> iPropG lang Σ) (Γ : list type)
         (vs : list bivalC) (τi : bivalC -n> iPropG lang Σ) :
-    ([∧] zip_with (λ τ v, interp τ Δ v) Γ vs)%I
-      ≡ ([∧] zip_with (λ τ v, interp τ (extend_context_interp τi Δ) v)
+    ([∧] zip_with (λ τ, interp τ Δ) Γ vs)%I
+      ≡ ([∧] zip_with (λ τ, interp τ (extend_context_interp τi Δ))
                     (map (λ t : type, t.[ren (+1)]) Γ) vs)%I.
   Proof.
     revert Δ vs τi.
@@ -679,8 +645,8 @@ Section logrel.
     - apply IHΓ.
   Qed.
 
-  Lemma EqType_related_eq τ {H : EqType τ} v v' Δ
-        {HΔ : context_interp_Persistent Δ} :
+  Lemma EqType_related_eq τ {H : EqType τ} v v' (Δ : varC -n> bivalC -n> iPropG lang Σ)
+        {HΔ : ∀ x vw, PersistentP (Δ x vw)} :
     interp τ Δ (v, v') ⊢ ■ (v = v').
   Proof.
     revert v v'; induction H => v v'; iIntros "#H1".

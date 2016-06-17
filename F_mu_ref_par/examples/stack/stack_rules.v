@@ -52,7 +52,7 @@ Section Rules.
   Qed.
 
   Program Definition StackLink_pre (Q : bivalC -n> iPropG lang Σ)
-    {HQ : BiVal_to_IProp_Persistent Q} :
+    {HQ : ∀ vw, PersistentP (Q vw)} :
     (bivalC -n> iPropG lang Σ) -n> bivalC  -n> iPropG lang Σ :=
     {|
       cofe_mor_car :=
@@ -72,12 +72,10 @@ Section Rules.
         |}
     |}.
   Next Obligation.
-  Proof.
     intros Q HQ P n [v1 v2] [w1 w2] [Hv1 Hv2]; simpl in *;
       by rewrite Hv1 Hv2.
   Qed.
   Next Obligation.
-  Proof.
     intros Q HQ n P1 P2 HP v; simpl in *.
     repeat (apply exist_ne => ?). repeat apply sep_ne; trivial.
     rewrite or_ne; trivial. repeat (apply exist_ne => ?).

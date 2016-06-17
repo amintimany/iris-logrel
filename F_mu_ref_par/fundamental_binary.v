@@ -13,7 +13,7 @@ Import uPred.
 
 Section typed_interp.
   Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ} {N : namespace}.
-
+  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
   Implicit Types P Q R : iPropG lang Σ.
   Notation "# v" := (of_val v) (at level 20).
 
@@ -35,25 +35,23 @@ Section typed_interp.
     destruct k; simpl; trivial.
   Qed.
 
-  Definition bin_log_related Δ Γ e e' τ
-             {HΔ : context_interp_Persistent Δ} :=
+  Definition bin_log_related Δ Γ e e' τ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :=
       ∀ vs,
         List.length Γ = List.length vs →
         ∀ ρ j K,
           heapI_ctx (N .@ 2) ★ Spec_ctx (N .@ 3) ρ ★
-                      [∧] zip_with (λ τ v, @interp Σ iS iI (N .@ 1) τ Δ v) Γ vs
-                                  ★ j ⤇ (fill K (e'.[env_subst (map snd vs)]))
+                      [∧] zip_with (λ τ, interp (N .@ 1) τ Δ) Γ vs
+                                  ★ j ⤇ fill K (e'.[env_subst (map snd vs)])
             ⊢ WP e.[env_subst (map fst vs)]
-            {{ λ v, ∃ v', j ⤇ (fill K (# v')) ★
-                            (@interp Σ iS iI (N .@ 1)
-                                     τ Δ (v, v')) }}.
+            {{ λ v, ∃ v', j ⤇ fill K (# v') ★
+                          interp (N .@ 1) τ Δ (v, v') }}.
 
   Notation "Δ ∥ Γ ⊩ e '≤log≤' e' ∷ τ" := (bin_log_related Δ Γ e e' τ)
                                        (at level 20) : bin_logrel_scope.
 
   Local Open Scope bin_logrel_scope.
 
-  Notation "✓✓" := context_interp_Persistent.
+  Notation "✓✓ Δ" := (∀ x v, PersistentP (Δ x v)) (at level 20).
 
   Lemma typed_binary_interp_Pair Δ Γ e1 e2 e1' e2' τ1 τ2 {HΔ : ✓✓ Δ}
         (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ τ1)
@@ -261,7 +259,7 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_TLam Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped : ∀ τi (Hpr: BiVal_to_IProp_Persistent τi),
+        (IHHtyped : ∀ (τi : bivalC -n> _) (Hpr: ∀ vw, PersistentP (τi vw)),
             (extend_context_interp_fun1 τi Δ) ∥ map (λ t : type, t.[ren (+1)]) Γ
                                               ⊩ e ≤log≤ e' ∷ τ)
     :
@@ -500,7 +498,7 @@ Qed.
         Unshelve. all: eauto using to_of_val. all: SolveDisj 3 l.
   Qed.
 
-  Lemma typed_binary_interp Δ Γ e τ {HΔ : context_interp_Persistent Δ}
+  Lemma typed_binary_interp Δ Γ e τ {HΔ : ∀ x vw, PersistentP (Δ x vw)}
         (Htyped : typed Γ e τ) : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
   Proof.
     revert Δ HΔ; induction Htyped; intros Δ HΔ.

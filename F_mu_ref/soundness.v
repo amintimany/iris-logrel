@@ -23,13 +23,9 @@ Section Soundness.
         λ x,
         {|
           cofe_mor_car :=
-            λ y, (True)%I
+            λ y, True%I
         |}
     |}.
-
-  Global Instance free_context_interp_Persistent :
-    context_interp_Persistent free_type_context.
-  Proof. intros x v; apply const_persistent. Qed.
 
   Lemma wp_soundness e τ
     : typed [] e τ →
@@ -42,11 +38,9 @@ Section Soundness.
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
     rewrite -(empty_env_subst e).
-    iPoseProof (@typed_interp _ _ (nroot .@ "Fμ,ref" .@ 1)
-                              (nroot .@ "Fμ,ref" .@ 2) _ _ []) as "Hi"; eauto;
-      try typeclasses eauto.
-    - intros l. apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
-    - iApply "Hi"; iSplit; eauto.
+    iApply (@typed_interp _ _ (nroot .@ "Fμ,ref" .@ 1)
+                              (nroot .@ "Fμ,ref" .@ 2) _ _ []); eauto.
+    intros l. apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
       Unshelve. all: trivial.
   Qed.
 

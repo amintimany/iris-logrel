@@ -23,21 +23,15 @@ Section Soundness.
         λ x,
         {|
           cofe_mor_car :=
-            λ y, (True)%I
+            λ y, True%I
         |}
     |}.
 
-  Global Instance free_context_interp_Persistent :
-    context_interp_Persistent free_type_context.
-  Proof. intros x v; apply const_persistent. Qed.
-
   Lemma wp_soundness e τ
-    : typed [] e τ → True ⊢ WP e {{@interp (globalF Σ) τ free_type_context}}.
+    : typed [] e τ → True ⊢ WP e {{ @interp (globalF Σ) τ free_type_context}}.
   Proof.
-    iIntros {H} "".
-    rewrite -(empty_env_subst e).
-    iPoseProof (@typed_interp _ _ _ []) as "Hi"; eauto; try typeclasses eauto.
-    iApply "Hi"; eauto.
+    iIntros {H} "". rewrite -(empty_env_subst e).
+    by iApply (@typed_interp _ _ _ []).
   Qed.
 
   Theorem Soundness e τ :
@@ -47,12 +41,11 @@ Section Soundness.
   Proof.
     intros H1 e' thp Hstp Hnr.
     eapply wp_soundness in H1; eauto.
-    edestruct(@wp_adequacy_reducible lang (globalF Σ) ⊤
+    edestruct (@wp_adequacy_reducible lang (globalF Σ) ⊤
                                      (interp τ free_type_context)
                                      e e' (e' :: thp) tt ∅) as [Ha|Ha];
       eauto using ucmra_unit_valid; try tauto.
     - iIntros "H". iApply H1.
     - constructor.
   Qed.
-
 End Soundness.

@@ -21,9 +21,6 @@ Section Soundness.
 
   Local Opaque to_heap.
 
-  Global Instance free_context_interp_Persistent : context_interp_Persistent Δφ.
-  Proof. intros x v; apply const_persistent. Qed.
-
   Lemma wp_basic_soundness e e' τ :
     (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
      (@ownership.ownP lang (globalF Σ) ∅)
@@ -31,9 +28,8 @@ Section Soundness.
       {{_, ■ (∃ thp' h v, rtc step ([e'], ∅) ((# v) :: thp', h))}}.
   Proof.
     iIntros {H1} "Hemp".
-    iDestruct (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
-      as "Hp".
-    iPvs "Hp" as {H} "[#Hheap _]".
+    iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
+      as {H} "[#Hheap _]".
     iPvs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
                   ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as "Hcfg".
     { constructor; eauto.
@@ -41,8 +37,7 @@ Section Soundness.
           by rewrite left_id right_id.
       - repeat constructor; simpl; by auto.
     }
-    iDestruct "Hcfg" as {γ} "Hcfg". rewrite own_op.
-    iDestruct "Hcfg" as "[Hcfg1 Hcfg2]".
+    iDestruct "Hcfg" as {γ} "[Hcfg1 Hcfg2]".
     iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv (to_cfg ([e'], ∅))))
       with "[Hcfg1]" as "Hinv".
     { iExists _; iFrame "Hcfg1". apply const_intro; constructor. }
@@ -56,7 +51,7 @@ Section Soundness.
     simpl. rewrite empty_env_subst.
     iApply wp_pvs.
     iApply wp_wand_l; iSplitR; [|iApply "HBR"].
-    iIntros {v} "H". iDestruct "H" as {v'} "[Hj #Hinterp]".
+    iIntros {v}; iDestruct 1 as {v'} "[Hj #Hinterp]".
     iInv> (nroot .@ "Fμ,ref,par" .@ 3) as {ρ} "[Hown #Hp]".
     iDestruct "Hp" as %Hp.
     unfold tpool_mapsto, auth.auth_own; simpl.

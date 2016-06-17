@@ -22,13 +22,13 @@ Section typed_interp.
 
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
-  Lemma typed_interp N Δ Γ vs e τ
+  Lemma typed_interp N (Δ : varC -n> valC -n> iPropG lang Σ) Γ vs e τ
         (HNLdisj : ∀ l : loc, N ⊥ L .@ l)
         (Htyped : typed Γ e τ)
-        (HΔ : context_interp_Persistent Δ)
+        (HΔ : ∀ x v, PersistentP (Δ x v))
     : List.length Γ = List.length vs →
-      heapI_ctx N ∧ [∧] zip_with (λ τ v, (@interp Σ i L) τ Δ v) Γ vs ⊢
-                  WP e.[env_subst vs] {{ λ v, (@interp Σ i L) τ Δ v }}.
+      heapI_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs ⊢
+                  WP e.[env_subst vs] {{ interp L τ Δ }}.
   Proof.
     revert Δ HΔ vs.
     induction Htyped; intros Δ HΔ vs Hlen; iIntros "#[Hheap HΓ]"; cbn.
@@ -94,8 +94,8 @@ Section typed_interp.
       smart_wp_bind (AppRCtx v) w "#Hw" IHHtyped2.
       iApply wp_mono; [|iApply "Hv"]; auto.
     - (* TLam *)
-      value_case. iIntros { [τi τiPr] } "!". iApply wp_TLam; iNext.
-      iApply IHHtyped; [rewrite map_length|]; trivial.
+      value_case. iIntros { [τi τiPr] } "! /=". iApply wp_TLam; iNext.
+      iApply (IHHtyped (extend_context_interp_fun1 τi Δ)); [rewrite map_length|]; trivial.
       iSplit; trivial.
       rewrite zip_with_context_interp_subst; trivial.
     - (* TApp *)
@@ -104,12 +104,12 @@ Section typed_interp.
       iApply wp_mono; [|done] => w. by rewrite -interp_subst; simpl.
     - (* Fold *)
       specialize (IHHtyped Δ HΔ vs Hlen).
-      setoid_rewrite <- interp_subst in IHHtyped.
       iApply (@wp_bind _ _ _ [FoldCtx]).
         iApply wp_wand_l.
         iSplitL; [|iApply IHHtyped; auto].
       iIntros {v} "#Hv".
       value_case.
+      rewrite -interp_subst.
       rewrite fixpoint_unfold; cbn.
       iAlways; eauto.
     - (* Unfold *)

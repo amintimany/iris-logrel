@@ -16,12 +16,11 @@ Section typed_interp.
 
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
-  Lemma typed_interp Δ Γ vs e τ
+  Lemma typed_interp (Δ : varC -n> valC -n> iProp lang Σ) Γ vs e τ
         (Htyped : typed Γ e τ)
-        (HΔ : context_interp_Persistent Δ)
+        (HΔ : ∀ x v, PersistentP (Δ x v))
     : List.length Γ = List.length vs →
-      [∧] zip_with (λ τ v, interp τ Δ v) Γ vs ⊢
-                  WP e.[env_subst vs] {{ λ v, (@interp Σ) τ Δ v }}.
+      [∧] zip_with (λ τ, interp τ Δ) Γ vs ⊢ WP e.[env_subst vs] {{ interp τ Δ }}.
   Proof.
     revert Δ HΔ vs.
     induction Htyped; intros Δ HΔ vs Hlen; iIntros "#HΓ"; cbn.
@@ -74,8 +73,8 @@ Section typed_interp.
     - (* TLam *)
       value_case.
       iIntros { [τi τiPr] } "!". iApply wp_TLam; iNext; simpl in *.
-      iApply IHHtyped; [rewrite map_length|]; trivial.
-      rewrite zip_with_context_interp_subst; trivial.
+      iApply (IHHtyped (extend_context_interp_fun1 τi Δ)); [rewrite map_length|]; trivial.
+      by iDestruct (zip_with_context_interp_subst with "HΓ") as "?".
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
       unshelve iSpecialize ("Hv" $! ((interp τ' Δ) ↾ _)); try apply _; cbn.
@@ -92,7 +91,7 @@ Section typed_interp.
         change (fixpoint _) with (interp (TRec τ) Δ) at 1; trivial.
         rewrite fixpoint_unfold; cbn.
         iAlways; eauto.
-      + iRevert "HΓ"; rewrite zip_with_context_interp_subst; iIntros "#HΓ"; trivial.
+      + by iDestruct (zip_with_context_interp_subst with "HΓ") as "?".
     - (* Unfold *)
       iApply (@wp_bind _ _ _ [UnfoldCtx]);
         iApply wp_wand_l; iSplitL; [|iApply IHHtyped; trivial].

@@ -205,14 +205,15 @@ Section bin_log_related_under_typed_context.
   Context {Σ : gFunctors}
           {iI : heapIG Σ} {iS : cfgSG Σ}
           {N : namespace}.
+  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
 
   Lemma bin_log_related_under_typed_context Γ e e' τ Γ' τ' K :
     (∀ f, e.[iter (List.length Γ) up f] = e) →
     (∀ f, e'.[iter (List.length Γ) up f] = e') →
     typed_context K Γ τ Γ' τ' →
-    (∀ Δ {HΔ : context_interp_Persistent Δ},
+    (∀ Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)},
         @bin_log_related _ _ _ N Δ Γ e e' τ HΔ) →
-    ∀ Δ {HΔ : context_interp_Persistent Δ},
+    ∀ Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)},
       @bin_log_related _ _ _ N Δ Γ' (fill_ctx K e) (fill_ctx K e') τ' HΔ.
   Proof.
     revert Γ τ Γ' τ' e e'.

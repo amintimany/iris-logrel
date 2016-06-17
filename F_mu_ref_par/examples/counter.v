@@ -6,6 +6,7 @@ Import uPred.
 
 Section CG_Counter.
   Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}.
+  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
 
   (* Coarse-grained increment *)
   Definition CG_increment (x : expr) : expr :=
@@ -269,7 +270,7 @@ Section CG_Counter.
     set (Hdsj := ndot_ne_disjoint N n n' Hneq); set_solver_ndisj.
 
   Lemma FG_CG_counter_refinement N Δ
-        {HΔ : context_interp_Persistent Δ}
+        {HΔ : ∀ x v, PersistentP (Δ x v)}
     :
       (@bin_log_related _ _ _ N Δ [] FG_counter CG_counter
                         (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)) HΔ).
