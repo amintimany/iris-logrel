@@ -360,8 +360,7 @@ Qed.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [AllocCtx])).
-    iApply wp_atomic; cbn; trivial; [rewrite to_of_val; auto|].
-    iPvsIntro.
+    iApply wp_pvs.
     iPvs (step_alloc _ _ _ j K (# v') v' _ _ with "* [-]") as {l'} "[Hj Hl']"; eauto.
     iApply wp_alloc; auto 1 using to_of_val.
     iFrame "Hheap". iNext. iIntros {l} "Hl".
@@ -400,8 +399,7 @@ Qed.
     smart_wp_bind (LoadCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [LoadCtx])).
     iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
-    iApply wp_atomic; cbn; trivial.
-    iPvsIntro.
+    iApply wp_pvs.
     iInv (N .@ 1 .@ l) as {w} "[Hw1 [Hw2 #Hw3]]".
     iTimeless "Hw2".
     iPvs (step_load _ _ _ j K (l.2) 1 (w.2) _ with "[Hv Hw2]") as "[Hv Hw2]".
@@ -429,9 +427,7 @@ Qed.
     smart_wp_bind (StoreRCtx _) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [StoreRCtx _])).
     iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
-    iApply wp_atomic; trivial;
-      [eapply bool_decide_spec; eauto using to_of_val|].
-    iPvsIntro.
+    iApply wp_pvs.
     iInv (N .@ 1 .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
     eapply bool_decide_spec; eauto using to_of_val.
     iTimeless "Hw2".
@@ -465,9 +461,7 @@ Qed.
     smart_wp_bind (CasRCtx _ _) u u' "[Hu #Hiu]"
                   (IHHtyped3 _ _ _ j (K ++ [CasRCtx _ _])).
     iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
-    iApply wp_atomic; trivial;
-      [cbn; eauto 10 using to_of_val|].
-    iPvsIntro.
+    iApply wp_pvs.
     iInv (N .@ 1 .@ l) as { [z1 z2] } "[Hw1 [Hw2 #Hw3]]".
     eapply bool_decide_spec; eauto 10 using to_of_val.
     iTimeless "Hw2".
