@@ -51,10 +51,10 @@ Section lang_rules.
 
     Notation "cfg →⋆ cfg'" := (rtc step cfg cfg') (at level 20).
 
-    Definition Spec_inv (ρ ρ' : cfgUR) : iPropG lang Σ :=
-      (■ of_cfg ρ →⋆ of_cfg ρ')%I.
+    Definition Spec_inv (ρ : cfg lang) (ρ' : cfgUR) : iPropG lang Σ :=
+      (■ ρ →⋆ of_cfg ρ')%I.
 
-    Definition Spec_ctx (S : namespace) (ρ : cfgUR) : iPropG lang Σ :=
+    Definition Spec_ctx (S : namespace) (ρ : cfg lang) : iPropG lang Σ :=
       auth_ctx cfg_name S (Spec_inv ρ).
 
     Global Instance Spec_inv_Proper : Proper ((≡) ==> (≡) ==> (≡)) Spec_inv.

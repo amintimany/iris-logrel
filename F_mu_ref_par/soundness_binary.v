@@ -38,9 +38,11 @@ Section Soundness.
       - repeat constructor; simpl; by auto.
     }
     iDestruct "Hcfg" as {γ} "[Hcfg1 Hcfg2]".
-    iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv (to_cfg ([e'], ∅))))
+    iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv ([e'], ∅)))
       with "[Hcfg1]" as "Hinv".
-    { iExists _; iFrame "Hcfg1". apply const_intro; constructor. }
+    { iExists _; iFrame "Hcfg1".
+      apply const_intro. rewrite from_to_cfg; constructor.
+    }
     iPvs (inv_alloc (nroot .@ "Fμ,ref,par" .@ 3) with "[Hinv]") as "#Hcfg";
       trivial.
     { iNext. iExact "Hinv". }
@@ -67,7 +69,6 @@ Section Soundness.
     - iExists _. rewrite own_op. iDestruct "Hown" as "[Ho1 Ho2]".
       iSplitL; trivial.
     - iPureIntro.
-      rewrite from_to_cfg in Hp.
       destruct ρ' as [th hp]; unfold op, cmra_op in *; simpl in *.
       unfold prod_op, of_cfg in *; simpl in *.
       destruct th as [|r th]; simpl in *; eauto.
