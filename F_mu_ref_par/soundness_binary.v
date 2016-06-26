@@ -41,7 +41,7 @@ Section Soundness.
     iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv ([e'], ∅)))
       with "[Hcfg1]" as "Hinv".
     { iExists _; iFrame "Hcfg1".
-      apply const_intro. rewrite from_to_cfg; constructor.
+      iPureIntro. rewrite from_to_cfg; constructor.
     }
     iPvs (inv_alloc (nroot .@ "Fμ,ref,par" .@ 3) with "[Hinv]") as "#Hcfg";
       trivial.
@@ -66,7 +66,7 @@ Section Soundness.
     iDestruct "Ha'" as {ρ'} "Ha'"; iDestruct "Ha'" as %Ha'.
     rewrite ->(right_id _ _) in Ha'; setoid_subst.
     iPvsIntro; iSplitL.
-    - iExists _. rewrite own_op. iDestruct "Hown" as "[Ho1 Ho2]".
+    - iDestruct "Hown" as "[Ho1 Ho2]". iExists _.
       iSplitL; trivial.
     - iPureIntro.
       destruct ρ' as [th hp]; unfold op, cmra_op in *; simpl in *.
