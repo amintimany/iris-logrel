@@ -52,35 +52,17 @@ Section Rules.
   Qed.
 
   Program Definition StackLink_pre (Q : bivalC -n> iPropG lang Σ)
-    {HQ : ∀ vw, PersistentP (Q vw)} :
-    (bivalC -n> iPropG lang Σ) -n> bivalC  -n> iPropG lang Σ :=
-    {|
-      cofe_mor_car :=
-        λ P,
-        {|
-          cofe_mor_car :=
-            λ v, (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
-                                    ((w = InjLV UnitV ∧
-                                      v.2 = FoldV (InjLV UnitV)) ∨
-                                     (∃ y1 z1 y2 z2,
-                                         (w = InjRV (PairV y1 (FoldV z1)))
-                                           ★ (v.2 = FoldV (InjRV (PairV y2 z2)))
-                                           ★ Q (y1, y2) ★ ▷ P(z1, z2)
-                                     )
-                                    )
-                 )%I
-        |}
-    |}.
+      {HQ : ∀ vw, PersistentP (Q vw)} :
+      (bivalC -n> iPropG lang Σ) -n> bivalC  -n> iPropG lang Σ := λne P v,
+    (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
+            ((w = InjLV UnitV ∧ v.2 = FoldV (InjLV UnitV)) ∨
+            (∃ y1 z1 y2 z2, w = InjRV (PairV y1 (FoldV z1)) ★
+              v.2 = FoldV (InjRV (PairV y2 z2)) ★ Q (y1, y2) ★ ▷ P(z1, z2))))%I.
   Next Obligation.
     intros Q HQ P n [v1 v2] [w1 w2] [Hv1 Hv2]; simpl in *;
       by rewrite Hv1 Hv2.
   Qed.
-  Next Obligation.
-    intros Q HQ n P1 P2 HP v; simpl in *.
-    repeat (apply exist_ne => ?). repeat apply sep_ne; trivial.
-    rewrite or_ne; trivial. repeat (apply exist_ne => ?).
-      by rewrite HP.
-  Qed.
+  Next Obligation. solve_proper. Qed.
 
   Global Instance StackLink_pre_contractive Q {HQ} :
     Contractive (@StackLink_pre Q HQ).

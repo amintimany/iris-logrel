@@ -18,9 +18,8 @@ Section Stack_refinement.
     set (Hdsj := ndot_ne_disjoint N n n' Hneq); set_solver_ndisj.
 
   Lemma FG_CG_counter_refinement N Δ
-        {HΔ : ∀ x vw, PersistentP (Δ x vw)}
-    :
-      (@bin_log_related _ _ _ N Δ [] FG_stack CG_stack
+      {HΔ : ∀ x vw, PersistentP (Δ x vw)}:
+    (@bin_log_related _ _ _ N Δ [] FG_stack CG_stack
                         (TForall
                            (TProd
                               (TProd
@@ -38,8 +37,7 @@ Section Stack_refinement.
     unfold CG_stack, FG_stack.
     iApply wp_value; eauto.
     iExists (TLamV _); iFrame "Hj".
-    iIntros {τi}. destruct τi as [τi Hτ]; simpl.
-    iAlways. clear j K. iIntros {j K} "Hj".
+    clear j K. iAlways. iIntros {τi j K} "% Hj /=".
     iPvs (step_Tlam _ _ _ j K with "[Hj]") as "Hj"; eauto.
     iApply wp_TLam; iNext.
     iPvs (steps_newlock _ _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
@@ -334,7 +332,7 @@ Section Stack_refinement.
       rewrite ?fill_app. simpl.
       rewrite -FG_iter_folding.
       iRevert {istk3 w} "Hj HLK'". iLöb as "Hlat".
-      iIntros {istk3 w} "Hj". iIntros "HLK". (* A bug in iIntros? *)
+      iIntros {istk3 w} "Hj HLK".
       rewrite -> FG_iter_folding at 1.
       iApply wp_lam; simpl; trivial.
       rewrite -FG_iter_folding. asimpl. rewrite FG_iter_subst.
@@ -422,105 +420,13 @@ Section Stack_refinement.
         all: try match goal with
                    |- _ ≠ _ => let H := fresh "H" in intros H; inversion H; auto
                  end.
-        (* This seems to be a bug in all: mechanism!? *)
-        match goal with
+        all: match goal with
           |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
-        match goal with
-          |- @subseteq
-              _ _ (nclose (N .@ ?A))
-              (@difference _ _ ⊤ (nclose (N .@ ?B))) =>
+              _ _ (nclose (?N .@ ?A))
+              (@difference _ _ ⊤ (nclose (?N .@ ?B))) =>
           abstract (prove_disj N A B)
         end.
   Qed.
-
 End Stack_refinement.
 
 Definition Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR].

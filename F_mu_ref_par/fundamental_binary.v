@@ -36,15 +36,13 @@ Section typed_interp.
   Qed.
 
   Definition bin_log_related Δ Γ e e' τ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :=
-      ∀ vs,
-        List.length Γ = List.length vs →
-        ∀ ρ j K,
-          heapI_ctx (N .@ 2) ★ Spec_ctx (N .@ 3) ρ ★
-                      [∧] zip_with (λ τ, interp (N .@ 1) τ Δ) Γ vs
-                                  ★ j ⤇ fill K (e'.[env_subst (map snd vs)])
-            ⊢ WP e.[env_subst (map fst vs)]
-            {{ λ v, ∃ v', j ⤇ fill K (# v') ★
-                          interp (N .@ 1) τ Δ (v, v') }}.
+    ∀ vs, List.length Γ = List.length vs →
+    ∀ ρ j K,
+      heapI_ctx (N .@ 2) ★ Spec_ctx (N .@ 3) ρ ★
+        [∧] zip_with (λ τ, interp (N .@ 1) τ Δ) Γ vs ★
+        j ⤇ fill K (e'.[env_subst (map snd vs)])
+      ⊢ WP e.[env_subst (map fst vs)] {{ v, ∃ v',
+          j ⤇ fill K (# v') ★ interp (N .@ 1) τ Δ (v, v') }}.
 
   Notation "Δ ∥ Γ ⊩ e '≤log≤' e' ∷ τ" := (bin_log_related Δ Γ e e' τ)
                                        (at level 20) : bin_logrel_scope.
@@ -54,10 +52,9 @@ Section typed_interp.
   Notation "✓✓ Δ" := (∀ x v, PersistentP (Δ x v)) (at level 20).
 
   Lemma typed_binary_interp_Pair Δ Γ e1 e2 e1' e2' τ1 τ2 {HΔ : ✓✓ Δ}
-        (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ τ1)
-        (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ2)
-    :
-      Δ ∥ Γ ⊩ Pair e1 e2 ≤log≤ Pair e1' e2' ∷ TProd τ1 τ2.
+      (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ τ1)
+      (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ2) :
+    Δ ∥ Γ ⊩ Pair e1 e2 ≤log≤ Pair e1' e2' ∷ TProd τ1 τ2.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (PairLCtx e2.[env_subst (map fst vs)]) v v' "[Hv #Hiv]"
@@ -72,9 +69,8 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_Fst Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ (TProd τ1 τ2))
-    :
-      Δ ∥ Γ ⊩ Fst e ≤log≤ Fst e' ∷ τ1.
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TProd τ1 τ2) :
+    Δ ∥ Γ ⊩ Fst e ≤log≤ Fst e' ∷ τ1.
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     smart_wp_bind (FstCtx) v v' "[Hv #Hiv]"
@@ -90,9 +86,8 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_Snd Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ (TProd τ1 τ2))
-    :
-      Δ ∥ Γ ⊩ Snd e ≤log≤ Snd e' ∷ τ2.
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TProd τ1 τ2) :
+    Δ ∥ Γ ⊩ Snd e ≤log≤ Snd e' ∷ τ2.
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     smart_wp_bind (SndCtx) v v' "[Hv #Hiv]"
@@ -108,9 +103,8 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_InjL Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ1)
-    :
-      Δ ∥ Γ ⊩ InjL e ≤log≤ InjL e' ∷ (TSum τ1 τ2).
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ1) :
+    Δ ∥ Γ ⊩ InjL e ≤log≤ InjL e' ∷ (TSum τ1 τ2).
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     smart_wp_bind (InjLCtx) v v' "[Hv #Hiv]"
@@ -122,9 +116,8 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_InjR Δ Γ e e' τ1 τ2 {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ2)
-    :
-      Δ ∥ Γ ⊩ InjR e ≤log≤ InjR e' ∷ (TSum τ1 τ2).
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ2) :
+    Δ ∥ Γ ⊩ InjR e ≤log≤ InjR e' ∷ TSum τ1 τ2.
   Proof.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     smart_wp_bind (InjRCtx) v v' "[Hv #Hiv]"
@@ -136,16 +129,15 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_Case Δ Γ (e0 e1 e2 e0' e1' e2' : expr) τ1 τ2 τ3
-        {HΔ : ✓✓ Δ}
-        (Hclosed2 : ∀ f, e1.[iter (S (List.length Γ)) up f] = e1)
-        (Hclosed3 : ∀ f, e2.[iter (S (List.length Γ)) up f] = e2)
-        (Hclosed2' : ∀ f, e1'.[iter (S (List.length Γ)) up f] = e1')
-        (Hclosed3' : ∀ f, e2'.[iter (S (List.length Γ)) up f] = e2')
-        (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TSum τ1 τ2)
-        (IHHtyped2 : Δ ∥ τ1 :: Γ ⊩ e1 ≤log≤ e1' ∷ τ3)
-        (IHHtyped3 : Δ ∥ τ2 :: Γ ⊩ e2 ≤log≤ e2' ∷ τ3)
-    :
-      Δ ∥ Γ ⊩ Case e0 e1 e2 ≤log≤ Case e0' e1' e2' ∷ τ3.
+      {HΔ : ✓✓ Δ}
+      (Hclosed2 : ∀ f, e1.[iter (S (List.length Γ)) up f] = e1)
+      (Hclosed3 : ∀ f, e2.[iter (S (List.length Γ)) up f] = e2)
+      (Hclosed2' : ∀ f, e1'.[iter (S (List.length Γ)) up f] = e1')
+      (Hclosed3' : ∀ f, e2'.[iter (S (List.length Γ)) up f] = e2')
+      (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TSum τ1 τ2)
+      (IHHtyped2 : Δ ∥ τ1 :: Γ ⊩ e1 ≤log≤ e1' ∷ τ3)
+      (IHHtyped3 : Δ ∥ τ2 :: Γ ⊩ e2 ≤log≤ e2' ∷ τ3) :
+    Δ ∥ Γ ⊩ Case e0 e1 e2 ≤log≤ Case e0' e1' e2' ∷ τ3.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (CaseCtx _ _) v v' "[Hv #Hiv]"
@@ -175,11 +167,10 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_If Δ Γ e0 e1 e2 e0' e1' e2' τ {HΔ : ✓✓ Δ}
-        (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TBool)
-        (IHHtyped2 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ τ)
-        (IHHtyped3 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ)
-    :
-      Δ ∥ Γ ⊩ If e0 e1 e2 ≤log≤ If e0' e1' e2' ∷ τ.
+      (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TBool)
+      (IHHtyped2 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ τ)
+      (IHHtyped3 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ) :
+    Δ ∥ Γ ⊩ If e0 e1 e2 ≤log≤ If e0' e1' e2' ∷ τ.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (IfCtx _ _) v v' "[Hv #Hiv]"
@@ -196,10 +187,9 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_nat_bin_op Δ Γ op e1 e2 e1' e2' {HΔ : ✓✓ Δ}
-        (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ TNat)
-        (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ TNat)
-    :
-      Δ ∥ Γ ⊩ NBOP op e1 e2 ≤log≤ NBOP op e1' e2' ∷ (NatBinOP_res_type op).
+      (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ TNat)
+      (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ TNat) :
+    Δ ∥ Γ ⊩ NBOP op e1 e2 ≤log≤ NBOP op e1' e2' ∷ NatBinOP_res_type op.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (NBOPLCtx _ _) v v' "[Hv #Hiv]"
@@ -218,11 +208,10 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_Lam Δ Γ (e e' : expr) τ1 τ2 {HΔ : ✓✓ Δ}
-        (Hclosed : ∀ f, e.[iter (S (S (List.length Γ))) up f] = e)
-        (Hclosed' : ∀ f, e'.[iter (S (S (List.length Γ))) up f] = e')
-        (IHHtyped : Δ ∥ TArrow τ1 τ2 :: τ1 :: Γ ⊩ e ≤log≤ e' ∷ τ2)
-    :
-      Δ ∥ Γ ⊩ Lam e ≤log≤ Lam e' ∷  TArrow τ1 τ2.
+      (Hclosed : ∀ f, e.[iter (S (S (List.length Γ))) up f] = e)
+      (Hclosed' : ∀ f, e'.[iter (S (S (List.length Γ))) up f] = e')
+      (IHHtyped : Δ ∥ TArrow τ1 τ2 :: τ1 :: Γ ⊩ e ≤log≤ e' ∷ τ2) :
+    Δ ∥ Γ ⊩ Lam e ≤log≤ Lam e' ∷ TArrow τ1 τ2.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     value_case. iExists (LamV _). iFrame "Htr". iAlways.
@@ -242,10 +231,9 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_App Δ Γ e1 e2 e1' e2' τ1 τ2 {HΔ : ✓✓ Δ}
-        (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ TArrow τ1 τ2)
-        (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ1)
-    :
-      Δ ∥ Γ ⊩ App e1 e2 ≤log≤ App e1' e2' ∷  τ2.
+      (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ TArrow τ1 τ2)
+      (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ1) :
+    Δ ∥ Γ ⊩ App e1 e2 ≤log≤ App e1' e2' ∷  τ2.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (AppLCtx (e2.[env_subst (map fst vs)])) v v' "[Hv #Hiv]"
@@ -259,15 +247,14 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_TLam Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped : ∀ (τi : bivalC -n> _) (Hpr: ∀ vw, PersistentP (τi vw)),
-            (extend_context_interp_fun1 τi Δ) ∥ map (λ t : type, t.[ren (+1)]) Γ
-                                              ⊩ e ≤log≤ e' ∷ τ)
-    :
-      Δ ∥ Γ ⊩ TLam e ≤log≤ TLam e' ∷  TForall τ.
+      (IHHtyped : ∀ (τi : bivalC -n> _) (Hpr: ∀ vw, PersistentP (τi vw)),
+      (extend_context_interp_fun1 τi Δ) ∥ map (λ t : type, t.[ren (+1)]) Γ
+                                        ⊩ e ≤log≤ e' ∷ τ) :
+    Δ ∥ Γ ⊩ TLam e ≤log≤ TLam e' ∷ TForall τ.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     value_case. iExists (TLamV _). iFrame "Htr"; simpl.
-    iIntros { [τi τiPr] } "!"; iIntros {j' K'} "Hv /=".
+    iAlways; iIntros {τi j' K'} "% Hv /=".
     iApply wp_TLam; iNext.
     iPvs (step_Tlam _ _ _ j' K' (e'.[env_subst (map snd vs)]) _ with "* [-]")
       as "Hz".
@@ -276,29 +263,26 @@ Section typed_interp.
     iFrame "Hheap Hspec".
     rewrite zip_with_context_interp_subst; by iFrame "HΓ".
     Unshelve. all: trivial.
-Qed.
+  Qed.
 
   Lemma typed_binary_interp_TApp Δ Γ e e' τ τ' {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TForall τ)
-    :
-      Δ ∥ Γ ⊩ TApp e ≤log≤ TApp e' ∷ τ.[τ'/].
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TForall τ) :
+    Δ ∥ Γ ⊩ TApp e ≤log≤ TApp e' ∷ τ.[τ'/].
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (TAppCtx) v v' "[Hj #Hv]"
                     (IHHtyped _ _ _ j (K ++ [TAppCtx])); cbn.
-    iSpecialize ("Hv" $! (interp (N .@ 1) τ' Δ) ↾ _); cbn.
-    iDestruct "Hv" as "#Hv".
-    iApply wp_wand_l; iSplitR; [|iApply "Hv"; auto].
+    iApply wp_wand_r; iSplitL.
+    { iApply ("Hv" $! (interp (N .@ 1) τ' Δ) with "[#] Hj"); iPureIntro; apply _. }
     iIntros {w} "Hw". iDestruct "Hw" as {w'} "[Hw #Hiw]".
     iExists _; rewrite -interp_subst; eauto.
     (* unshelving *)
-    Unshelve. all: trivial. simpl; typeclasses eauto.
+    Unshelve. all: trivial.
   Qed.
 
   Lemma typed_binary_interp_Fold Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ.[(TRec τ)/])
-    :
-      Δ ∥ Γ ⊩ Fold e ≤log≤ Fold e' ∷  TRec τ.
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ.[(TRec τ)/]) :
+    Δ ∥ Γ ⊩ Fold e ≤log≤ Fold e' ∷ TRec τ.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     iApply (@wp_bind _ _ _ [FoldCtx]);
@@ -316,9 +300,8 @@ Qed.
   Qed.
 
   Lemma typed_binary_interp_Unfold Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TRec τ)
-    :
-      Δ ∥ Γ ⊩ Unfold e ≤log≤ Unfold e' ∷ τ.[(TRec τ)/].
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TRec τ) :
+    Δ ∥ Γ ⊩ Unfold e ≤log≤ Unfold e' ∷ τ.[(TRec τ)/].
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     iApply (@wp_bind _ _ _ [UnfoldCtx]);
@@ -339,9 +322,8 @@ Qed.
   Qed.
 
   Lemma typed_binary_interp_Fork Δ Γ e e' {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TUnit)
-    :
-      Δ ∥ Γ ⊩ Fork e ≤log≤ Fork e' ∷ TUnit.
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TUnit) :
+    Δ ∥ Γ ⊩ Fork e ≤log≤ Fork e' ∷ TUnit.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     iPvs (step_fork _ _ _ j K _ _ with "* [-]") as {j'} "[Hz1 Hz2]"; first by iFrame.
@@ -353,9 +335,8 @@ Qed.
   Qed.
 
   Lemma typed_binary_interp_Alloc Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ)
-    :
-      Δ ∥ Γ ⊩ Alloc e ≤log≤ Alloc e' ∷ (Tref τ).
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ) :
+    Δ ∥ Γ ⊩ Alloc e ≤log≤ Alloc e' ∷ Tref τ.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]"
@@ -391,9 +372,8 @@ Qed.
     intros S1 S2 Hsdj; set_solver_ndisj.
 
   Lemma typed_binary_interp_Load Δ Γ e e' τ {HΔ : ✓✓ Δ}
-        (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ (Tref τ))
-    :
-      Δ ∥ Γ ⊩ Load e ≤log≤ Load e' ∷ τ.
+      (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ (Tref τ)) :
+    Δ ∥ Γ ⊩ Load e ≤log≤ Load e' ∷ τ.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (LoadCtx) v v' "[Hv #Hiv]"
@@ -416,10 +396,9 @@ Qed.
   Qed.
 
   Lemma typed_binary_interp_Store Δ Γ e1 e2 e1' e2' τ {HΔ : ✓✓ Δ}
-        (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ (Tref τ))
-        (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ)
-    :
-      Δ ∥ Γ ⊩ Store e1 e2 ≤log≤ Store e1' e2' ∷ TUnit.
+      (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ (Tref τ))
+      (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ) :
+    Δ ∥ Γ ⊩ Store e1 e2 ≤log≤ Store e1' e2' ∷ TUnit.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (StoreLCtx _) v v' "[Hv #Hiv]"
@@ -446,12 +425,11 @@ Qed.
   Qed.
 
   Lemma typed_binary_interp_CAS Δ Γ e1 e2 e3 e1' e2' e3' τ {HΔ : ✓✓ Δ}
-        (HEqτ : EqType τ)
-        (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ Tref τ)
-        (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ)
-        (IHHtyped3 : Δ ∥ Γ ⊩ e3 ≤log≤ e3' ∷ τ)
-    :
-      Δ ∥ Γ ⊩ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' ∷ TBool.
+      (HEqτ : EqType τ)
+      (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ Tref τ)
+      (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ τ)
+      (IHHtyped3 : Δ ∥ Γ ⊩ e3 ≤log≤ e3' ∷ τ) :
+    Δ ∥ Γ ⊩ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' ∷ TBool.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (CasLCtx _ _) v v' "[Hv #Hiv]"
@@ -493,7 +471,7 @@ Qed.
   Qed.
 
   Lemma typed_binary_interp Δ Γ e τ {HΔ : ∀ x vw, PersistentP (Δ x vw)}
-        (Htyped : typed Γ e τ) : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
+    (Htyped : typed Γ e τ) : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
   Proof.
     revert Δ HΔ; induction Htyped; intros Δ HΔ.
     - iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
@@ -533,7 +511,6 @@ Qed.
     - eapply typed_binary_interp_Store; trivial.
     - eapply typed_binary_interp_CAS; eauto.
   Qed.
-
 End typed_interp.
 
 Notation "Δ ∥ Γ ⊩ e '≤log≤' e' ∷ τ" := (bin_log_related Δ Γ e e' τ)

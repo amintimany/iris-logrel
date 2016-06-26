@@ -14,18 +14,17 @@ Section Soundness.
           {Hhp : auth.authG lang Σ heapUR}
           {Hcfg : auth.authG lang Σ cfgUR}.
 
-  Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ :=
-    {| cofe_mor_car := λ x, {| cofe_mor_car := λ y, (True)%I |} |}.
+  Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ := λne x y,
+    True%I.
 
   Local Notation Δφ := free_type_context.
 
   Local Opaque to_heap.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
-     (@ownership.ownP lang (globalF Σ) ∅)
-      ⊢ WP e
-      {{_, ■ (∃ thp' h v, rtc step ([e'], ∅) ((# v) :: thp', h))}}.
+    (∀ H H' N Δ HΔ, @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
+    @ownership.ownP lang (globalF Σ) ∅
+    ⊢ WP e {{_, ■ (∃ thp' h v, rtc step ([e'], ∅) ((# v) :: thp', h)) }}.
   Proof.
     iIntros {H1} "Hemp".
     iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")

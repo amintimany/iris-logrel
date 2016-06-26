@@ -18,17 +18,10 @@ Section Soundness.
   Qed.
 
   Definition free_type_context : varC -n> valC -n> iProp lang (globalF Σ) :=
-    {|
-      cofe_mor_car :=
-        λ x,
-        {|
-          cofe_mor_car :=
-            λ y, True%I
-        |}
-    |}.
+    λne x y, True%I.
 
-  Lemma wp_soundness e τ
-    : typed [] e τ → True ⊢ WP e {{ @interp (globalF Σ) τ free_type_context}}.
+  Lemma wp_soundness e τ :
+    typed [] e τ → True ⊢ WP e {{ @interp (globalF Σ) τ free_type_context }}.
   Proof.
     iIntros {H} "". rewrite -(empty_env_subst e).
     by iApply (@typed_interp _ _ _ []).

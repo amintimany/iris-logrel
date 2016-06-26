@@ -26,7 +26,7 @@ Section CG_Counter.
   Proof. intros H f. unfold CG_increment. asimpl. rewrite ?H; trivial. Qed.
 
   Lemma CG_increment_subst (x : expr) f :
-  (CG_increment x).[f] = CG_increment x.[f].
+    (CG_increment x).[f] = CG_increment x.[f].
   Proof. unfold CG_increment; asimpl; trivial. Qed.
 
   Lemma steps_CG_increment N E ρ j K x n:

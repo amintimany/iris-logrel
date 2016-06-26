@@ -18,18 +18,11 @@ Section Soundness.
   Qed.
 
   Definition free_type_context: varC -n> valC -n> iPropG lang Σ :=
-    {|
-      cofe_mor_car :=
-        λ x,
-        {|
-          cofe_mor_car :=
-            λ y, True%I
-        |}
-    |}.
+    λne x y, True%I.
 
-  Lemma wp_soundness e τ
-    : typed [] e τ →
-      ownership.ownP ∅ ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref" .@ 1)
+  Lemma wp_soundness e τ :
+    typed [] e τ →
+    ownership.ownP ∅ ⊢ WP e {{ v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref" .@ 1)
                                         τ free_type_context v}}.
   Proof.
     iIntros {H1} "Hemp".

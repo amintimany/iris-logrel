@@ -11,21 +11,13 @@ Import uPred.
 Section Soundness.
   Definition Σ := #[ auth.authGF heapUR ].
 
-  Definition free_type_context: varC -n> valC -n> iPropG lang Σ :=
-    {|
-      cofe_mor_car :=
-        λ x,
-        {|
-          cofe_mor_car :=
-            λ y, (True)%I
-        |}
-    |}.
+  Definition free_type_context: varC -n> valC -n> iPropG lang Σ := λne x y,
+    True%I.
 
-  Lemma wp_soundness e τ
-    : typed [] e τ →
-      ownership.ownP ∅
-        ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1)
-                                 τ free_type_context v }}.
+  Lemma wp_soundness e τ :
+    typed [] e τ →
+    ownership.ownP ∅ ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1)
+                                      τ free_type_context v }}.
   Proof.
     iIntros {H1} "Hemp".
     iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
@@ -42,17 +34,13 @@ Section Soundness.
   Theorem Soundness e τ :
     typed [] e τ →
     ∀ e' thp h, rtc step ([e], (of_heap ∅)) (e' :: thp, h) →
-              ¬ reducible e' h → is_Some (to_val e').
+              ¬reducible e' h → is_Some (to_val e').
   Proof.
     intros H1 e' thp h Hstp Hnr.
     eapply wp_soundness in H1; eauto.
-    edestruct (@wp_adequacy_reducible lang (globalF Σ) ⊤
-                                     (λ v,
-                                      (∃ H, @interp
-                                              Σ H (nroot .@ "Fμ,ref,par" .@ 1)
-                                              τ free_type_context v)%I)
-                                     e e' (e' :: thp) ∅ ∅ h)
-      as [Ha|Ha]; eauto; try tauto.
+    edestruct (@wp_adequacy_reducible lang (globalF Σ) ⊤ (λ v, (∃ H,
+        @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1) τ free_type_context v)%I)
+      e e' (e' :: thp) ∅ ∅ h) as [Ha|Ha]; eauto; try tauto.
     - apply ucmra_unit_valid.
     - iIntros "[Hp Hg]". by iApply H1.
     - by rewrite of_empty_heap in Hstp.
