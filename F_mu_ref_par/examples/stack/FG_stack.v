@@ -1,26 +1,119 @@
 From iris.program_logic Require Import language.
 From iris_logrel.F_mu_ref_par Require Import lang typing rules.
 
+Definition FG_StackType τ :=
+  TRec (Tref (TSum TUnit (TProd τ.[ren (+1)] (TVar 0)))).
+
+Definition FG_push (st : expr) : expr :=
+  Lam (App (Lam
+              (* try push *)
+              (If (CAS (st.[ren (+4)]) (Var 1)
+                       (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
+                  )
+                  Unit (* push succeeds we return unit *)
+                  (App (Var 2) (Var 3)) (* push fails, we try again *)
+              )
+           )
+           (Load st.[ren (+2)]) (* read the stack pointer *)
+      ).
+Definition FG_pushV (st : expr) : val :=
+  LamV (App (Lam
+              (* try push *)
+              (If (CAS (st.[ren (+4)]) (Var 1)
+                       (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
+                  )
+                  Unit (* push succeeds we return unit *)
+                  (App (Var 2) (Var 3)) (* push fails, we try again *)
+              )
+           )
+           (Load st.[ren (+2)]) (* read the stack pointer *)
+       ).
+
+Definition FG_pop (st : expr) : expr :=
+  Lam (App (Lam
+              (App
+                 (Lam
+                    (
+                      Case (Var 1)
+                           (InjL Unit)
+                           ( (* try popping *)
+                             If
+                               (CAS
+                                  (st.[ren (+7)])
+                                  (Fold (Var 4))
+                                  (Snd (Var 0))
+                               )
+                               (InjR (Fst (Var 0))) (* pop succeeds *)
+                               (App (Var 5) (Var 6)) (* pop fails, we retry*)
+                           )
+                     )
+                 )
+                 (
+                   (Load (Var 1))
+                 )
+              )
+           )
+           (Unfold (Load st.[ren (+ 2)]))
+      ).
+Definition FG_popV (st : expr) : val :=
+  LamV
+    (App
+       (Lam
+          ( App
+              (Lam
+                 (
+                   Case (Var 1)
+                        (InjL Unit)
+                        ( (* try popping *)
+                          If
+                            (CAS
+                               (st.[ren (+7)])
+                               (Fold (Var 4))
+                               (Snd (Var 0))
+                            )
+                            (InjR (Fst (Var 0))) (* pop succeeds *)
+                            (App (Var 5) (Var 6)) (* pop fails, we retry*)
+                        )
+                 )
+              )
+              (
+                (Load (Var 1))
+              )
+          )
+       )
+       (Unfold (Load st.[ren (+ 2)]))
+    ).
+
+Definition FG_iter (f : expr) : expr :=
+  Lam
+    (Case (Load (Unfold (Var 1)))
+          Unit
+          (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
+               (App f.[ren (+3)] (Fst (Var 0)))
+          )
+    ).
+Definition FG_iterV (f : expr) : val :=
+  LamV
+    (Case (Load (Unfold (Var 1)))
+          Unit
+          (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
+               (App f.[ren (+3)] (Fst (Var 0)))
+          )
+    ).
+Definition FG_read_iter (st : expr) : expr :=
+  Lam (App (FG_iter (Var 1)) (Load st.[ren (+2)])).
+
+Definition FG_stack_body (st : expr) : expr :=
+  Pair (Pair (FG_push st) (FG_pop st)) (FG_read_iter st).
+
+Definition FG_stack : expr :=
+  TLam (App (Lam (FG_stack_body (Var 1)))
+                (Alloc (Fold (Alloc (InjL Unit))))).
+
 Section FG_stack.
   Context {Σ : gFunctors} {iI : heapIG Σ}.
 
-  Definition FG_StackType τ :=
-    TRec (Tref (TSum TUnit (TProd τ.[ren (+1)] (TVar 0)))).
-
   (* Fine-grained push *)
-  Definition FG_push (st : expr) : expr :=
-    Lam (App (Lam
-                (* try push *)
-                (If (CAS (st.[ren (+4)]) (Var 1)
-                         (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
-                    )
-                    Unit (* push succeeds we return unit *)
-                    (App (Var 2) (Var 3)) (* push fails, we try again *)
-                )
-             )
-             (Load st.[ren (+2)]) (* read the stack pointer *)
-        ).
-
   Lemma FG_push_folding (st : expr) :
     FG_push st =
     Lam (App (Lam
@@ -51,21 +144,7 @@ Section FG_stack.
       - by asimpl.
       - eapply (context_weakening [_; _]); eauto.
     Qed.
-
   End FG_push_type.
-
-  Definition FG_pushV (st : expr) : val :=
-    LamV (App (Lam
-                (* try push *)
-                (If (CAS (st.[ren (+4)]) (Var 1)
-                         (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
-                    )
-                    Unit (* push succeeds we return unit *)
-                    (App (Var 2) (Var 3)) (* push fails, we try again *)
-                )
-             )
-             (Load st.[ren (+2)]) (* read the stack pointer *)
-         ).
 
   Lemma FG_push_to_val st : to_val (FG_push st) = Some (FG_pushV st).
   Proof. trivial. Qed.
@@ -85,33 +164,6 @@ Section FG_stack.
   Global Opaque FG_push.
 
   (* Fine-grained push *)
-  Definition FG_pop (st : expr) : expr :=
-    Lam (App (Lam
-                (App
-                   (Lam
-                      (
-                        Case (Var 1)
-                             (InjL Unit)
-                             ( (* try popping *)
-                               If
-                                 (CAS
-                                    (st.[ren (+7)])
-                                    (Fold (Var 4))
-                                    (Snd (Var 0))
-                                 )
-                                 (InjR (Fst (Var 0))) (* pop succeeds *)
-                                 (App (Var 5) (Var 6)) (* pop fails, we retry*)
-                             )
-                       )
-                   )
-                   (
-                     (Load (Var 1))
-                   )
-                )
-             )
-             (Unfold (Load st.[ren (+ 2)]))
-        ).
-
   Lemma FG_pop_folding (st : expr) :
     FG_pop st =
     Lam (App (Lam
@@ -156,37 +208,7 @@ Section FG_stack.
       - asimpl; trivial.
       - eapply (context_weakening [_; _]); eauto.
     Qed.
-
   End FG_pop_type.
-
-  Definition FG_popV (st : expr) : val :=
-    LamV
-      (App
-         (Lam
-            ( App
-                (Lam
-                   (
-                     Case (Var 1)
-                          (InjL Unit)
-                          ( (* try popping *)
-                            If
-                              (CAS
-                                 (st.[ren (+7)])
-                                 (Fold (Var 4))
-                                 (Snd (Var 0))
-                              )
-                              (InjR (Fst (Var 0))) (* pop succeeds *)
-                              (App (Var 5) (Var 6)) (* pop fails, we retry*)
-                          )
-                   )
-                )
-                (
-                  (Load (Var 1))
-                )
-            )
-         )
-         (Unfold (Load st.[ren (+ 2)]))
-      ).
 
   Lemma FG_pop_to_val st : to_val (FG_pop st) = Some (FG_popV st).
   Proof. trivial. Qed.
@@ -206,15 +228,6 @@ Section FG_stack.
   Global Opaque FG_pop.
 
   (* Fine-grained iter *)
-  Definition FG_iter (f : expr) : expr :=
-    Lam
-      (Case (Load (Unfold (Var 1)))
-            Unit
-            (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
-                 (App f.[ren (+3)] (Fst (Var 0)))
-            )
-      ).
-
   Lemma FG_iter_folding (f : expr) :
     FG_iter f =
     Lam
@@ -242,15 +255,6 @@ Section FG_stack.
     repeat econstructor.
   Qed.
 
-  Definition FG_iterV (f : expr) : val :=
-    LamV
-      (Case (Load (Unfold (Var 1)))
-            Unit
-            (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
-                 (App f.[ren (+3)] (Fst (Var 0)))
-            )
-      ).
-
   Lemma FG_iter_to_val st : to_val (FG_iter st) = Some (FG_iterV st).
   Proof. trivial. Qed.
 
@@ -267,9 +271,6 @@ Section FG_stack.
   Proof. unfold FG_iter. by asimpl. Qed.
 
   Global Opaque FG_iter.
-
-  Definition FG_read_iter (st : expr) : expr :=
-    Lam (App (FG_iter (Var 1)) (Load st.[ren (+2)])).
 
   Lemma FG_read_iter_type st Γ τ :
     typed Γ st (Tref (FG_StackType τ)) →
@@ -297,9 +298,6 @@ Section FG_stack.
 
   Global Opaque FG_iter.
 
-  Definition FG_stack_body (st : expr) : expr :=
-    Pair (Pair (FG_push st) (FG_pop st)) (FG_read_iter st).
-
   Section FG_stack_body_type.
     (* The following assumption is simply ** WRONG ** *)
     (* We assume it though to just be able to prove that the
@@ -318,7 +316,6 @@ Section FG_stack.
       repeat (econstructor; eauto using FG_push_type,
                             FG_pop_type, FG_read_iter_type).
     Qed.
-
   End FG_stack_body_type.
 
   Opaque FG_read_iter.
@@ -332,10 +329,6 @@ Section FG_stack.
     rewrite FG_pop_closed; trivial.
     by rewrite FG_read_iter_closed.
   Qed.
-
-  Definition FG_stack : expr :=
-    TLam (App (Lam (FG_stack_body (Var 1)))
-                  (Alloc (Fold (Alloc (InjL Unit))))).
 
   Section FG_stack_type.
     (* The following assumption is simply ** WRONG ** *)

@@ -3,16 +3,62 @@ From iris_logrel.F_mu_ref_par Require Import lang examples.lock typing
      rules_binary rules.
 Import uPred.
 
+Definition CG_StackType τ :=
+  TRec (TSum TUnit (TProd τ.[ren (+1)] (TVar 0))).
+
+(* Coarse-grained push *)
+Definition CG_push (st : expr) : expr :=
+  Lam (Store
+         (st.[ren (+2)]) (Fold (InjR (Pair (Var 1) (Load st.[ren (+ 2)]))))).
+
+Definition CG_locked_push (st l : expr) := with_lock (CG_push st) l.
+Definition CG_locked_pushV (st l : expr) : val := with_lockV (CG_push st) l.
+
+Definition CG_pop (st : expr) : expr :=
+  Lam (Case (Unfold (Load st.[ren (+ 2)]))
+            (InjL Unit)
+            (
+              App (Lam (InjR (Fst (Var 2))))
+                  (Store st.[ren (+ 3)] (Snd (Var 0)))
+            )
+      ).
+
+Definition CG_locked_pop (st l : expr) := with_lock (CG_pop st) l.
+Definition CG_locked_popV (st l : expr) : val := with_lockV (CG_pop st) l.
+
+Definition CG_snap (st l : expr) :=  with_lock (Lam (Load st.[ren (+2)])) l.
+Definition CG_snapV (st l : expr) : val := with_lockV (Lam (Load st.[ren (+2)])) l.
+
+Definition CG_iter (f : expr) : expr :=
+  Lam (Case (Unfold (Var 1))
+            Unit
+            (
+              App (Lam (App (Var 3) (Snd (Var 2))))
+                  (App f.[ren (+3)] (Fst (Var 0)))
+            )
+      ).
+
+Definition CG_iterV (f : expr) : val :=
+  LamV (Case (Unfold (Var 1))
+            Unit
+            (
+              App (Lam (App (Var 3) (Snd (Var 2))))
+                  (App f.[ren (+3)] (Fst (Var 0)))
+            )
+      ).
+
+Definition CG_snap_iter (st l : expr) : expr :=
+  Lam (App (CG_iter (Var 1)) (App (CG_snap st.[ren (+2)] l.[ren (+2)]) Unit)).
+Definition CG_stack_body (st l : expr) : expr :=
+  Pair (Pair (CG_locked_push st l) (CG_locked_pop st l))
+       (CG_snap_iter st l).
+
+Definition CG_stack : expr :=
+  TLam (App (Lam (App (Lam (CG_stack_body (Var 1) (Var 3)))
+                (Alloc (Fold (InjL Unit))))) newlock).
+
 Section CG_Stack.
   Context {Σ : gFunctors} {iS : cfgSG Σ}.
-
-  Definition CG_StackType τ :=
-    (TRec (TSum TUnit (TProd τ.[ren (+1)] (TVar 0)))).
-
-  (* Coarse-grained push *)
-  Definition CG_push (st : expr) : expr :=
-    Lam (Store
-           (st.[ren (+2)]) (Fold (InjR (Pair (Var 1) (Load st.[ren (+ 2)]))))).
 
   Lemma CG_push_type st Γ τ :
     typed Γ st (Tref (CG_StackType τ)) →
@@ -54,11 +100,6 @@ Section CG_Stack.
   Qed.
 
   Global Opaque CG_push.
-
-  Definition CG_locked_push (st l : expr) :=
-    with_lock (CG_push st) l.
-  Definition CG_locked_pushV (st l : expr) : val :=
-    with_lockV (CG_push st) l.
 
   Lemma CG_locked_push_to_val st l :
     to_val (CG_locked_push st l) = Some (CG_locked_pushV st l).
@@ -109,15 +150,6 @@ Section CG_Stack.
   Global Opaque CG_locked_push.
 
   (* Coarse-grained pop *)
-  Definition CG_pop (st : expr) : expr :=
-    Lam (Case (Unfold (Load st.[ren (+ 2)]))
-              (InjL Unit)
-              (
-                App (Lam (InjR (Fst (Var 2))))
-                    (Store st.[ren (+ 3)] (Snd (Var 0)))
-              )
-        ).
-
   Lemma CG_pop_type st Γ τ :
     typed Γ st (Tref (CG_StackType τ)) →
     typed Γ (CG_pop st) (TArrow TUnit (TSum TUnit τ)).
@@ -213,11 +245,6 @@ Section CG_Stack.
 
   Global Opaque CG_pop.
 
-  Definition CG_locked_pop (st l : expr) :=
-    with_lock (CG_pop st) l.
-  Definition CG_locked_popV (st l : expr) : val :=
-    with_lockV (CG_pop st) l.
-
   Lemma CG_locked_pop_to_val st l :
     to_val (CG_locked_pop st l) = Some (CG_locked_popV st l).
   Proof. trivial. Qed.
@@ -281,11 +308,6 @@ Section CG_Stack.
 
   Global Opaque CG_locked_pop.
 
-  Definition CG_snap (st l : expr) :=
-    with_lock (Lam (Load st.[ren (+2)])) l.
-  Definition CG_snapV (st l : expr) : val :=
-    with_lockV (Lam (Load st.[ren (+2)])) l.
-
   Lemma CG_snap_to_val st l : to_val (CG_snap st l) = Some (CG_snapV st l).
   Proof. trivial. Qed.
 
@@ -341,15 +363,6 @@ Section CG_Stack.
   Global Opaque CG_snap.
 
   (* Coarse-grained iter *)
-  Definition CG_iter (f : expr) : expr :=
-    Lam (Case (Unfold (Var 1))
-              Unit
-              (
-                App (Lam (App (Var 3) (Snd (Var 2))))
-                    (App f.[ren (+3)] (Fst (Var 0)))
-              )
-        ).
-
   Lemma CG_iter_folding (f : expr) :
     CG_iter f =
     Lam (Case (Unfold (Var 1))
@@ -375,15 +388,6 @@ Section CG_Stack.
       by (by asimpl).
     repeat econstructor.
   Qed.
-
-  Definition CG_iterV (f : expr) : val :=
-    LamV (Case (Unfold (Var 1))
-              Unit
-              (
-                App (Lam (App (Var 3) (Snd (Var 2))))
-                    (App f.[ren (+3)] (Fst (Var 0)))
-              )
-        ).
 
   Lemma CG_iter_to_val f : to_val (CG_iter f) = Some (CG_iterV f).
   Proof. trivial. Qed.
@@ -479,10 +483,6 @@ Section CG_Stack.
     rewrite CG_snap_subst CG_iter_subst. by asimpl.
   Qed.
 
-  Definition CG_stack_body (st l : expr) : expr :=
-    Pair (Pair (CG_locked_push st l) (CG_locked_pop st l))
-         (CG_snap_iter st l).
-
   Lemma CG_stack_body_type st l Γ τ :
     typed Γ st (Tref (CG_StackType τ)) →
     typed Γ l LockType →
@@ -508,10 +508,6 @@ Section CG_Stack.
     rewrite CG_locked_pop_closed; trivial.
     by rewrite CG_snap_iter_closed.
   Qed.
-
-  Definition CG_stack : expr :=
-    TLam (App (Lam (App (Lam (CG_stack_body (Var 1) (Var 3)))
-                  (Alloc (Fold (InjL Unit))))) newlock).
 
   Lemma CG_stack_type Γ :
     typed Γ (CG_stack)
