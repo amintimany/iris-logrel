@@ -189,13 +189,13 @@ Section typed_interp.
   Lemma typed_binary_interp_nat_bin_op Δ Γ op e1 e2 e1' e2' {HΔ : ✓✓ Δ}
       (IHHtyped1 : Δ ∥ Γ ⊩ e1 ≤log≤ e1' ∷ TNat)
       (IHHtyped2 : Δ ∥ Γ ⊩ e2 ≤log≤ e2' ∷ TNat) :
-    Δ ∥ Γ ⊩ NBOP op e1 e2 ≤log≤ NBOP op e1' e2' ∷ NatBinOP_res_type op.
+    Δ ∥ Γ ⊩ BinOp op e1 e2 ≤log≤ BinOp op e1' e2' ∷ binop_res_type op.
   Proof.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
-    smart_wp_bind (NBOPLCtx _ _) v v' "[Hv #Hiv]"
-                  (IHHtyped1 _ _ _ j (K ++ [NBOPLCtx _ _])); cbn.
-    smart_wp_bind (NBOPRCtx _ _) w w' "[Hw #Hiw]"
-                  (IHHtyped2 _ _ _ j (K ++ [NBOPRCtx _ _])); cbn.
+    smart_wp_bind (BinOpLCtx _ _) v v' "[Hv #Hiv]"
+                  (IHHtyped1 _ _ _ j (K ++ [BinOpLCtx _ _])); cbn.
+    smart_wp_bind (BinOpRCtx _ _) w w' "[Hw #Hiw]"
+                  (IHHtyped2 _ _ _ j (K ++ [BinOpRCtx _ _])); cbn.
     iDestruct "Hiv" as {n} "[% %]"; subst; simpl.
     iDestruct "Hiw" as {n'} "[% %]"; subst; simpl.
     iPvs (step_nat_bin_op _ _ _ j K _ _ _ _ with "* [-]") as "Hz".

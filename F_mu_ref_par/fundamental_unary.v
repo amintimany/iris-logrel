@@ -42,8 +42,8 @@ Section typed_interp.
     - (* nat *) value_case; iExists _ ; trivial.
     - (* bool *) value_case; iExists _ ; trivial.
     - (* nat bin op *)
-      smart_wp_bind (NBOPLCtx _ e2.[env_subst vs]) v "#Hv" IHHtyped1.
-      smart_wp_bind (NBOPRCtx _ v) v' "# Hv'" IHHtyped2.
+      smart_wp_bind (BinOpLCtx _ e2.[env_subst vs]) v "#Hv" IHHtyped1.
+      smart_wp_bind (BinOpRCtx _ v) v' "# Hv'" IHHtyped2.
       iDestruct "Hv" as {n} "%"; iDestruct "Hv'" as {n'} "%"; subst. simpl.
       iApply wp_nat_bin_op. iNext; destruct op; simpl;
       try destruct eq_nat_dec; try destruct le_dec; try destruct lt_dec;

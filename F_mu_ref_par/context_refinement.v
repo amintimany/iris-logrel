@@ -20,8 +20,8 @@ Inductive context_item : Type :=
 | CTX_CaseM (e0 : expr) (e2 : expr)
 | CTX_CaseR (e0 : expr) (e1 : expr)
 (* Nat bin op *)
-| CTX_NBOPL (op : NatBinOP) (e2 : expr)
-| CTX_NBOPR (op : NatBinOP) (e1 : expr)
+| CTX_BinOpL (op : binop) (e2 : expr)
+| CTX_BinOpR (op : binop) (e1 : expr)
 (* If *)
 | CTX_IfL (e1 : expr) (e2 : expr)
 | CTX_IfM (e0 : expr) (e2 : expr)
@@ -58,8 +58,8 @@ Fixpoint fill_ctx_item (ctx : context_item) (e : expr) : expr :=
   | CTX_CaseL e1 e2 => Case e e1 e2
   | CTX_CaseM e0 e2 => Case e0 e e2
   | CTX_CaseR e0 e1 => Case e0 e1 e
-  | CTX_NBOPL op e2 => NBOP op e e2
-  | CTX_NBOPR op e1 => NBOP op e1 e
+  | CTX_BinOpL op e2 => BinOp op e e2
+  | CTX_BinOpR op e1 => BinOp op e1 e
   | CTX_IfL e1 e2 => If e e1 e2
   | CTX_IfM e0 e2 => If e0 e e2
   | CTX_IfR e0 e1 => If e0 e1 e
@@ -126,12 +126,12 @@ Inductive typed_context_item :
 | TP_CTX_IfR (e0 : expr) (e1 : expr) : ∀ Γ τ,
     typed Γ e0 (TBool) → typed Γ e1 τ →
     typed_context_item (CTX_IfR e0 e1) Γ τ Γ τ
-| TP_CTX_NBOPL op (e2 : expr) : ∀ Γ,
+| TP_CTX_BinOpL op (e2 : expr) : ∀ Γ,
     typed Γ e2 TNat →
-    typed_context_item (CTX_NBOPL op e2) Γ TNat Γ (NatBinOP_res_type op)
-| TP_CTX_NBOPR op (e1 : expr) : ∀ Γ,
+    typed_context_item (CTX_BinOpL op e2) Γ TNat Γ (binop_res_type op)
+| TP_CTX_BinOpR op (e1 : expr) : ∀ Γ,
     typed Γ e1 TNat →
-    typed_context_item (CTX_NBOPR op e1) Γ TNat Γ (NatBinOP_res_type op)
+    typed_context_item (CTX_BinOpR op e1) Γ TNat Γ (binop_res_type op)
 | TP_CTX_Fold : ∀ Γ τ,
     typed_context_item CTX_Fold Γ τ.[(TRec τ)/] Γ (TRec τ)
 | TP_CTX_Unfold : ∀ Γ τ,

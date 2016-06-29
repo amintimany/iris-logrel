@@ -8,14 +8,14 @@ Module lang.
 
   Global Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
 
-  Inductive NatBinOP :=
+  Inductive binop :=
   | Add
   | Sub
   | Eq
   | Le
   | Lt.
 
-  Global Instance Natbinop_dec_eq (op op' : NatBinOP) : Decision (op = op').
+  Global Instance Natbinop_dec_eq (op op' : binop) : Decision (op = op').
   Proof. unfold Decision. decide equality. Qed.
 
   Inductive expr :=
@@ -26,7 +26,7 @@ Module lang.
   | Unit
   | Nat (n : nat)
   | Bool (b : bool)
-  | NBOP (op : NatBinOP) (e1 e2 : expr)
+  | BinOp (op : binop) (e1 e2 : expr)
   (* If then else *)
   | If (e0 e1 e2 : expr)
   (* Products *)
@@ -85,7 +85,7 @@ Module lang.
   Notation "'♭v' b" := (BoolV b) (at level 200).
   Notation "'♯v' n" := (NatV n) (at level 200).
 
-  Fixpoint NatBinOP_meaning (op : NatBinOP) : nat → nat → val :=
+  Fixpoint binop_meaning (op : binop) : nat → nat → val :=
     match op with
     | Add => λ a b, ♯v(a + b)
     | Sub => λ a b, ♯v(a - b)
@@ -140,8 +140,8 @@ Module lang.
   | TAppCtx
   | PairLCtx (e2 : expr)
   | PairRCtx (v1 : val)
-  | NBOPLCtx (op : NatBinOP) (e2 : expr)
-  | NBOPRCtx (op : NatBinOP) (v1 : val)
+  | BinOpLCtx (op : binop) (e2 : expr)
+  | BinOpRCtx (op : binop) (v1 : val)
   | FstCtx
   | SndCtx
   | InjLCtx
@@ -167,8 +167,8 @@ Module lang.
     | TAppCtx => TApp e
     | PairLCtx e2 => Pair e e2
     | PairRCtx v1 => Pair (of_val v1) e
-    | NBOPLCtx op e2 => NBOP op e e2
-    | NBOPRCtx op v1 => NBOP op (of_val v1) e
+    | BinOpLCtx op e2 => BinOp op e e2
+    | BinOpRCtx op v1 => BinOp op (of_val v1) e
     | FstCtx => Fst e
     | SndCtx => Snd e
     | InjLCtx => InjL e
@@ -210,8 +210,8 @@ Module lang.
       to_val e0 = Some v0 →
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
     (* nat bin op *)
-  | NBOPS op a b σ :
-      head_step (NBOP op (♯ a) (♯b)) σ (of_val (NatBinOP_meaning op a b)) σ None
+  | BinOpS op a b σ :
+      head_step (BinOp op (♯ a) (♯b)) σ (of_val (binop_meaning op a b)) σ None
   (* If then else *)
   | IfFalse e1 e2 σ :
       head_step (If (♭ false) e1 e2) σ e2 σ None

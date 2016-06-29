@@ -10,7 +10,7 @@ Section CG_Counter.
 
   (* Coarse-grained increment *)
   Definition CG_increment (x : expr) : expr :=
-    Lam ((Store x.[ren (+ 2)] (NBOP Add (♯ 1) (Load x.[ren (+ 2)])))).
+    Lam ((Store x.[ren (+ 2)] (BinOp Add (♯ 1) (Load x.[ren (+ 2)])))).
 
   Lemma CG_increment_type x Γ :
     typed Γ x (Tref TNat) →
@@ -36,7 +36,7 @@ Section CG_Counter.
   Proof.
     iIntros {HNE} "[#Hspec [Hx Hj]]". unfold CG_increment.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iPvs (step_load _ _ _ j (K ++ [StoreRCtx (LocV _); NBOPRCtx _ (♯v _)])
+    iPvs (step_load _ _ _ j (K ++ [StoreRCtx (LocV _); BinOpRCtx _ (♯v _)])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
@@ -202,7 +202,7 @@ Section CG_Counter.
   Definition FG_increment (x : expr) : expr :=
     Lam (App (Lam
                 (* try increment *)
-                (If (CAS x.[ren (+4)] (Var 1) (NBOP Add (♯ 1) (Var 1)))
+                (If (CAS x.[ren (+4)] (Var 1) (BinOp Add (♯ 1) (Var 1)))
                     Unit (* increment succeeds we return unit *)
                     (App (Var 2) (Var 3)) (* increment fails, we try again *)
                 )

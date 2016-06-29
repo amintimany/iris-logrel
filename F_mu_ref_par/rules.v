@@ -466,10 +466,10 @@ Section lang_rules.
     Qed.
 
     Lemma wp_nat_bin_op E op a b Φ :
-      ▷ Φ (NatBinOP_meaning op a b) ⊢ WP (NBOP op (♯ a) (♯ b)) @ E {{Φ}}.
+      ▷ Φ (binop_meaning op a b) ⊢ WP (BinOp op (♯ a) (♯ b)) @ E {{Φ}}.
     Proof.
       rewrite -(wp_lift_pure_det_step
-                  (NBOP _ _ _) (of_val (NatBinOP_meaning op a b)) None) //=.
+                  (BinOp _ _ _) (of_val (binop_meaning op a b)) None) //=.
       - rewrite right_id; auto using uPred.later_mono, wp_value'.
       - intros. inv_step; auto.
     Qed.

@@ -19,7 +19,7 @@ Instance Rename_type : Rename type. derive. Defined.
 Instance Subst_type : Subst type. derive. Defined.
 Instance SubstLemmas_typer : SubstLemmas type. derive. Qed.
 
-Fixpoint NatBinOP_res_type (op : NatBinOP) : type :=
+Fixpoint binop_res_type (op : binop) : type :=
   match op with
   | Add => TNat | Sub => TNat
   | Eq => TBool | Le => TBool | Lt => TBool
@@ -38,9 +38,9 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 | Unit_typed : typed Γ Unit TUnit
 | Nat_typed n : typed Γ (♯ n) TNat
 | Bool_typed b : typed Γ (♭ b) TBool
-| NBOP_typed op e1 e2 :
+| BinOp_typed op e1 e2 :
     typed Γ e1 TNat → typed Γ e2 TNat →
-    typed Γ (NBOP op e1 e2) (NatBinOP_res_type op)
+    typed Γ (BinOp op e1 e2) (binop_res_type op)
 | Pair_typed e1 e2 τ1 τ2 :
     typed Γ e1 τ1 → typed Γ e2 τ2 → typed Γ (Pair e1 e2) (TProd τ1 τ2)
 | Fst_typed e τ1 τ2 : typed Γ e (TProd τ1 τ2) → typed Γ (Fst e) τ1

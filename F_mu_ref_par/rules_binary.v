@@ -605,8 +605,8 @@ Section lang_rules.
 
     Lemma step_nat_bin_op N E ρ j K op a b :
       nclose N ⊆ E →
-      Spec_ctx N ρ ★ j ⤇ fill K (NBOP op (♯ a) (♯ b))
-        ={E}=> j ⤇ fill K (of_val (NatBinOP_meaning op a b)).
+      Spec_ctx N ρ ★ j ⤇ fill K (BinOp op (♯ a) (♯ b))
+        ={E}=> j ⤇ fill K (of_val (binop_meaning op a b)).
     Proof. apply step_pure => σ; econstructor. Qed.
 
     Lemma step_fork_base k j K e h ρ :
