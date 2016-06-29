@@ -1,5 +1,4 @@
 Require Import iris.proofmode.tactics.
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
@@ -13,11 +12,11 @@ Section Soundness.
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
   Proof.
-    replace (env_subst []) with (ids) by reflexivity.
+    replace (env_subst []) with ids by reflexivity.
     asimpl; trivial.
   Qed.
 
-  Lemma wp_soundness e τ : typed [] e τ → True ⊢ WP e {{@interp (globalF Σ) τ}}.
+  Lemma wp_soundness e τ : typed [] e τ → True ⊢ WP e {{ @interp (globalF Σ) τ }}.
   Proof.
     iIntros {H} "".
     rewrite -(empty_env_subst e).
@@ -37,5 +36,4 @@ Section Soundness.
     - iIntros "H". iApply H1.
     - constructor.
   Qed.
-
 End Soundness.

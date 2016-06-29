@@ -5,7 +5,7 @@ Section FG_stack.
   Context {Σ : gFunctors} {iI : heapIG Σ}.
 
   Definition FG_StackType τ :=
-    (TRec (Tref (TSum TUnit (TProd τ.[ren (+1)] (TVar 0))))).
+    TRec (Tref (TSum TUnit (TProd τ.[ren (+1)] (TVar 0)))).
 
   (* Fine-grained push *)
   Definition FG_push (st : expr) : expr :=
@@ -79,8 +79,7 @@ Section FG_stack.
     (∀ f, st.[f] = st) → ∀ f, (FG_push st).[f] = FG_push st.
   Proof. intros H f. asimpl. unfold FG_push. rewrite ?H; trivial. Qed.
 
-  Lemma FG_push_subst (st : expr) f :
-    (FG_push st).[f] = FG_push st.[f].
+  Lemma FG_push_subst (st : expr) f : (FG_push st).[f] = FG_push st.[f].
   Proof. unfold FG_push. by asimpl. Qed.
 
   Global Opaque FG_push.
@@ -201,8 +200,7 @@ Section FG_stack.
     (∀ f, st.[f] = st) → ∀ f, (FG_pop st).[f] = FG_pop st.
   Proof. intros H f. asimpl. unfold FG_pop. rewrite ?H; trivial. Qed.
 
-  Lemma FG_pop_subst (st : expr) f :
-    (FG_pop st).[f] = FG_pop st.[f].
+  Lemma FG_pop_subst (st : expr) f : (FG_pop st).[f] = FG_pop st.[f].
   Proof. unfold FG_pop. by asimpl. Qed.
 
   Global Opaque FG_pop.
@@ -265,8 +263,7 @@ Section FG_stack.
     (∀ g, f.[g] = f) → ∀ g, (FG_iter f).[g] = FG_iter f.
   Proof. intros H g. asimpl. unfold FG_iter. rewrite ?H; trivial. Qed.
 
-  Lemma FG_iter_subst (f : expr) g :
-    (FG_iter f).[g] = FG_iter f.[g].
+  Lemma FG_iter_subst (f : expr) g : (FG_iter f).[g] = FG_iter f.[g].
   Proof. unfold FG_iter. by asimpl. Qed.
 
   Global Opaque FG_iter.
@@ -295,7 +292,7 @@ Section FG_stack.
   Qed.
 
   Lemma FG_read_iter_subst (st : expr) g :
-  (FG_read_iter st).[g] = FG_read_iter st.[g].
+    (FG_read_iter st).[g] = FG_read_iter st.[g].
   Proof. by unfold FG_read_iter; asimpl. Qed.
 
   Global Opaque FG_iter.
@@ -363,17 +360,12 @@ Section FG_stack.
       - eapply FG_read_iter_type; constructor; by simpl.
       - asimpl. repeat constructor.
     Qed.
-
   End FG_stack_type.
 
-  Lemma FG_stack_closed f :
-    FG_stack.[f] = FG_stack.
+  Lemma FG_stack_closed f : FG_stack.[f] = FG_stack.
   Proof.
     unfold FG_stack.
     asimpl; rewrite ?FG_push_subst ?FG_pop_subst.
     asimpl. rewrite ?FG_read_iter_subst. by asimpl.
   Qed.
-
-  Transparent FG_read_iter.
-
 End FG_stack.

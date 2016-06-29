@@ -38,6 +38,8 @@ Module lang.
     | InjLV v => InjL (of_val v)
     | InjRV v => InjR (of_val v)
     end.
+  Notation "# v" := (of_val v) (at level 20).
+
   Fixpoint to_val (e : expr) : option val :=
     match e with
     | Lam e => Some (LamV e)
@@ -204,7 +206,7 @@ Program Canonical Structure lang : language := {|
 Solve Obligations with eauto using lang.to_of_val, lang.of_to_val,
   lang.values_stuck, lang.atomic_not_val, lang.atomic_step.
 
-Global Instance lang_ctx K : LanguageCtx lang (lang.fill K).
+Instance lang_ctx K : LanguageCtx lang (lang.fill K).
 Proof.
   split.
   * eauto using lang.fill_not_val.
@@ -218,8 +220,7 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Global Instance lang_ctx_item Ki :
-  LanguageCtx lang (lang.fill_item Ki).
+Instance lang_ctx_item Ki : LanguageCtx lang (lang.fill_item Ki).
 Proof. change (LanguageCtx lang (lang.fill [Ki])). by apply _. Qed.
 
 Export lang.

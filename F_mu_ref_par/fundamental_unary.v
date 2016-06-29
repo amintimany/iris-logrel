@@ -1,4 +1,3 @@
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
@@ -13,7 +12,6 @@ Import uPred.
 Section typed_interp.
   Context {Σ : gFunctors} `{i : heapIG Σ} `{L : namespace}.
   Implicit Types P Q R : iPropG lang Σ.
-  Notation "# v" := (of_val v) (at level 20).
 
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) uconstr(Hp) :=
     iApply (@wp_bind _ _ _ [ctx]);

@@ -202,9 +202,7 @@ Definition context_refines Γ e e' τ :=
                  rtc step ([fill_ctx K e'], ∅) ((# v') :: thp', h').
 
 Section bin_log_related_under_typed_context.
-  Context {Σ : gFunctors}
-          {iI : heapIG Σ} {iS : cfgSG Σ}
-          {N : namespace}.
+  Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ} {N : namespace}.
   Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
 
   Lemma bin_log_related_under_typed_context Γ e e' τ Γ' τ' K :

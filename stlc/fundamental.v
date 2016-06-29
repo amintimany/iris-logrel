@@ -1,5 +1,4 @@
 Require Import iris.proofmode.tactics.
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing

@@ -1,4 +1,3 @@
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
@@ -15,7 +14,6 @@ Section typed_interp.
   Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ} {N : namespace}.
   Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
   Implicit Types P Q R : iPropG lang Σ.
-  Notation "# v" := (of_val v) (at level 20).
 
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) ident(w)
         constr(Hv) uconstr(Hp) :=
@@ -29,7 +27,7 @@ Section typed_interp.
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
   Lemma map_lookup {A B} (l : list A) (f : A → B) k :
-    (map f l) !! k = option_map f (l !! k).
+    map f l !! k = option_map f (l !! k).
   Proof.
     revert k; induction l => k; simpl; trivial.
     destruct k; simpl; trivial.

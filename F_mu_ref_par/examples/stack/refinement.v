@@ -208,8 +208,7 @@ Section Stack_refinement.
             as "[Histk HLoe]".
           { by iFrame "Hmpt". }
           iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Histk".
-          iNext. iIntros "Histk".
-          iSplitR "Hj".
+          iIntros "> Histk". iSplitR "Hj".
           { iNext. iExists _, _, _. iFrame "Hstk' Hstk HLK Hl".
             iDestruct ("HLoe" with "[Histk]") as "[Hh _]"; trivial.
           }
@@ -233,7 +232,7 @@ Section Stack_refinement.
             as "[Histk HLoe]".
           { by iFrame "Hmpt". }
           iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Histk".
-          iNext. iIntros "Histk".
+          iIntros "> Histk".
           iDestruct ("HLoe" with "[Histk]") as "[Hh Hmpt]"; trivial.
           iSplitR "Hj Hmpt HLK'".
           { iNext. iExists _, _, _. by iFrame "Hstk' Hstk HLK Hl". }
@@ -432,8 +431,7 @@ End Stack_refinement.
 Definition Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR].
 
 Theorem stack_context_refinement :
-  context_refines
-    [] FG_stack CG_stack
+  context_refines [] FG_stack CG_stack
     (TForall
        (TProd
           (TProd

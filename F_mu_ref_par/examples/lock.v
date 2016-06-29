@@ -21,12 +21,10 @@ Definition with_lockV (e l : expr) : val :=
          (App acquire l.[ren (+2)])
     ).
 
-Lemma with_lock_to_val e l :
-  to_val (with_lock e l) = Some (with_lockV e l).
+Lemma with_lock_to_val e l : to_val (with_lock e l) = Some (with_lockV e l).
 Proof. trivial. Qed.
 
-Lemma with_lock_of_val e l :
-  of_val (with_lockV e l) = with_lock e l.
+Lemma with_lock_of_val e l : of_val (with_lockV e l) = with_lock e l.
 Proof. trivial. Qed.
 
 Global Opaque with_lockV.
@@ -43,8 +41,7 @@ Lemma release_closed f : release.[f] = release.
 Proof. by asimpl. Qed.
 Hint Rewrite release_closed : autosubst.
 
-Lemma with_lock_subst (e l : expr) f :
-  (with_lock e l).[f] = with_lock e.[f] l.[f].
+Lemma with_lock_subst (e l : expr) f :  (with_lock e l).[f] = with_lock e.[f] l.[f].
 Proof. unfold with_lock; asimpl; trivial. Qed.
 
 Lemma with_lock_closed e l:

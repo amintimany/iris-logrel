@@ -28,15 +28,13 @@ Section CG_Stack.
     (∀ f, st.[f] = st) → ∀ f, (CG_push st).[f] = CG_push st.
   Proof. intros H f. unfold CG_push. asimpl. rewrite ?H; trivial. Qed.
 
-  Lemma CG_push_subst (st : expr) f :
-  (CG_push st).[f] = CG_push st.[f].
+  Lemma CG_push_subst (st : expr) f : (CG_push st).[f] = CG_push st.[f].
   Proof. unfold CG_push; asimpl; trivial. Qed.
 
   Lemma steps_CG_push N E ρ j K st v w :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ v ★
-               j ⤇ (fill K (App (CG_push (Loc st)) (# w))))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (Unit)) ★ st ↦ₛ (FoldV (InjRV (PairV w v))))%I.
+    Spec_ctx N ρ ★ st ↦ₛ v ★ j ⤇ fill K (App (CG_push (Loc st)) (# w))
+    ={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_push.
     iPvs (step_lam _ _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -47,8 +45,7 @@ Section CG_Stack.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_store _ _ _ j K _ _ _ _ _
-          with "[Hj Hx]") as "[Hj Hx]"; eauto.
+    iPvs (step_store _ _ _ j K _ _ _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     iFrame "Hspec Hj"; trivial.
     iPvsIntro. by iFrame.
     Unshelve.
@@ -91,15 +88,14 @@ Section CG_Stack.
   Qed.
 
   Lemma CG_locked_push_subst (st l : expr) f :
-  (CG_locked_push st l).[f] = CG_locked_push st.[f] l.[f].
+    (CG_locked_push st l).[f] = CG_locked_push st.[f] l.[f].
   Proof. by rewrite with_lock_subst CG_push_subst. Qed.
 
   Lemma steps_CG_locked_push N E ρ j K st w v l :
     nclose N ⊆ E →
-    ((Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
-               ★ j ⤇ (fill K (App (CG_locked_push (Loc st) (Loc l)) (# w))))%I)
-      ⊢ |={E}=>(j ⤇ (fill K (Unit)) ★ st ↦ₛ (FoldV (InjRV (PairV w v)))
-                 ★ l ↦ₛ (♭v false))%I.
+    Spec_ctx N ρ ★ st ↦ₛ v ★ l ↦ₛ (♭v false)
+      ★ j ⤇ fill K (App (CG_locked_push (Loc st) (Loc l)) (# w))
+    ={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★ l ↦ₛ (♭v false).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_push.
     iPvs (steps_with_lock
@@ -290,12 +286,10 @@ Section CG_Stack.
   Definition CG_snapV (st l : expr) : val :=
     with_lockV (Lam (Load st.[ren (+2)])) l.
 
-  Lemma CG_snap_to_val st l :
-    to_val (CG_snap st l) = Some (CG_snapV st l).
+  Lemma CG_snap_to_val st l : to_val (CG_snap st l) = Some (CG_snapV st l).
   Proof. trivial. Qed.
 
-  Lemma CG_snap_of_val st l :
-    of_val (CG_snapV st l) = CG_snap st l.
+  Lemma CG_snap_of_val st l : of_val (CG_snapV st l) = CG_snap st l.
   Proof. trivial. Qed.
 
   Global Opaque CG_snapV.
@@ -403,8 +397,7 @@ Section CG_Stack.
     (∀ g, f.[g] = f) → ∀ g, (CG_iter f).[g] = CG_iter f.
   Proof. intros H g. unfold CG_iter. asimpl. rewrite ?H; trivial. Qed.
 
-  Lemma CG_iter_subst (f : expr) g :
-  (CG_iter f).[g] = CG_iter f.[g].
+  Lemma CG_iter_subst (f : expr) g : (CG_iter f).[g] = CG_iter f.[g].
   Proof. unfold CG_iter; asimpl; trivial. Qed.
 
   Lemma steps_CG_iter N E ρ j K f v w :
@@ -461,14 +454,10 @@ Section CG_Stack.
 
   Global Opaque CG_iter.
 
-  Definition CG_snap_iter (st l : expr) : expr :=
-    Lam (App (CG_iter (Var 1)) (App (CG_snap st.[ren (+2)] l.[ren (+2)]) Unit)).
-
   Lemma CG_snap_iter_type st l Γ τ :
     typed Γ st (Tref (CG_StackType τ)) →
     typed Γ l LockType →
-    typed Γ (CG_snap_iter st l)
-          (TArrow (TArrow τ TUnit) TUnit).
+    typed Γ (CG_snap_iter st l) (TArrow (TArrow τ TUnit) TUnit).
   Proof.
     intros H1 H2; repeat econstructor.
     - eapply CG_iter_type; by constructor.
@@ -476,8 +465,7 @@ Section CG_Stack.
   Qed.
 
   Lemma CG_snap_iter_closed (st l : expr) :
-    (∀ f, st.[f] = st) →
-    (∀ f, l.[f] = l) →
+    (∀ f, st.[f] = st) → (∀ f, l.[f] = l) →
     ∀ f, (CG_snap_iter st l).[f] = CG_snap_iter st l.
   Proof.
     intros H1 H2 f. unfold CG_snap_iter. asimpl. rewrite H1 H2.
@@ -485,7 +473,7 @@ Section CG_Stack.
   Qed.
 
   Lemma CG_snap_iter_subst (st l : expr) g :
-  (CG_snap_iter st l).[g] = CG_snap_iter st.[g] l.[g].
+    (CG_snap_iter st l).[g] = CG_snap_iter st.[g] l.[g].
   Proof.
     unfold CG_snap_iter; asimpl.
     rewrite CG_snap_subst CG_iter_subst. by asimpl.
@@ -512,8 +500,7 @@ Section CG_Stack.
   Opaque CG_snap_iter.
 
   Lemma CG_stack_body_closed (st l : expr) :
-    (∀ f, st.[f] = st) →
-    (∀ f, l.[f] = l) →
+    (∀ f, st.[f] = st) → (∀ f, l.[f] = l) →
     ∀ f, (CG_stack_body st l).[f] = CG_stack_body st l.
   Proof.
     intros H1 H2 f. unfold CG_stack_body. asimpl.
@@ -545,13 +532,10 @@ Section CG_Stack.
     - eapply newlock_type.
   Qed.
 
-  Lemma CG_stack_closed f :
-    CG_stack.[f] = CG_stack.
+  Lemma CG_stack_closed f : CG_stack.[f] = CG_stack.
   Proof.
     unfold CG_stack.
     asimpl; rewrite ?CG_locked_push_subst ?CG_locked_pop_subst.
     asimpl. rewrite ?CG_snap_iter_subst. by asimpl.
   Qed.
-
-  Transparent CG_snap_iter.
 End CG_Stack.

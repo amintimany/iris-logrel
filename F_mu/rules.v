@@ -7,14 +7,6 @@ Section lang_rules.
   Implicit Types P : iProp lang Σ.
   Implicit Types Q : val → iProp lang Σ.
 
-  Lemma wp_bind {E e} K Q :
-    wp E e (λ v, wp E (fill K (of_val v)) Q) ⊢ wp E (fill K e) Q.
-  Proof. apply weakestpre.wp_bind. Qed.
-
-  Lemma wp_bindi {E e} Ki Q :
-    wp E e (λ v, wp E (fill_item Ki (of_val v)) Q) ⊢ wp E (fill_item Ki e) Q.
-  Proof. apply weakestpre.wp_bind. Qed.
-
   Ltac inv_step :=
     repeat match goal with
            | _ => progress simplify_map_eq/= (* simplify memory stuff *)
@@ -78,6 +70,10 @@ Section lang_rules.
 
   (** Helper Lemmas for weakestpre. *)
 
+  Lemma wp_bind {E e} K Q :
+    wp E e (λ v, wp E (fill K (of_val v)) Q) ⊢ wp E (fill K e) Q.
+  Proof. apply weakestpre.wp_bind. Qed.
+
   Lemma wp_lam E e1 e2 v Q :
     to_val e2 = Some v → ▷ wp E e1.[e2 /] Q ⊢ wp E (App (Lam e1) e2) Q.
   Proof.
@@ -104,7 +100,7 @@ Section lang_rules.
   
   Lemma wp_fst E e1 v1 e2 v2 Q :
     to_val e1 = Some v1 → to_val e2 = Some v2 →
-    ▷Q v1 ⊢ wp E (Fst (Pair e1 e2)) Q.
+    ▷ Q v1 ⊢ wp E (Fst (Pair e1 e2)) Q.
   Proof.
     intros <-%of_to_val <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Fst (Pair _ _)) (of_val v1) None) //=; auto.
@@ -137,5 +133,4 @@ Section lang_rules.
     rewrite -(wp_lift_pure_det_step (Case (InjR _) _ _) (e2.[of_val v0/]) None) //=; auto.
     - rewrite right_id; auto using uPred.later_mono, wp_value'.
   Qed.
-  
 End lang_rules.

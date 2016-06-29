@@ -1,4 +1,3 @@
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
@@ -13,7 +12,6 @@ Import uPred.
 (** interp : is a unary logical relation. *)
 Section logrel.
   Context {Σ : gFunctors}.
-  Notation "# v" := (of_val v) (at level 20).
 
   Canonical Structure bivalC := prodC valC valC.
 

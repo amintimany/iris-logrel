@@ -1,10 +1,7 @@
-Require Import iris.program_logic.hoare.
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
-        iris_logrel.F_mu_ref_par.rules.
+From iris.program_logic Require Import lifting.
+From iris_logrel.F_mu_ref_par Require Import lang typing rules.
 From iris.program_logic Require Export lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
+From iris.algebra Require Import upred_big_op frac dec_agree upred_big_op.
 From iris.program_logic Require Export invariants ghost_ownership.
 From iris.program_logic Require Import ownership auth.
 Import uPred.
@@ -12,7 +9,6 @@ Import uPred.
 (** interp : is a unary logical relation. *)
 Section logrel.
   Context {Σ : gFunctors}.
-  Notation "# v" := (of_val v) (at level 20).
 
   (** Just to get nicer closed forms, we define extend_context_interp in three steps. *)
   Program Definition extend_context_interp_fun1
@@ -367,8 +363,7 @@ Section logrel.
     - properness; trivial; try apply IHτ; trivial.
   Qed.
 
-  Lemma interp_subst
-      (Δ : varC -n> valC -n> iPropG lang Σ) (τ τ' : type) :
+  Lemma interp_subst (Δ : varC -n> valC -n> iPropG lang Σ) (τ τ' : type) :
     interp τ (extend_context_interp (interp τ' Δ) Δ) ≡ interp τ.[τ'/] Δ.
   Proof.
     rewrite -(interp_subst_iter_up O Δ τ τ').

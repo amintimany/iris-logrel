@@ -6,16 +6,11 @@ Require Export Autosubst.Autosubst.
 Module lang.
   Definition loc := positive.
 
-  Global Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
+  Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
 
-  Inductive binop :=
-  | Add
-  | Sub
-  | Eq
-  | Le
-  | Lt.
+  Inductive binop := Add | Sub | Eq | Le | Lt.
 
-  Global Instance Natbinop_dec_eq (op op' : binop) : Decision (op = op').
+  Instance Natbinop_dec_eq (op op' : binop) : Decision (op = op').
   Proof. unfold Decision. decide equality. Qed.
 
   Inductive expr :=
@@ -59,15 +54,11 @@ Module lang.
   Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
 
   (* Notation for bool and nat *)
-  Notation "♭ b" := (Bool b) (at level 200).
-  Notation "♯ n" := (Nat n) (at level 200).
+  Notation "♭ b" := (Bool b) (at level 20).
+  Notation "♯ n" := (Nat n) (at level 20).
 
-  Global Instance expr_dec_eq (e e' : expr) : Decision (e = e').
-  Proof.
-    unfold Decision; decide equality;
-      solve [apply eq_nat_dec | apply loc_dec_eq |
-             apply bool_eq_dec | apply Natbinop_dec_eq].
-  Defined.
+  Instance expr_dec_eq (e e' : expr) : Decision (e = e').
+  Proof. solve_decision. Defined.
 
   Inductive val :=
   | LamV (e : {bind 1 of expr})
@@ -82,8 +73,8 @@ Module lang.
   | LocV (l : loc).
 
   (* Notation for bool and nat *)
-  Notation "'♭v' b" := (BoolV b) (at level 200).
-  Notation "'♯v' n" := (NatV n) (at level 200).
+  Notation "'♭v' b" := (BoolV b) (at level 20).
+  Notation "'♯v' n" := (NatV n) (at level 20).
 
   Fixpoint binop_meaning (op : binop) : nat → nat → val :=
     match op with
@@ -94,15 +85,10 @@ Module lang.
     | Lt => λ a b, if (lt_dec a b) then ♭v true else ♭v false
     end.
 
-  Global Instance val_dec_eq (v v' : val) : Decision (v = v').
-  Proof.
-    unfold Decision; decide equality;
-      try solve [apply expr_dec_eq | apply eq_nat_dec |
-                 apply loc_dec_eq | apply bool_eq_dec].
-  Defined.
+  Instance val_dec_eq (v v' : val) : Decision (v = v').
+  Proof. solve_decision. Defined.
 
-  Global Instance val_inh : Inhabited val.
-  Proof. constructor. exact UnitV. Qed.
+  Instance val_inh : Inhabited val := populate UnitV.
 
   Fixpoint of_val (v : val) : expr :=
     match v with
@@ -117,6 +103,7 @@ Module lang.
     | FoldV v => Fold (of_val v)
     | LocV l => Loc l
     end.
+  Notation "# v" := (of_val v) (at level 20).
 
   Fixpoint to_val (e : expr) : option val :=
     match e with
@@ -389,7 +376,7 @@ Program Canonical Structure lang : language := {|
 Solve Obligations with eauto using lang.to_of_val, lang.of_to_val,
   lang.values_stuck, lang.atomic_not_val, lang.atomic_step.
 
-Global Instance lang_ctx K : LanguageCtx lang (lang.fill K).
+Instance lang_ctx K : LanguageCtx lang (lang.fill K).
 Proof.
   split.
   * eauto using lang.fill_not_val.
@@ -403,7 +390,7 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Global Instance lang_ctx_item Ki :
+Instance lang_ctx_item Ki :
   LanguageCtx lang (lang.fill_item Ki).
 Proof. change (LanguageCtx lang (lang.fill [Ki])). by apply _. Qed.
 

@@ -6,7 +6,7 @@ Require Export Autosubst.Autosubst.
 Module lang.
   Definition loc := positive.
 
-  Global Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
+  Instance loc_dec_eq (l l' : loc) : Decision (l = l') := _.
 
   Inductive expr :=
   | Var (x : var)
@@ -39,11 +39,8 @@ Module lang.
   Instance Subst_expr : Subst expr. derive. Defined.
   Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
 
-  Global Instance expr_dec_eq (e e' : expr) : Decision (e = e').
-  Proof.
-    unfold Decision.
-    decide equality; [apply eq_nat_dec | apply loc_dec_eq].
-  Defined.
+  Instance expr_dec_eq (e e' : expr) : Decision (e = e').
+  Proof. solve_decision. Defined.
 
   Inductive val :=
   | LamV (e : {bind 1 of expr})
@@ -55,13 +52,10 @@ Module lang.
   | FoldV (v : val)
   | LocV (l : loc).
 
-  Global Instance val_dec_eq (v v' : val) : Decision (v = v').
-  Proof.
-    unfold Decision; decide equality; try apply expr_dec_eq; apply loc_dec_eq.
-  Defined.
+  Instance val_dec_eq (v v' : val) : Decision (v = v').
+  Proof. solve_decision. Defined.
 
-  Global Instance val_inh : Inhabited val.
-  Proof. constructor. exact UnitV. Qed.
+  Instance val_inh : Inhabited val := populate UnitV.
 
   Fixpoint of_val (v : val) : expr :=
     match v with
@@ -74,6 +68,7 @@ Module lang.
     | FoldV v => Fold (of_val v)
     | LocV l => Loc l
     end.
+  Notation "# v" := (of_val v) (at level 20).
 
   Fixpoint to_val (e : expr) : option val :=
     match e with
@@ -310,7 +305,7 @@ Program Canonical Structure lang : language := {|
 Solve Obligations with eauto using lang.to_of_val, lang.of_to_val,
   lang.values_stuck, lang.atomic_not_val, lang.atomic_step.
 
-Global Instance lang_ctx K : LanguageCtx lang (lang.fill K).
+Instance lang_ctx K : LanguageCtx lang (lang.fill K).
 Proof.
   split.
   * eauto using lang.fill_not_val.
@@ -324,8 +319,7 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Global Instance lang_ctx_item Ki :
-  LanguageCtx lang (lang.fill_item Ki).
+Instance lang_ctx_item Ki : LanguageCtx lang (lang.fill_item Ki).
 Proof. change (LanguageCtx lang (lang.fill [Ki])). by apply _. Qed.
 
 Export lang.

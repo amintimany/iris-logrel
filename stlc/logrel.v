@@ -1,4 +1,3 @@
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
@@ -8,7 +7,6 @@ Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
 Section logrel.
 Context {Σ : iFunctor}.
 Implicit Types P Q R : iProp lang Σ.
-Notation "# v" := (of_val v) (at level 20).
 
 Fixpoint interp (τ : type) (w : val) : iProp lang Σ :=
   match τ with

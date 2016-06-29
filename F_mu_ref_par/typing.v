@@ -135,8 +135,6 @@ Lemma closed_context_weakening ξ Γ e τ :
   (∀ f, e.[f] = e) → typed Γ e τ → typed (ξ ++ Γ) e τ.
 Proof. intros H1 H2. erewrite <- H1. by eapply context_weakening. Qed.
 
-Notation "# v" := (of_val v) (at level 20).
-
 Lemma n_closed_invariant n (e : expr) s1 s2 :
   (∀ f, e.[iter n up f] = e) → (∀ x, x < n → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.

@@ -1,5 +1,4 @@
 Require Import iris.proofmode.weakestpre iris.proofmode.tactics.
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.auth.
 Require Import iris_logrel.F_mu_ref.lang iris_logrel.F_mu_ref.typing

@@ -1,4 +1,3 @@
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.upred_big_op.
 Require Import iris_logrel.F_mu_ref.lang iris_logrel.F_mu_ref.typing
@@ -12,7 +11,6 @@ Import uPred.
 (** interp : is a unary logical relation. *)
 Section logrel.
   Context {Σ : gFunctors}.
-  Notation "# v" := (of_val v) (at level 20).
 
   (** Just to get nicer closed forms, we define extend_context_interp in three steps. *)
   Program Definition extend_context_interp_fun1

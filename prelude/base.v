@@ -1,5 +1,4 @@
 Require Export iris.proofmode.tactics.
-From iris.program_logic Require Import wsat.
 Require Import iris.program_logic.weakestpre.
 Require Import iris.program_logic.language.
 From mathcomp Require Export ssreflect.

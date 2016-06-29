@@ -9,58 +9,45 @@ From iris.program_logic Require Import ownership auth.
 Require Import iris.proofmode.tactics iris.proofmode.invariants.
 Import uPred.
 
+Definition heapUR : ucmraT := gmapUR loc (prodR fracR (dec_agreeR val)).
+
+(** The CMRA we need. *)
+Class heapG Σ :=
+  HeapG { heap_inG :> authG lang Σ heapUR; heap_name : gname }.
+(** The Functor we need. *)
+Definition heapGF : gFunctor := authGF heapUR.
+
+Definition to_heap : state → heapUR := fmap (λ v, (1%Qp, DecAgree v)).
+Definition of_heap : heapUR → state := omap (maybe DecAgree ∘ snd).
+
+Section definitions.
+  Context `{heapG Σ}.
+
+  Definition heap_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
+    auth_own heap_name {[ l := (q, DecAgree v) ]}.
+  Definition heap_inv (h : heapUR) : iPropG lang Σ :=
+    ownP (of_heap h).
+  Definition heap_ctx (N : namespace) : iPropG lang Σ :=
+    auth_ctx heap_name N heap_inv.
+
+  Global Instance heap_inv_proper : Proper ((≡) ==> (≡)) heap_inv.
+  Proof. solve_proper. Qed.
+  Global Instance heap_ctx_always_stable N : PersistentP (heap_ctx N).
+  Proof. apply _. Qed.
+End definitions.
+Typeclasses Opaque heap_ctx heap_mapsto.
+
+Notation "l ↦{ q } v" := (heap_mapsto l q v)
+  (at level 20, q at level 50, format "l  ↦{ q }  v") : uPred_scope.
+Notation "l ↦ v" := (heap_mapsto l 1 v) (at level 20) : uPred_scope.
+
 Section lang_rules.
-  Definition heapUR : ucmraT := gmapUR loc (prodR fracR (dec_agreeR val)).
-
-  (** The CMRA we need. *)
-  Class heapG Σ :=
-    HeapG {
-        heap_inG :> authG lang Σ heapUR;
-        heap_name : gname
-      }.
-  (** The Functor we need. *)
-  Definition heapGF : gFunctor := authGF heapUR.
-
-  Definition to_heap : state → heapUR := fmap (λ v, (1%Qp, DecAgree v)).
-  Definition of_heap : heapUR → state := omap (maybe DecAgree ∘ snd).
-
-  Section definitions.
-    Context `{i : heapG Σ}.
-
-    Definition heap_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
-      auth_own heap_name {[ l := (q, DecAgree v) ]}.
-    Definition heap_inv (h : heapUR) : iPropG lang Σ :=
-      ownP (of_heap h).
-    Definition heap_ctx (N : namespace) : iPropG lang Σ :=
-      auth_ctx heap_name N heap_inv.
-
-    Global Instance heap_inv_proper : Proper ((≡) ==> (≡)) heap_inv.
-    Proof. solve_proper. Qed.
-    Global Instance heap_ctx_always_stable N : PersistentP (heap_ctx N).
-    Proof. apply _. Qed.
-  End definitions.
-  Typeclasses Opaque heap_ctx heap_mapsto.
-
-  Notation "l ↦{ q } v" := (heap_mapsto l q v)
-    (at level 20, q at level 50, format "l  ↦{ q }  v") : uPred_scope.
-  Notation "l ↦ v" := (heap_mapsto l 1 v) (at level 20) : uPred_scope.
-
-  Section heap.
     Context {Σ : gFunctors}.
     Implicit Types N : namespace.
     Implicit Types P Q : iPropG lang Σ.
     Implicit Types Φ : val → iPropG lang Σ.
     Implicit Types σ : state.
     Implicit Types h g : heapUR.
-
-    Lemma wp_bind {E e} K Φ :
-      WP e @ E {{ (λ v, WP (fill K (of_val v)) @ E {{Φ}}) }}
-         ⊢ WP (fill K e) @ E {{Φ}}.
-    Proof. apply weakestpre.wp_bind. Qed.
-    Lemma wp_bindi {E e} Ki Φ :
-      WP e @ E {{ (λ v, WP (fill_item Ki (of_val v)) @ E {{Φ}}) }}
-         ⊢ WP (fill_item Ki e) @ E {{Φ}}.
-    Proof. apply weakestpre.wp_bind. Qed.
 
     Ltac inv_step :=
       repeat
@@ -302,9 +289,14 @@ Section lang_rules.
 
     (** Helper Lemmas for weakestpre. *)
 
+    Lemma wp_bind {E e} K Φ :
+      WP e @ E {{ v, WP fill K (of_val v) @ E {{ Φ }} }}
+         ⊢ WP fill K e @ E {{ Φ }}.
+    Proof. apply weakestpre.wp_bind. Qed.
+
     Lemma wp_lam E e1 e2 v Φ :
       to_val e2 = Some v →
-      ▷ WP e1.[e2 /] @ E {{Φ}} ⊢ WP (App (Lam e1) e2) @ E {{Φ}}.
+      ▷ WP e1.[e2 /] @ E {{ Φ }} ⊢ WP App (Lam e1) e2 @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (App _ _) e1.[of_val v /] None) //=.
@@ -313,7 +305,7 @@ Section lang_rules.
     Qed.
 
     Lemma wp_TLam E e Φ :
-      ▷ WP e @ E {{Φ}} ⊢ WP (TApp (TLam e)) @ E {{Φ}}.
+      ▷ WP e @ E {{ Φ }} ⊢ WP TApp (TLam e) @ E {{ Φ }}.
     Proof.
       rewrite -(wp_lift_pure_det_step (TApp _) e None) //=.
       - by rewrite right_id.
@@ -322,7 +314,7 @@ Section lang_rules.
 
     Lemma wp_Fold E e v Φ :
       to_val e = Some v →
-      ▷ Φ v ⊢ WP (Unfold (Fold e)) @ E {{Φ}}.
+      ▷ Φ v ⊢ WP Unfold (Fold e) @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (Unfold _) (of_val v) None) //=; auto.
@@ -332,7 +324,7 @@ Section lang_rules.
 
     Lemma wp_fst E e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      ▷ Φ v1 ⊢ WP (Fst (Pair e1 e2)) @ E {{Φ}}.
+      ▷ Φ v1 ⊢ WP Fst (Pair e1 e2) @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (Fst (Pair _ _)) (of_val v1) None) //=.
@@ -342,7 +334,7 @@ Section lang_rules.
 
     Lemma wp_snd E e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      ▷ Φ v2 ⊢ WP (Snd (Pair e1 e2)) @ E {{Φ}}.
+      ▷ Φ v2 ⊢ WP Snd (Pair e1 e2) @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (Snd (Pair _ _)) (of_val v2) None) //=.
@@ -352,7 +344,7 @@ Section lang_rules.
 
     Lemma wp_case_inl E e0 v0 e1 e2 Φ :
       to_val e0 = Some v0 →
-      ▷ WP e1.[e0/] @ E {{Φ}} ⊢ WP (Case (InjL e0) e1 e2) @ E {{Φ}}.
+      ▷ WP e1.[e0/] @ E {{ Φ }} ⊢ WP Case (InjL e0) e1 e2 @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step
@@ -363,7 +355,7 @@ Section lang_rules.
 
     Lemma wp_case_inr E e0 v0 e1 e2 Φ :
       to_val e0 = Some v0 →
-      ▷ WP e2.[e0/] @ E {{Φ}} ⊢ WP (Case (InjR e0) e1 e2) @ E {{Φ}}.
+      ▷ WP e2.[e0/] @ E {{ Φ }} ⊢ WP Case (InjR e0) e1 e2 @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step
@@ -371,9 +363,4 @@ Section lang_rules.
       - rewrite right_id; auto using uPred.later_mono, wp_value'.
       - intros. inv_step; auto.
     Qed.
-  End heap.
 End lang_rules.
-
-Notation "l ↦{ q } v" := (heap_mapsto l q v)
-  (at level 20, q at level 50, format "l  ↦{ q }  v") : uPred_scope.
-Notation "l ↦ v" := (heap_mapsto l 1 v) (at level 20) : uPred_scope.

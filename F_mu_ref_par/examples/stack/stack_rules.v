@@ -17,20 +17,17 @@ Proof.
 Qed.
 
 Class stackG Σ :=
-  StackG {
-      stack_inG :> authG lang Σ stackUR;
-      stack_name : gname
-    }.
+  StackG { stack_inG :> authG lang Σ stackUR; stack_name : gname }.
 
 Section Rules.
   Context {Σ : gFunctors} {istk : stackG Σ}.
 
   Definition stack_mapsto (l : loc) (v: val) : iPropG lang Σ :=
-    auth_own stack_name ({[ l := (DecAgree v) ]}).
+    auth_own stack_name ({[ l := DecAgree v ]}).
 
   Notation "l ↦ˢᵗᵏ v" := (stack_mapsto l v) (at level 20) : uPred_scope.
 
-  Lemma stack_mapsto_dup l v : True%I ⊢ (l ↦ˢᵗᵏ v -★ (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ v))%I.
+  Lemma stack_mapsto_dup l v : True%I ⊢ l ↦ˢᵗᵏ v -★ (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ v).
   Proof.
     iIntros "H".
     unfold stack_mapsto, auth_own.
@@ -43,10 +40,9 @@ Section Rules.
   Proof.
     iIntros "H".
     rewrite -own_op.
-    iDestruct (own_valid _ with "#H") as "Hvalid".
-    iDestruct "Hvalid" as %Hvalid.
+    iDestruct (own_valid _ with "#H") as %Hvalid.
     rewrite own_op. unfold stack_mapsto, auth_own.
-    iDestruct "H" as "[H1 H2]". iFrame "H1 H2".
+    iDestruct "H" as "[$ $]".
     specialize (Hvalid l). rewrite lookup_op ?lookup_singleton in Hvalid.
     cbv -[decide] in Hvalid; destruct decide; trivial.
   Qed.
@@ -96,40 +92,23 @@ Section Rules.
 
   Global Opaque StackLink. (* So that we can only use the unfold above. *)
 
-  Lemma StackLink_dup_lem Q {HQ}:
-    True%I ⊢ (∀ v, @StackLink Q HQ v -★ @StackLink Q HQ v ★ @StackLink Q HQ v)%I.
-  Proof.
-    etrans; [|apply löb].
-    iIntros "Hlat".
-    rewrite later_forall.
-    iIntros {v} "H".
-    rewrite StackLink_unfold.
-    iDestruct "H" as {l w} "[% [Hl Hr]]"; subst.
-    iPoseProof (stack_mapsto_dup with "[Hl]") as "Hl'"; eauto.
-    iDestruct "Hl'" as "[Hl1 Hl2]".
-    iDestruct "Hr" as "[#Hr|Hr]".
-    {
-      iSplitL "Hl1".
-      - iExists _, _; iFrame "Hl1"; iSplitL; trivial; iLeft; trivial.
-      - iExists _, _; iFrame "Hl2"; iSplitL; trivial; iLeft; trivial.
-    }
-    {
-      iDestruct "Hr" as {y1 z1 y2 z2} "[#H1 [#H2 [#HQ H']]]".
-      iPoseProof ("Hlat" $! (z1, z2)) as "Hlat".
-      rewrite later_wand.
-      iPoseProof ("Hlat" with "H'") as "Hlat".
-      rewrite later_sep. iDestruct "Hlat" as "[HS1 HS2]".
-      iSplitL "Hl1 HS1".
-      - iExists _, _; iFrame "Hl1"; iSplitR; trivial.
-        iRight. iExists _, _, _, _; repeat iSplitR; trivial.
-      - iExists _, _; iFrame "Hl2"; iSplitR; trivial.
-        iRight. iExists _, _, _, _; repeat iSplitR; trivial.
-    }
-  Qed.
-
   Lemma StackLink_dup Q {HQ} v :
-    @StackLink Q HQ v ⊢ (@StackLink Q HQ v ★ @StackLink Q HQ v)%I.
-  Proof. iIntros "H"; by iApply StackLink_dup_lem. Qed.
+    @StackLink Q HQ v ⊢ @StackLink Q HQ v ★ @StackLink Q HQ v.
+  Proof.
+    iIntros "H". iLöb {v} as "Hlat". rewrite StackLink_unfold.
+    iDestruct "H" as {l w} "[% [Hl Hr]]"; subst.
+    iDestruct (stack_mapsto_dup with "[Hl]") as "[Hl1 Hl2]"; eauto.
+    iDestruct "Hr" as "[#Hr|Hr]".
+    { iSplitL "Hl1".
+      - iExists _, _; iFrame "Hl1"; eauto.
+      - iExists _, _; iFrame "Hl2"; eauto. }
+    iDestruct "Hr" as {y1 z1 y2 z2} "[#H1 [#H2 [#HQ H']]]".
+    rewrite later_forall; setoid_rewrite later_wand.
+    iDestruct ("Hlat" $! (z1, z2) with "H'") as "[HS1 HS2]".
+    iSplitL "Hl1 HS1".
+    - iExists _, _; iFrame "Hl1"; eauto 10.
+    - iExists _, _; iFrame "Hl2"; eauto 10.
+  Qed.
 
   Lemma stackR_valid (h : stackUR) (i : loc) :
     ✓ h → h !! i = None ∨ ∃ v, h !! i = Some (DecAgree v).
@@ -145,8 +124,7 @@ Section Rules.
   Qed.
 
   Lemma stackR_alloc (h : stackUR) (i : loc) (v : val) :
-    h !! i = None → ● h ~~> (● (<[i := DecAgree v]> h)
-                               ⋅ ◯ {[i := DecAgree v]}).
+    h !! i = None → ● h ~~> ● (<[i := DecAgree v]> h) ⋅ ◯ {[i := DecAgree v]}.
   Proof.
     intros H1; apply cmra_total_update.
     intros n z H2. rewrite (insert_singleton_op h); auto.
@@ -164,14 +142,6 @@ Section Rules.
           |- ✓{_} ?B → ✓{_} (_ ⋅ ?A) =>
           change B with A; destruct A; by try constructor
         end.
-  Qed.
-
-  Lemma option_dec_agree_equiv_eq (x y : option (dec_agreeR val)) :
-    x ≡ y → x = y.
-  Proof.
-    intros H1.
-    destruct x as [[x|]|]; destruct y as [[y|]|]; cbv in H1;
-      inversion H1; subst; auto with f_equal.
   Qed.
 
   Lemma dec_agree_valid_op_eq (x y : dec_agreeR val) :
@@ -194,7 +164,7 @@ Section Rules.
     destruct H11 as [[z1 z2] [H31 [H32 H33]]]; simpl in *.
     specialize (H32 i).
     assert (H4 : ✓ (z1 ⋅ z2))by (by rewrite -H31).
-    apply option_dec_agree_equiv_eq.
+    apply leibniz_equiv.
     rewrite H31. rewrite lookup_op.
     specialize (H4 i). rewrite ?lookup_op in H4.
     revert H32; rewrite H2 => H32.
@@ -249,7 +219,7 @@ Section Rules.
       iExFalso. iApply heap_mapsto_dup_invalid; by iFrame "Hl Hl'".
     - iPvs (own_update with "Hown") as "Hown".
       by apply stackR_alloc.
-      rewrite own_op. iDestruct "Hown" as "[Hown Hl']".
+      iDestruct "Hown" as "[Hown Hl']".
       iPvsIntro. iSplitR "Hl'"; [|unfold stack_mapsto, auth_own; trivial].
       iCombine "Hl" "Hall" as "Hall".
       unfold stack_owns. iFrame "Hown".
@@ -268,9 +238,8 @@ Section Rules.
     iIntros "[[Hown Hall] Hl]".
     unfold stack_mapsto, auth_own.
     iCombine "Hown" "Hl" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as "Hvalid".
-    iDestruct "Hvalid" as %Hvalid.
-    rewrite own_op. iDestruct "Hown" as "[Hown Hl]".
+    iDestruct (own_valid _ with "#Hown") as %Hvalid.
+    iDestruct "Hown" as "[Hown Hl]".
     assert (Heq : h !! l = Some (DecAgree v)).
     eapply stackR_auth_is_subheap; eauto using lookup_singleton.
     rewrite -{1}(insert_id _ _ _ Heq) -insert_delete.
@@ -290,9 +259,8 @@ Section Rules.
     iIntros "[Hown [Hall [Hl Hl']]]".
     unfold stack_mapsto, auth_own.
     iCombine "Hown" "Hl'" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as "Hvalid".
-    iDestruct "Hvalid" as %Hvalid.
-    rewrite own_op. iDestruct "Hown" as "[Hown Hl']".
+    iDestruct (own_valid _ with "#Hown") as %Hvalid.
+    iDestruct "Hown" as "[Hown Hl']".
     assert (Heq : h !! l = Some (DecAgree v)).
     eapply stackR_auth_is_subheap; eauto using lookup_singleton.
     iCombine "Hl" "Hall" as "Hall".
@@ -319,5 +287,5 @@ Section Rules.
   Lemma stack_owns_later_open_close h l v :
     ▷ stack_owns h ★ l ↦ˢᵗᵏ v
       ⊢ ▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))).
-  Proof. iIntros "H". iNext. by iApply stack_owns_open_close. Qed.
+  Proof. iIntros "H >". by iApply stack_owns_open_close. Qed.
 End Rules.

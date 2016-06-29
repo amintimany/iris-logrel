@@ -1,6 +1,5 @@
 Require Import iris.proofmode.invariants iris.proofmode.weakestpre
         iris.proofmode.tactics.
-Require Import iris.program_logic.hoare.
 Require Import iris.program_logic.lifting.
 Require Import iris.algebra.auth iris.algebra.dec_agree iris.algebra.frac
         iris.algebra.upred_big_op.
