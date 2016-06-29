@@ -1,11 +1,4 @@
 Require Export iris.proofmode.tactics.
-Require Import iris.program_logic.weakestpre.
-Require Import iris.program_logic.language.
-From mathcomp Require Export ssreflect.
-From iris.prelude Require Export prelude.
-Global Set Bullet Behavior "Strict Subproofs".
-Global Open Scope general_if_scope.
-Ltac done := prelude.tactics.done.
 Require Export Autosubst.Autosubst.
 
 Canonical Structure varC := leibnizC var.

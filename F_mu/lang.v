@@ -1,6 +1,5 @@
 Require Export iris_logrel.prelude.base.
 Require Import iris.program_logic.language.
-Require Export Autosubst.Autosubst.
 
 Module lang.
   Inductive expr :=

@@ -1,7 +1,6 @@
 Require Export iris_logrel.prelude.base.
 Require Import iris.prelude.gmap.
 Require Import iris.program_logic.language.
-Require Export Autosubst.Autosubst.
 
 Module lang.
   Definition loc := positive.
