@@ -4,7 +4,7 @@ From iris.algebra Require Export upred_big_op.
 From iris.proofmode Require Import tactics pviewshifts invariants.
 
 Section typed_interp.
-  Context {Σ : gFunctors} `{i : heapIG Σ} `{L : namespace}.
+  Context {Σ : gFunctors} `{i : heapIG Σ} {L : namespace}.
   Implicit Types P Q R : iPropG lang Σ.
 
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) uconstr(Hp) :=
@@ -15,14 +15,14 @@ Section typed_interp.
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
   Lemma typed_interp N (Δ : varC -n> valC -n> iPropG lang Σ) Γ vs e τ
-      (HNLdisj : ∀ l : loc, N ⊥ L .@ l)
-      (Htyped : typed Γ e τ) (HΔ : ∀ x v, PersistentP (Δ x v)) :
+      (HNLdisj : ∀ l : loc, N ⊥ L .@ l) (HΔ : ∀ x v, PersistentP (Δ x v)) :
+    Γ ⊢ₜ e : τ →
     length Γ = length vs →
-    heapI_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs ⊢
-                WP e.[env_subst vs] {{ interp L τ Δ }}.
+    heapI_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs
+    ⊢ WP e.[env_subst vs] {{ interp L τ Δ }}.
   Proof.
-    revert Δ HΔ vs.
-    induction Htyped; iIntros {Δ HΔ vs Hlen} "#[Hheap HΓ]"; cbn.
+    intros Htyped; revert Δ HΔ vs.
+    induction Htyped; iIntros {Δ HΔ vs Hlen} "#[Hheap HΓ] /=".
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
@@ -147,8 +147,7 @@ Section typed_interp.
       eapply bool_decide_spec; eauto using to_of_val.
       iApply (wp_store N); auto using to_of_val.
       specialize (HNLdisj l); set_solver_ndisj.
-      iFrame "Hheap Hz1".
-      iIntros "> Hz1". iPvsIntro. iSplitL; [|iPvsIntro; trivial]; eauto.
+      iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro. iSplitL; eauto 10.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHHtyped1; cbn.
       smart_wp_bind (CasMCtx _ _) v2 "#Hv2" IHHtyped2; cbn.
@@ -166,6 +165,6 @@ Section typed_interp.
         clear Hneq. specialize (HNLdisj l); set_solver_ndisj.
         (* Weird that Hneq above makes set_solver_ndisj diverge or
            take exceptionally long!?!? *)
-        iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL; [|iPvsIntro]; eauto.
+        iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL; eauto.
   Qed.
 End typed_interp.

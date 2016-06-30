@@ -20,7 +20,7 @@ Global Instance interp_always_stable τ v : PersistentP (interp τ v).
 Proof. revert v; induction τ=> v /=; apply _. Qed.
 
 Lemma typed_subst_invariant Γ e τ s1 s2 :
-  typed Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
+  Γ ⊢ₜ e : τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
   assert (∀ s1 s2 x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
@@ -32,7 +32,7 @@ Definition env_subst (vs : list val) (x : var) : expr :=
   from_option id (Var x) (of_val <$> vs !! x).
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
-  typed Δ e τ → length Δ = S (length ws) →
+  Δ ⊢ₜ e : τ → length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.

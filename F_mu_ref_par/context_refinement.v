@@ -1,44 +1,44 @@
 From iris_logrel.F_mu_ref_par Require Export fundamental_binary.
 
-Inductive context_item : Type :=
-| CTX_Lam
-| CTX_AppL (e2 : expr)
-| CTX_AppR (e1 : expr)
-(* Products *)
-| CTX_PairL (e2 : expr)
-| CTX_PairR (e1 : expr)
-| CTX_Fst
-| CTX_Snd
-(* Sums *)
-| CTX_InjL
-| CTX_InjR
-| CTX_CaseL (e1 : expr) (e2 : expr)
-| CTX_CaseM (e0 : expr) (e2 : expr)
-| CTX_CaseR (e0 : expr) (e1 : expr)
-(* Nat bin op *)
-| CTX_BinOpL (op : binop) (e2 : expr)
-| CTX_BinOpR (op : binop) (e1 : expr)
-(* If *)
-| CTX_IfL (e1 : expr) (e2 : expr)
-| CTX_IfM (e0 : expr) (e2 : expr)
-| CTX_IfR (e0 : expr) (e1 : expr)
-(* Recursive Types *)
-| CTX_Fold
-| CTX_Unfold
-(* Polymorphic Types *)
-| CTX_TLam
-| CTX_TApp
-(* Concurrency *)
-| CTX_Fork
-(* Reference Types *)
-| CTX_Alloc
-| CTX_Load
-| CTX_StoreL (e2 : expr)
-| CTX_StoreR (e1 : expr)
-(* Compare and swap used for fine-grained concurrency *)
-| CTX_CAS_L (e1 : expr) (e2 : expr)
-| CTX_CAS_M (e0 : expr) (e2 : expr)
-| CTX_CAS_R (e0 : expr) (e1 : expr).
+Inductive context_item :=
+  | CTX_Lam
+  | CTX_AppL (e2 : expr)
+  | CTX_AppR (e1 : expr)
+  (* Products *)
+  | CTX_PairL (e2 : expr)
+  | CTX_PairR (e1 : expr)
+  | CTX_Fst
+  | CTX_Snd
+  (* Sums *)
+  | CTX_InjL
+  | CTX_InjR
+  | CTX_CaseL (e1 : expr) (e2 : expr)
+  | CTX_CaseM (e0 : expr) (e2 : expr)
+  | CTX_CaseR (e0 : expr) (e1 : expr)
+  (* Nat bin op *)
+  | CTX_BinOpL (op : binop) (e2 : expr)
+  | CTX_BinOpR (op : binop) (e1 : expr)
+  (* If *)
+  | CTX_IfL (e1 : expr) (e2 : expr)
+  | CTX_IfM (e0 : expr) (e2 : expr)
+  | CTX_IfR (e0 : expr) (e1 : expr)
+  (* Recursive Types *)
+  | CTX_Fold
+  | CTX_Unfold
+  (* Polymorphic Types *)
+  | CTX_TLam
+  | CTX_TApp
+  (* Concurrency *)
+  | CTX_Fork
+  (* Reference Types *)
+  | CTX_Alloc
+  | CTX_Load
+  | CTX_StoreL (e2 : expr)
+  | CTX_StoreR (e1 : expr)
+  (* Compare and swap used for fine-grained concurrency *)
+  | CTX_CAS_L (e1 : expr) (e2 : expr)
+  | CTX_CAS_M (e0 : expr) (e2 : expr)
+  | CTX_CAS_R (e0 : expr) (e1 : expr).
 
 Fixpoint fill_ctx_item (ctx : context_item) (e : expr) : expr :=
   match ctx with
@@ -81,7 +81,7 @@ Local Open Scope bin_logrel_scope.
 
 (** typed context *)
 Inductive typed_context_item :
-  context_item → (list type) → type → (list type) → type → Prop :=
+  context_item → list type → type → list type → type → Prop :=
 | TP_CTX_Lam : ∀ Γ τ τ',
     typed_context_item CTX_Lam (TArrow τ τ' :: τ :: Γ) τ' Γ (TArrow τ τ')
 | TP_CTX_AppL (e2 : expr) : ∀ Γ τ τ',
@@ -165,7 +165,7 @@ Lemma typed_context_item_typed k Γ τ Γ' τ' e :
 Proof. intros H1 H2; induction H2; simpl; eauto using typed. Qed.
 
 Inductive typed_context :
-  context → (list type) → type → (list type) → type → Prop :=
+  context → list type → type → list type → type → Prop :=
 | TPCTX_nil : ∀ Γ τ, typed_context nil Γ τ Γ τ
 | TPCTX_cons : ∀ Γ1 τ1 Γ2 τ2 Γ3 τ3 k K,
     typed_context_item k Γ2 τ2 Γ3 τ3 →

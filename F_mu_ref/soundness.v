@@ -1,6 +1,6 @@
 From iris_logrel.F_mu_ref Require Export fundamental.
 From iris.proofmode Require Import tactics pviewshifts.
-From iris.program_logic Require Import adequacy.
+From iris.program_logic Require Import ownership adequacy.
 
 Section Soundness.
   Definition Σ := #[ auth.authGF heapUR ].
@@ -12,8 +12,8 @@ Section Soundness.
     λne x y, True%I.
 
   Lemma wp_soundness e τ :
-    typed [] e τ →
-    ownership.ownP ∅ ⊢ WP e {{ v, ∃ H : heapG Σ,
+    [] ⊢ₜ e : τ →
+    ownP ∅ ⊢ WP e {{ v, ∃ H : heapG Σ,
       interp (nroot .@ "Fμ,ref" .@ 1) τ free_type_context v}}.
   Proof.
     iIntros {H1} "Hemp".
@@ -30,7 +30,7 @@ Section Soundness.
   Local Arguments of_heap : simpl never.
 
   Theorem Soundness e τ :
-    typed [] e τ →
+    [] ⊢ₜ e : τ →
     ∀ e' thp h, rtc step ([e], (of_heap ∅)) (e' :: thp, h) →
               ¬ reducible e' h → is_Some (to_val e').
   Proof.

@@ -82,8 +82,7 @@ Section typed_interp.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (SndCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [SndCtx])); cbn.
-    iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]".
-    inversion H; subst.
+    iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]"; simplify_eq.
     iPvs (step_snd _ _ _ j K (# (w2.1)) (w2.1) (# (w2.2)) (w2.2)
                    _ _ _ with "* [-]") as "Hw".
     iFrame "Hspec Hv"; trivial.
@@ -458,10 +457,10 @@ Section typed_interp.
         Unshelve. all: eauto using to_of_val. all: SolveDisj 3 l.
   Qed.
 
-  Lemma typed_binary_interp Δ Γ e τ {HΔ : ∀ x vw, PersistentP (Δ x vw)}
-    (Htyped : typed Γ e τ) : Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
+  Lemma typed_binary_interp Δ Γ e τ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :
+    Γ ⊢ₜ e : τ → Δ ∥ Γ ⊩ e ≤log≤ e ∷ τ.
   Proof.
-    revert Δ HΔ; induction Htyped; intros Δ HΔ.
+    intros Htyped; revert Δ HΔ; induction Htyped; intros Δ HΔ.
     - iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }

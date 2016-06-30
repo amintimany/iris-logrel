@@ -15,11 +15,11 @@ Section typed_interp.
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
   Lemma typed_interp Γ vs e τ :
-    typed Γ e τ → length Γ = length vs →
+    Γ ⊢ₜ e : τ → length Γ = length vs →
     [∧] zip_with (@interp Σ) Γ vs ⊢ WP e.[env_subst vs] {{ interp τ }}.
   Proof.
     intros Htyped; revert vs.
-    induction Htyped; intros vs Hlen; iIntros "#Hctx"; cbn.
+    induction Htyped; iIntros {vs Hlen} "#Hctx /=".
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }

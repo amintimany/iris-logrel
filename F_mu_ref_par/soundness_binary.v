@@ -2,12 +2,10 @@ From iris_logrel.F_mu_ref_par Require Export context_refinement.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Import ownership auth.
 From iris.proofmode Require Import tactics pviewshifts invariants.
-From iris.program_logic Require Import adequacy.
+From iris.program_logic Require Import ownership adequacy.
 
 Section Soundness.
-  Context {Σ : gFunctors}
-          {Hhp : auth.authG lang Σ heapUR}
-          {Hcfg : auth.authG lang Σ cfgUR}.
+  Context `{Hhp : authG lang Σ heapUR, Hcfg : authG lang Σ cfgUR}.
 
   Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ := λne x y,
     True%I.
@@ -18,8 +16,8 @@ Section Soundness.
 
   Lemma wp_basic_soundness e e' τ :
     (∀ H H' N Δ HΔ, @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
-    @ownership.ownP lang (globalF Σ) ∅
-    ⊢ WP e {{_, ■ (∃ thp' h v, rtc step ([e'], ∅) ((# v) :: thp', h)) }}.
+    @ownP lang (globalF Σ) ∅
+    ⊢ WP e {{ _, ■ (∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h)) }}.
   Proof.
     iIntros {H1} "Hemp".
     iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")

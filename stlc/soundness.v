@@ -2,13 +2,13 @@ From iris_logrel.stlc Require Export fundamental.
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import adequacy.
 
-Section Soundness.
-  Definition Σ := #[].
+Section soundness.
+  Let Σ := #[].
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
   Proof. change (env_subst []) with ids. by asimpl. Qed.
 
-  Lemma wp_soundness e τ : typed [] e τ → True ⊢ WP e {{ @interp (globalF Σ) τ }}.
+  Lemma wp_soundness e τ : [] ⊢ₜ e : τ → True ⊢ WP e {{ @interp (globalF Σ) τ }}.
   Proof.
     iIntros {H} "".
     rewrite -(empty_env_subst e).
@@ -16,7 +16,7 @@ Section Soundness.
   Qed.
 
   Theorem Soundness e τ :
-    typed [] e τ →
+    [] ⊢ₜ e : τ →
     ∀ e' thp, rtc step ([e], tt) (e' :: thp, tt) →
               ¬ reducible e' tt → is_Some (to_val e').
   Proof.
@@ -28,4 +28,4 @@ Section Soundness.
     - iIntros "H". iApply H1.
     - constructor.
   Qed.
-End Soundness.
+End soundness.

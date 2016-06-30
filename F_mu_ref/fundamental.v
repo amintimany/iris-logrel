@@ -16,22 +16,22 @@ Section typed_interp.
 
   Lemma typed_interp N (Δ : varC -n> valC -n> iPropG lang Σ) Γ vs e τ
       (HNLdisj : ∀ l : loc, N ⊥ L .@ l)
-      (Htyped : typed Γ e τ)
       (HΔ : ∀ x v, PersistentP (Δ x v)) :
+    Γ ⊢ₜ e : τ →
     length Γ = length vs →
     heap_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs
     ⊢ WP e.[env_subst vs] {{ interp L τ Δ }}.
   Proof.
-    revert Δ HΔ vs.
-    induction Htyped; intros Δ HΔ vs Hlen; iIntros "#[Hheap HΓ]"; cbn.
+    intros Htyped; revert Δ HΔ vs.
+    induction Htyped; iIntros {Δ HΔ vs Hlen} "#[Hheap HΓ] /=".
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst Hv; value_case.
       iApply (big_and_elem_of with "HΓ").
       apply elem_of_list_lookup_2 with x.
-      rewrite lookup_zip_with; simplify_option_eq; trivial.
-    - (* unit *) value_case; trivial.
+      by rewrite lookup_zip_with; simplify_option_eq.
+    - (* unit *) by value_case.
     - (* pair *)
       smart_wp_bind (PairLCtx e2.[env_subst vs]) v "#Hv" IHHtyped1.
       smart_wp_bind (PairRCtx v) v' "# Hv'" IHHtyped2.
@@ -117,7 +117,7 @@ Section typed_interp.
       iInv (L .@ l) as {w} "[Hw1 #Hw2]".
       iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
       specialize (HNLdisj l); set_solver_ndisj.
-      iFrame "Hw1". iIntros "> Hw1". iPvsIntro. iSplitL; eauto.
+      iIntros "{$Hw1} > Hw1". iPvsIntro. iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHHtyped2; cbn. iClear "HΓ".
@@ -128,8 +128,7 @@ Section typed_interp.
       eapply bool_decide_spec; eauto using to_of_val.
       iApply (wp_store N); auto using to_of_val.
       specialize (HNLdisj l); set_solver_ndisj.
-      iFrame "Hheap Hz1".
-      iIntros "> Hz1". iPvsIntro.
-      iSplitL; [|iPvsIntro; trivial]. eauto.
+      iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro.
+      iSplitL; eauto 10.
   Qed.
 End typed_interp.
