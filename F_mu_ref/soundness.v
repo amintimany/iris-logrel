@@ -17,14 +17,14 @@ Section Soundness.
       interp (nroot .@ "Fμ,ref" .@ 1) τ free_type_context v}}.
   Proof.
     iIntros {H1} "Hemp".
-    iPvs (heap_alloc (nroot .@ "Fμ,ref" .@ 2) _ _ _ _ with "Hemp") as {H} "[Hheap Hemp]".
+    iPvs (heap_alloc (nroot .@ "Fμ,ref" .@ 2) with "Hemp")
+      as {H} "[Hheap Hemp]"; first solve_ndisj.
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
     rewrite -(empty_env_subst e).
     iApply (@typed_interp _ _ (nroot .@ "Fμ,ref" .@ 1)
                               (nroot .@ "Fμ,ref" .@ 2) _ _ []); eauto.
-    intros l. apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
-      Unshelve. all: trivial.
+    solve_ndisj.
   Qed.
 
   Local Arguments of_heap : simpl never.
@@ -42,7 +42,7 @@ Section Soundness.
                                                  τ free_type_context v)%I)
                                      e e' (e' :: thp) ∅ ∅ h)
       as [Ha|Ha]; eauto; try tauto.
-    - apply ucmra_unit_valid.
+    - done.
     - iIntros "[Hp Hg]". by iApply H1.
     - by rewrite of_empty_heap in Hstp.
     - constructor.

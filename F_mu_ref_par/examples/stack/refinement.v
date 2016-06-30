@@ -10,12 +10,6 @@ Section Stack_refinement.
           {iSTK : authG lang Σ stackUR}.
   Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
 
-  Ltac prove_disj N n n' :=
-    let Hneq := fresh "Hneq" in
-    let Hdsj := fresh "Hdsj" in
-    assert (Hneq : n ≠ n') by omega;
-    set (Hdsj := ndot_ne_disjoint N n n' Hneq); set_solver_ndisj.
-
   Lemma FG_CG_counter_refinement N Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :
     @bin_log_related _ _ _ N Δ [] FG_stack CG_stack
                         (TForall
@@ -101,8 +95,7 @@ Section Stack_refinement.
     (* refinement of push and pop *)
     - iExists (_, _), (_, _); iSplit; eauto. iSplit.
       + (* refinement of push *)
-        iAlways. clear j K. iIntros {j K v}. destruct v as [v1 v2].
-        iIntros "[#Hrel Hj]". simpl.
+        iAlways. clear j K. iIntros {j K [v1 v2] } "[#Hrel Hj] /=".
         rewrite -(FG_push_folding (Loc stk)).
         iLöb as "Hlat".
         rewrite {2}(FG_push_folding (Loc stk)).
@@ -113,8 +106,8 @@ Section Stack_refinement.
         iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
         iInv (N .@4) as {istk v h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
-        iApply (wp_load _ _ _ _ _ _ _). iFrame "Hheap Hstk".
-        iNext. iIntros "Hstk". iPvsIntro.
+        iApply (wp_load _ _ _ _ _ _ _).
+        iIntros "{$Hheap $Hstk} > Hstk". iPvsIntro.
         iSplitL "Hoe Hstk' HLK Hl Hstk".
         iNext. iExists _, _, _; by iFrame "Hoe Hstk' HLK Hl Hstk".
         clear v h.
@@ -126,7 +119,7 @@ Section Stack_refinement.
         iApply wp_alloc; simpl; trivial; [by rewrite to_of_val|].
         iFrame "Hheap". iNext. iIntros {ltmp} "Hltmp". iPvsIntro.
         iApply (@wp_bind _ _ _ [IfCtx _ _]);
-          iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
+          iApply wp_wand_l; iSplitR; [by iIntros {w} "$"|].
         iInv (N .@4) as {istk2 v h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
         (* deciding whether CAS will succeed or fail *)
         destruct (decide (istk = istk2)) as [|Hneq]; subst.
@@ -151,7 +144,7 @@ Section Stack_refinement.
           iApply wp_if_true. iNext; iApply wp_value; trivial.
           iExists UnitV; eauto.
         * iApply (wp_cas_fail _ _ _ _ _ _ _ _ _ _ _ _ _ _); simpl; trivial.
-          iFrame "Hheap Hstk". iNext. iIntros "Hstk". iPvsIntro.
+          iIntros "{$Hheap $Hstk} > Hstk". iPvsIntro.
           iSplitR "Hj".
           { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl". }
           iApply wp_if_false. iNext. by iApply "Hlat".
@@ -374,15 +367,8 @@ Section Stack_refinement.
                    |- to_val _ = _ => simpl; by rewrite ?to_of_val
                  end.
         all: trivial.
-        all: try match goal with
-                   |- _ ≠ _ => let H := fresh "H" in intros H; inversion H; auto
-                 end.
-        all: match goal with
-          |- @subseteq
-              _ _ (nclose (?N .@ ?A))
-              (@difference _ _ ⊤ (nclose (?N .@ ?B))) =>
-          abstract (prove_disj N A B)
-        end.
+        all: try match goal with |- _ ≠ _ => congruence end.
+        all: solve_ndisj.
   Qed.
 End Stack_refinement.
 

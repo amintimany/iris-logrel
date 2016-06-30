@@ -15,8 +15,7 @@ Section typed_interp.
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
   Lemma typed_interp N (Δ : varC -n> valC -n> iPropG lang Σ) Γ vs e τ
-      (HNLdisj : ∀ l : loc, N ⊥ L .@ l)
-      (HΔ : ∀ x v, PersistentP (Δ x v)) :
+      (HNLdisj : N ⊥ L) (HΔ : ∀ x v, PersistentP (Δ x v)) :
     Γ ⊢ₜ e : τ →
     length Γ = length vs →
     heap_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs
@@ -115,8 +114,7 @@ Section typed_interp.
       iApply wp_atomic; cbn; eauto using to_of_val.
       iPvsIntro.
       iInv (L .@ l) as {w} "[Hw1 #Hw2]".
-      iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
-      specialize (HNLdisj l); set_solver_ndisj.
+      iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
       iIntros "{$Hw1} > Hw1". iPvsIntro. iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
@@ -126,8 +124,7 @@ Section typed_interp.
       iPvsIntro.
       iInv (L .@ l) as {z} "[Hz1 #Hz2]".
       eapply bool_decide_spec; eauto using to_of_val.
-      iApply (wp_store N); auto using to_of_val.
-      specialize (HNLdisj l); set_solver_ndisj.
+      iApply (wp_store N); auto using to_of_val. solve_ndisj.
       iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro.
       iSplitL; eauto 10.
   Qed.

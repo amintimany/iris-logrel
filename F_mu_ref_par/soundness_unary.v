@@ -14,20 +14,19 @@ Section Soundness.
       interp (nroot .@ "Fμ,ref,par" .@ 1) τ free_type_context v }}.
   Proof.
     iIntros {H1} "Hemp".
-    iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
-      as {H} "[Hheap Hemp]".
+    iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) with "Hemp")
+      as {H} "[Hheap Hemp]"; first solve_ndisj.
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
     rewrite -(empty_env_subst e).
     iApply (@typed_interp _ H (nroot .@ "Fμ,ref,par" .@ 1)
                               (nroot .@ "Fμ,ref,par" .@ 2) _ _ []); eauto.
-    intros l; apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
-      Unshelve. all: trivial.
+    solve_ndisj.
   Qed.
 
   Theorem Soundness e τ :
     [] ⊢ₜ e : τ →
-    ∀ e' thp h, rtc step ([e], (of_heap ∅)) (e' :: thp, h) →
+    ∀ e' thp h, rtc step ([e], of_heap ∅) (e' :: thp, h) →
               ¬reducible e' h → is_Some (to_val e').
   Proof.
     intros H1 e' thp h Hstp Hnr.
@@ -35,7 +34,7 @@ Section Soundness.
     edestruct (@wp_adequacy_reducible lang (globalF Σ) ⊤ (λ v, ∃ H,
         @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1) τ free_type_context v)%I
       e e' (e' :: thp) ∅ ∅ h) as [Ha|Ha]; eauto; try tauto.
-    - apply ucmra_unit_valid.
+    - done.
     - iIntros "[Hp Hg]". by iApply H1.
     - by rewrite of_empty_heap in Hstp.
     - constructor.

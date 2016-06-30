@@ -251,15 +251,9 @@ Section CG_Counter.
   Lemma FG_counter_closed f : FG_counter.[f] = FG_counter.
   Proof. asimpl; rewrite counter_read_subst; by asimpl. Qed.
 
-  Ltac prove_disj N n n' :=
-    let Hneq := fresh "Hneq" in
-    let Hdsj := fresh "Hdsj" in
-    assert (Hneq : n ≠ n') by omega;
-    set (Hdsj := ndot_ne_disjoint N n n' Hneq); set_solver_ndisj.
-
   Lemma FG_CG_counter_refinement N Δ {HΔ : ∀ x v, PersistentP (Δ x v)} :
-    (@bin_log_related _ _ _ N Δ [] FG_counter CG_counter
-                      (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)) HΔ).
+    @bin_log_related _ _ _ N Δ [] FG_counter CG_counter
+                      (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)) HΔ.
   Proof.
     (* executing the preambles *)
     intros [|v vs] Hlen; simplify_eq.
@@ -312,8 +306,7 @@ Section CG_Counter.
       iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
         iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
       iInv> (N .@4) as {n} "[Hl [Hcnt Hcnt']]".
-      iApply wp_load; [|iFrame "Hheap"].
-      { abstract prove_disj N 2 4. }
+      iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
       iIntros "> {$Hcnt} Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iApply wp_lam; trivial. asimpl. iNext.
@@ -332,18 +325,16 @@ Section CG_Counter.
         iPvs (steps_CG_locked_increment
                 _ _ _ _ _ _ _ _ _ with "[Hj Hl Hcnt']") as "[Hj [Hcnt' Hl]]".
         { iFrame "Hspec Hcnt' Hl Hj"; trivial. }
-        iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"].
-        { abstract prove_disj N 2 4. }
-        iNext; iFrame "Hcnt"; iIntros "Hcnt". iPvsIntro.
+        iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"]. solve_ndisj.
+        iIntros "{$Hcnt} > Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_true. iNext. iApply wp_value; trivial.
         iExists UnitV; iFrame; auto.
       + (* CAS fails *)
         (* In this case, we perform a recursive call *)
         iApply (wp_cas_fail _ _ _ _ (♯v n')); simpl; trivial;
-        [inversion 1; subst; auto | | iFrame "Hheap"].
-        { abstract prove_disj N 2 4. }
-        iNext; iFrame "Hcnt"; iIntros "Hcnt". iPvsIntro.
+        [inversion 1; subst; auto | | iFrame "Hheap"]. solve_ndisj.
+        iIntros "{$Hcnt} > Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of read *)
@@ -353,18 +344,15 @@ Section CG_Counter.
       Transparent counter_read.
       unfold counter_read at 2.
       iApply wp_lam; trivial. simpl.
-      iNext.
-      iInv> (N .@4) as {n} "[Hl [Hcnt Hcnt']]".
+      iNext. iInv> (N .@4) as {n} "[Hl [Hcnt Hcnt']]".
       iPvs (steps_counter_read (N .@ 3) with "[Hj Hcnt']") as "[Hj Hcnt']".
-      { prove_disj N 3 4. }
+      { solve_ndisj. }
       { by iFrame "Hspec Hcnt' Hj". }
-      iApply wp_load; [|iFrame "Hheap"].
-      { abstract prove_disj N 2 4. }
-      iFrame "Hcnt"; iIntros "> Hcnt". iPvsIntro.
+      iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
+      iIntros "{$Hcnt} > Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iExists (♯v _); eauto.
-      Unshelve.
-      all: abstract prove_disj N 3 4.
+      Unshelve. solve_ndisj.
   Qed.
 End CG_Counter.
 

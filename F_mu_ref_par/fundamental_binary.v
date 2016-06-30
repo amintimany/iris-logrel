@@ -345,20 +345,6 @@ Section typed_interp.
     Unshelve. all: eauto using to_of_val.
   Qed.
 
-  Lemma Disjoint_after_dot : ∀ i (l : loc * loc), i ≠ 1 →  N .@ i ⊥ N .@ 1 .@ l.
-  Proof.
-    intros i l h.
-    apply ndot_preserve_disjoint_r, ndot_ne_disjoint; auto.
-  Qed.
-
-  Ltac SolveDisj i l :=
-    let Hneq := fresh "Hneq" in
-    let Hdsj := fresh "Hdsj" in
-    assert (Hneq : i ≠ 1) by omega; set (Hdsj := Disjoint_after_dot i l Hneq);
-    clearbody Hdsj; clear Hneq; revert Hdsj;
-    generalize (N .@ 1) as S1; generalize (N .@ 2) as S2;
-    intros S1 S2 Hsdj; set_solver_ndisj.
-
   Lemma typed_binary_interp_Load Δ Γ e e' τ {HΔ : ✓✓ Δ}
       (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ (Tref τ)) :
     Δ ∥ Γ ⊩ Load e ≤log≤ Load e' ∷ τ.
@@ -371,14 +357,12 @@ Section typed_interp.
     iTimeless "Hw2".
     iPvs (step_load _ _ _ j K (l.2) 1 (w.2) _ with "[Hv Hw2]") as "[Hv Hw2]".
     iFrame "Hspec Hv"; trivial.
-    iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
-    SolveDisj 2 l.
+    iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
     iIntros "{$Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     + iNext; iExists w; by iFrame.
     + destruct w as [w1 w2]; iExists w2; iFrame "Hv Hw3"; trivial.
       (* unshelving *)
-      Unshelve. all: eauto using to_of_val.
-      SolveDisj 3 l.
+      Unshelve. all: eauto using to_of_val || solve_ndisj.
   Qed.
 
   Lemma typed_binary_interp_Store Δ Γ e1 e2 e1' e2' τ {HΔ : ✓✓ Δ}
@@ -398,14 +382,12 @@ Section typed_interp.
     iPvs (step_store _ _ _ j K (l.2) (z.2) (# w') w' _ _ with "[Hw Hw2]")
       as "[Hw Hw2]".
     iFrame "Hspec Hw Hw2"; trivial.
-    iApply (wp_store (N .@ 2)); auto using to_of_val.
-    SolveDisj 2 l.
+    iApply (wp_store (N .@ 2)); auto using to_of_val. solve_ndisj.
     iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     + iNext; iExists (w, w'); by iFrame.
     + iExists UnitV; iFrame "Hw" ; iSplit; trivial.
       (* unshelving *)
-      Unshelve. all: eauto using to_of_val.
-      SolveDisj 3 l.
+      Unshelve. all: eauto using to_of_val || solve_ndisj.
   Qed.
 
   Lemma typed_binary_interp_CAS Δ Γ e1 e2 e3 e1' e2' e3' τ {HΔ : ✓✓ Δ}
@@ -433,8 +415,7 @@ Section typed_interp.
         rewrite ?EqType_related_eq; trivial.
         iDestruct "Hiw" as "%". iDestruct "Hw3" as "%".
         repeat subst; trivial. }
-      iApply (wp_cas_suc (N .@ 2)); eauto using to_of_val.
-      SolveDisj 2 l.
+      iApply (wp_cas_suc (N .@ 2)); eauto using to_of_val. solve_ndisj.
       iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
       * iExists (♭v true); iFrame "Hw"; eauto.
@@ -443,13 +424,12 @@ Section typed_interp.
       { iFrame "Hspec Hu Hw2". iNext.
         rewrite ?EqType_related_eq; trivial.
         iDestruct "Hiw" as "%". iDestruct "Hw3" as "%"; subst; eauto. }
-      iApply (wp_cas_fail (N .@ 2)); eauto using to_of_val.
-      SolveDisj 2 l.
+      iApply (wp_cas_fail (N .@ 2)); eauto using to_of_val. solve_ndisj.
       iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); by iFrame "Hw1 Hw2".
       * iExists (♭v false); eauto.
         (* unshelving *)
-        Unshelve. all: eauto using to_of_val. all: SolveDisj 3 l.
+        Unshelve. all: eauto using to_of_val || solve_ndisj.
   Qed.
 
   Lemma typed_binary_interp Δ Γ e τ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :
