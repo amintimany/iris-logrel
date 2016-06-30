@@ -113,11 +113,9 @@ Section typed_interp.
       iPvsIntro.
       iApply wp_alloc; auto 1 using to_of_val.
       iFrame "Hheap". iNext.
-      iIntros {l} "Hl".
+      iIntros {l} "Hl". iPvsIntro.
       iPvs (inv_alloc _ with "[Hl]") as "HN";
-        [| | iPvsIntro; iExists _; iSplit; trivial].
-      trivial.
-      iNext; iExists _; iFrame "Hl"; trivial.
+        [| | iPvsIntro; iExists _; iSplit; trivial]; eauto.
     - (* Load *)
       smart_wp_bind LoadCtx v "#Hv" IHHtyped; cbn. iClear "HΓ".
       iDestruct "Hv" as {l} "[% #Hv]"; subst.
@@ -126,9 +124,7 @@ Section typed_interp.
       iInv (L .@ l) as {w} "[Hw1 #Hw2]".
       iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
       specialize (HNLdisj l); set_solver_ndisj.
-      iFrame "Hw1". iNext.
-      iIntros "Hw1". iSplitL; trivial.
-      iNext; iExists _. iFrame "Hw1"; trivial.
+      iFrame "Hw1". iIntros "> Hw1". iPvsIntro. iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHHtyped2; cbn. iClear "HΓ".
@@ -140,8 +136,7 @@ Section typed_interp.
       iApply (wp_store N); auto using to_of_val.
       specialize (HNLdisj l); set_solver_ndisj.
       iFrame "Hheap Hz1".
-      iIntros "> Hz1".
-      iSplitL; [|iPvsIntro; trivial].
-      iNext; iExists _. iFrame "Hz1"; trivial.
+      iIntros "> Hz1". iPvsIntro.
+      iSplitL; [|iPvsIntro; trivial]. eauto.
   Qed.
 End typed_interp.

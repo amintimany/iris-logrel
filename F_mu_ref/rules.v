@@ -206,7 +206,7 @@ Section lang_rules.
     (** Base axioms for core primitives of the language: Stateful reductions. *)
     Lemma wp_alloc_pst E σ e v Φ :
       to_val e = Some v →
-      ▷ ownP σ ★ ▷ (∀ l, σ !! l = None ∧ ownP (<[l:=v]>σ) -★ Φ (LocV l))
+      ▷ ownP σ ★ ▷ (∀ l, σ !! l = None ∧ ownP (<[l:=v]>σ) ={E}=★ Φ (LocV l))
         ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
       intros. set (φ e' σ' ef := ∃ l,
@@ -225,7 +225,7 @@ Section lang_rules.
 
     Lemma wp_load_pst E σ l v Φ :
       σ !! l = Some v →
-      ▷ ownP σ ★ ▷ (ownP σ -★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
+      ▷ ownP σ ★ ▷ (ownP σ ={E}=★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
     Proof.
       intros.
       rewrite -(wp_lift_atomic_det_step σ v σ None) ?right_id //; cbn; eauto.
@@ -234,7 +234,7 @@ Section lang_rules.
 
     Lemma wp_store_pst E σ l e v v' Φ :
       to_val e = Some v → σ !! l = Some v' →
-      ▷ ownP σ ★ ▷ (ownP (<[l:=v]>σ) -★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
+      ▷ ownP σ ★ ▷ (ownP (<[l:=v]>σ) ={E}=★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
       intros. rewrite -(wp_lift_atomic_det_step σ (UnitV) (<[l:=v]>σ) None)
                          ?right_id //; cbn; eauto.
@@ -243,15 +243,15 @@ Section lang_rules.
 
     Lemma wp_alloc N E e v Φ :
       to_val e = Some v → nclose N ⊆ E →
-      heap_ctx N ★ ▷ (∀ l, l ↦ v -★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
+      heap_ctx N ★ ▷ (∀ l, l ↦ v ={E}=★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
       iIntros {??} "[#Hinv HΦ]". rewrite /heap_ctx.
       iPvs (auth_empty heap_name) as "Hheap".
-      iApply (auth_fsa heap_inv (wp_fsa _)); simpl; eauto.
+      iApply wp_pvs; iApply (auth_fsa heap_inv (wp_fsa _)); simpl; eauto.
       iFrame "Hinv Hheap". iIntros {h}. rewrite left_id.
       iIntros "[% Hheap]". rewrite /heap_inv.
       iApply wp_alloc_pst; first done. iFrame "Hheap". iNext.
-      iIntros {l} "[% Hheap]". iExists {[ l := (1%Qp, DecAgree v) ]}.
+      iIntros {l} "[% Hheap]". iPvsIntro. iExists {[ l := (1%Qp, DecAgree v) ]}.
       rewrite -of_heap_insert -(insert_singleton_op h); last by apply of_heap_None.
       iFrame "Hheap". iSplit; first iPureIntro.
       { by apply alloc_unit_singleton_local_update; first apply of_heap_None. }
@@ -260,29 +260,29 @@ Section lang_rules.
 
     Lemma wp_load N E l q v Φ :
       nclose N ⊆ E →
-      heap_ctx N ★ ▷ l ↦{q} v ★ ▷ (l ↦{q} v -★ Φ v)
+      heap_ctx N ★ ▷ l ↦{q} v ★ ▷ (l ↦{q} v ={E}=★ Φ v)
       ⊢ WP Load (Loc l) @ E {{ Φ }}.
     Proof.
       iIntros {?} "[#Hh [Hl HΦ]]". rewrite /heap_ctx /heap_mapsto.
-      iApply (auth_fsa heap_inv (wp_fsa _)); simpl; eauto.
+      iApply wp_pvs; iApply (auth_fsa heap_inv (wp_fsa _)); simpl; eauto.
       iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heap_inv.
       iApply (wp_load_pst _ (<[l:=v]>(of_heap h)));first by rewrite lookup_insert.
       rewrite of_heap_singleton_op //. iFrame "Hl".
-      iIntros "> Hown". iExists _; iSplit; first done.
+      iIntros "> Hown". iPvsIntro. iExists _; iSplit; first done.
       rewrite of_heap_singleton_op //. by iFrame.
     Qed.
 
     Lemma wp_store N E l v' e v Φ :
       to_val e = Some v → nclose N ⊆ E →
-      heap_ctx N ★ ▷ l ↦ v' ★ ▷ (l ↦ v -★ Φ UnitV)
+      heap_ctx N ★ ▷ l ↦ v' ★ ▷ (l ↦ v ={E}=★ Φ UnitV)
       ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
       iIntros {??} "[#Hh [Hl HΦ]]". rewrite /heap_ctx /heap_mapsto.
-      iApply (auth_fsa heap_inv (wp_fsa _)); simpl; eauto.
+      iApply wp_pvs; iApply (auth_fsa heap_inv (wp_fsa _)); simpl; eauto.
       iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heap_inv.
       iApply (wp_store_pst _ (<[l:=v']>(of_heap h))); rewrite ?lookup_insert //.
       rewrite insert_insert !of_heap_singleton_op; eauto. iFrame "Hl".
-      iIntros "> Hown". iExists {[l := (1%Qp, DecAgree v)]}; iSplit.
+      iIntros "> Hown". iPvsIntro. iExists {[l := (1%Qp, DecAgree v)]}; iSplit.
       { iPureIntro; by apply singleton_local_update, exclusive_local_update. }
       rewrite of_heap_singleton_op //; eauto. by iFrame.
     Qed.
@@ -314,31 +314,31 @@ Section lang_rules.
 
     Lemma wp_Fold E e v Φ :
       to_val e = Some v →
-      ▷ Φ v ⊢ WP Unfold (Fold e) @ E {{ Φ }}.
+      ▷ (|={E}=> Φ v) ⊢ WP Unfold (Fold e) @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (Unfold _) (of_val v) None) //=; auto.
-      - rewrite right_id; auto using uPred.later_mono, wp_value'.
+      - rewrite right_id -wp_value_pvs'; auto using uPred.later_mono.
       - intros. inv_step; auto.
     Qed.
 
     Lemma wp_fst E e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      ▷ Φ v1 ⊢ WP Fst (Pair e1 e2) @ E {{ Φ }}.
+      ▷ (|={E}=> Φ v1) ⊢ WP Fst (Pair e1 e2) @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (Fst (Pair _ _)) (of_val v1) None) //=.
-      - rewrite right_id; auto using uPred.later_mono, wp_value'.
+      - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
       - intros. inv_step; auto.
     Qed.
 
     Lemma wp_snd E e1 v1 e2 v2 Φ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      ▷ Φ v2 ⊢ WP Snd (Pair e1 e2) @ E {{ Φ }}.
+      ▷ (|={E}=> Φ v2) ⊢ WP Snd (Pair e1 e2) @ E {{ Φ }}.
     Proof.
       intros <-%of_to_val <-%of_to_val.
       rewrite -(wp_lift_pure_det_step (Snd (Pair _ _)) (of_val v2) None) //=.
-      - rewrite right_id; auto using uPred.later_mono, wp_value'.
+      - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
       - intros. inv_step; auto.
     Qed.
 
@@ -349,7 +349,7 @@ Section lang_rules.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step
                   (Case (InjL _) _ _) (e1.[of_val v0/]) None) //=.
-      - rewrite right_id; auto using uPred.later_mono, wp_value'.
+      - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
       - intros. inv_step; auto.
     Qed.
 
@@ -360,7 +360,7 @@ Section lang_rules.
       intros <-%of_to_val.
       rewrite -(wp_lift_pure_det_step
                   (Case (InjR _) _ _) (e2.[of_val v0/]) None) //=.
-      - rewrite right_id; auto using uPred.later_mono, wp_value'.
+      - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
       - intros. inv_step; auto.
     Qed.
 End lang_rules.

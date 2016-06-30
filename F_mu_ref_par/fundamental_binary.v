@@ -73,12 +73,11 @@ Section typed_interp.
     intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
     smart_wp_bind (FstCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [FstCtx])); cbn.
-    iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]".
-    inversion H; subst.
+    iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]"; simplify_eq.
     iPvs (step_fst _ _ _ j K (# (w2.1)) (w2.1) (# (w2.2)) (w2.2)
                    _ _ _ with "* [-]") as "Hw".
     iFrame "Hspec Hv"; trivial.
-    iApply wp_fst; eauto using to_of_val; cbn.
+    iApply wp_fst; try iPvsIntro; eauto using to_of_val; cbn.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
   Qed.
@@ -197,7 +196,7 @@ Section typed_interp.
     iDestruct "Hiv" as {n} "[% %]"; subst; simpl.
     iDestruct "Hiw" as {n'} "[% %]"; subst; simpl.
     iPvs (step_nat_bin_op _ _ _ j K _ _ _ _ with "* [-]") as "Hz".
-    iFrame "Hspec Hw"; trivial. iApply wp_nat_bin_op. iNext.
+    iFrame "Hspec Hw"; trivial. iApply wp_nat_bin_op. iNext. iPvsIntro.
     iExists _; iSplitL; eauto.
     destruct op; simpl; try destruct eq_nat_dec; try destruct le_dec;
       try destruct lt_dec; iExists _; iSplit; trivial.
@@ -342,7 +341,7 @@ Section typed_interp.
     iApply wp_pvs.
     iPvs (step_alloc _ _ _ j K (# v') v' _ _ with "* [-]") as {l'} "[Hj Hl']"; eauto.
     iApply wp_alloc; auto 1 using to_of_val.
-    iFrame "Hheap". iNext. iIntros {l} "Hl".
+    iIntros "{$Hheap} >". iIntros {l} "Hl". iPvsIntro.
     iAssert ((∃ w : val * val, l ↦ᵢ w.1 ★ l' ↦ₛ w.2 ★
                                  ((@interp _ _ _ (N .@ 1) τ) Δ) w)%I)
       with "[Hl Hl']" as "Hinv".
@@ -384,7 +383,7 @@ Section typed_interp.
     iFrame "Hspec Hv"; trivial.
     iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
     SolveDisj 2 l.
-    iFrame "Hw1". iIntros "> Hw1". iSplitL "Hw1 Hw2".
+    iIntros "{$Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     + iNext; iExists w; by iFrame.
     + iPvsIntro.
       destruct w as [w1 w2]; iExists w2; iFrame "Hv Hw3"; trivial.
@@ -413,8 +412,7 @@ Section typed_interp.
     iFrame "Hspec Hw Hw2"; trivial.
     iApply (wp_store (N .@ 2)); auto using to_of_val.
     SolveDisj 2 l.
-    iFrame "Hheap Hw1". iIntros "> Hw1".
-    iSplitL "Hw1 Hw2".
+    iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     + iNext; iExists (w, w'); by iFrame.
     + iPvsIntro. iExists UnitV; iFrame "Hw" ; iSplit; trivial.
       (* unshelving *)
@@ -450,8 +448,7 @@ Section typed_interp.
         repeat subst; trivial. }
       iApply (wp_cas_suc (N .@ 2)); eauto using to_of_val.
       SolveDisj 2 l.
-      iFrame "Hheap Hw1". iIntros "> Hw1".
-      iSplitL "Hw1 Hw2".
+      iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
       * iPvsIntro. iExists (♭v true); iFrame "Hw"; eauto.
     + iPvs (step_cas_fail _ _ _ j K (l.2) 1 (z2) (# w') w' (# u') u' _ _ _
@@ -461,7 +458,7 @@ Section typed_interp.
         iDestruct "Hiw" as "%". iDestruct "Hw3" as "%"; subst; eauto. }
       iApply (wp_cas_fail (N .@ 2)); eauto using to_of_val.
       SolveDisj 2 l.
-      iFrame "Hheap Hw1". iIntros "> Hw1". iSplitL "Hw1 Hw2".
+      iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
       * iPvsIntro. iExists (♭v false); iFrame "Hw". iExists _; iSplit; trivial.
         (* unshelving *)

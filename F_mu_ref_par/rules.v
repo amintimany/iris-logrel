@@ -214,7 +214,7 @@ Section lang_rules.
     by apply pure_elim_r.
   Qed.
 
-  Lemma heap_mapsto_dup_invalid l v1 v2 : l ↦ᵢ v1 ★ l ↦ᵢ v2 ⊢ False%I.
+  Lemma heap_mapsto_dup_invalid l v1 v2 : l ↦ᵢ v1 ★ l ↦ᵢ v2 ⊢ False.
   Proof.
     rewrite heap_mapsto_op /heapI_mapsto auth_own_valid.
     iIntros "[_ Hv]". iDestruct "Hv" as %Hv.
@@ -227,7 +227,7 @@ Section lang_rules.
   (** Base axioms for core primitives of the language: Stateful reductions. *)
   Lemma wp_alloc_pst E σ e v Φ :
     to_val e = Some v →
-    ▷ ownP σ ★ ▷ (∀ l, σ !! l = None ∧ ownP (<[l:=v]>σ) -★ Φ (LocV l))
+    ▷ ownP σ ★ ▷ (∀ l, σ !! l = None ∧ ownP (<[l:=v]>σ) ={E}=★ Φ (LocV l))
       ⊢ WP Alloc e @ E {{ Φ }}.
   Proof.
     intros. set (φ e' σ' ef :=
@@ -246,7 +246,7 @@ Section lang_rules.
 
   Lemma wp_load_pst E σ l v Φ :
     σ !! l = Some v →
-    ▷ ownP σ ★ ▷ (ownP σ -★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
+    ▷ ownP σ ★ ▷ (ownP σ ={E}=★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
   Proof.
     intros.
     rewrite -(wp_lift_atomic_det_step σ v σ None) ?right_id //; cbn; eauto.
@@ -255,7 +255,7 @@ Section lang_rules.
 
   Lemma wp_store_pst E σ l e v v' Φ :
     to_val e = Some v → σ !! l = Some v' →
-    ▷ ownP σ ★ ▷ (ownP (<[l:=v]>σ) -★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
+    ▷ ownP σ ★ ▷ (ownP (<[l:=v]>σ) ={E}=★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
   Proof.
     intros. rewrite -(wp_lift_atomic_det_step σ (UnitV) (<[l:=v]>σ) None)
                        ?right_id //; cbn; eauto.
@@ -264,7 +264,7 @@ Section lang_rules.
 
   Lemma wp_cas_fail_pst E σ l e1 v1 e2 v2 v' Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → σ !! l = Some v' → v' ≠ v1 →
-    ▷ ownP σ ★ ▷ (ownP σ -★ Φ (♭v false)) ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
+    ▷ ownP σ ★ ▷ (ownP σ ={E}=★ Φ (♭v false)) ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     intros. rewrite -(wp_lift_atomic_det_step σ (♭v false) σ None)
                        ?right_id //; last (by intros; inv_step; eauto);
@@ -273,7 +273,7 @@ Section lang_rules.
 
   Lemma wp_cas_suc_pst E σ l e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → σ !! l = Some v1 →
-    ▷ ownP σ ★ ▷ (ownP (<[l:=v2]>σ) -★ Φ (♭v true))
+    ▷ ownP σ ★ ▷ (ownP (<[l:=v2]>σ) ={E}=★ Φ (♭v true))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     intros. rewrite -(wp_lift_atomic_det_step
@@ -285,15 +285,15 @@ Section lang_rules.
   (** Weakest precondition *)
   Lemma wp_alloc N E e v Φ :
     to_val e = Some v → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ (∀ l, l ↦ᵢ v -★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
+    heapI_ctx N ★ ▷ (∀ l, l ↦ᵢ v ={E}=★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
   Proof.
     iIntros {??} "[#Hinv HΦ]". rewrite /heapI_ctx.
     iPvs (auth_empty heapI_name) as "Hheap".
-    iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
+    iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
     iFrame "Hinv Hheap". iIntros {h}. rewrite left_id.
     iIntros "[% Hheap]". rewrite /heapI_inv.
     iApply wp_alloc_pst; first done. iFrame "Hheap". iNext.
-    iIntros {l} "[% Hheap]". iExists {[ l := (1%Qp, DecAgree v) ]}.
+    iIntros {l} "[% Hheap]". iPvsIntro. iExists {[ l := (1%Qp, DecAgree v) ]}.
     rewrite -of_heap_insert -(insert_singleton_op h); last by apply of_heap_None.
     iFrame "Hheap". iSplit; first iPureIntro.
     { by apply alloc_unit_singleton_local_update; first apply of_heap_None. }
@@ -302,56 +302,56 @@ Section lang_rules.
 
   Lemma wp_load N E l q v Φ :
     nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v -★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
+    heapI_ctx N ★ ▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v ={E}=★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
   Proof.
     iIntros {?} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-    iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
+    iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
     iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
     iApply (wp_load_pst _ (<[l:=v]>(of_heap h)));first by rewrite lookup_insert.
     rewrite of_heap_singleton_op //. iFrame "Hl".
-    iIntros "> Hown". iExists _; iSplit; first done.
+    iIntros "> Hown". iPvsIntro. iExists _; iSplit; first done.
     rewrite of_heap_singleton_op //. by iFrame.
   Qed.
 
   Lemma wp_store N E l v' e v Φ :
     to_val e = Some v → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v -★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
+    heapI_ctx N ★ ▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v ={E}=★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
   Proof.
     iIntros {??} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-    iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
+    iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
     iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
     iApply (wp_store_pst _ (<[l:=v']>(of_heap h))); rewrite ?lookup_insert //.
     rewrite insert_insert !of_heap_singleton_op; eauto. iFrame "Hl".
-    iIntros "> Hown". iExists {[l := (1%Qp, DecAgree v)]}; iSplit.
+    iIntros "> Hown". iPvsIntro. iExists {[l := (1%Qp, DecAgree v)]}; iSplit.
     { iPureIntro; by apply singleton_local_update, exclusive_local_update. }
     rewrite of_heap_singleton_op //; eauto. by iFrame.
   Qed.
 
   Lemma wp_cas_fail N E l q v' e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' -★ Φ (♭v false))
+    heapI_ctx N ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' ={E}=★ Φ (♭v false))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     iIntros {????} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-    iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto 10.
+    iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto 10.
     iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
     iApply (wp_cas_fail_pst _ (<[l:=v']>(of_heap h))); rewrite ?lookup_insert //.
     rewrite of_heap_singleton_op //. iFrame "Hl".
-    iIntros "> Hown". iExists _; iSplit; first done.
+    iIntros "> Hown". iPvsIntro. iExists _; iSplit; first done.
     rewrite of_heap_singleton_op //. by iFrame.
   Qed.
 
   Lemma wp_cas_suc N E l e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 -★ Φ (♭v true))
+    heapI_ctx N ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 ={E}=★ Φ (♭v true))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     iIntros {???} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
-    iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto 10.
+    iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto 10.
     iFrame "Hh Hl". iIntros {h} "[% Hl]". rewrite /heapI_inv.
     iApply (wp_cas_suc_pst _ (<[l:=v1]>(of_heap h))); rewrite ?lookup_insert //.
     rewrite insert_insert !of_heap_singleton_op; eauto. iFrame "Hl".
-    iIntros "> Hown". iExists {[l := (1%Qp, DecAgree v2)]}; iSplit.
+    iIntros "> Hown". iPvsIntro. iExists {[l := (1%Qp, DecAgree v2)]}; iSplit.
     { iPureIntro; by apply singleton_local_update, exclusive_local_update. }
     rewrite of_heap_singleton_op //; eauto. by iFrame.
   Qed.
@@ -373,8 +373,7 @@ Section lang_rules.
     - intros. inv_step; auto.
   Qed.
 
-  Lemma wp_TLam E e Φ :
-    ▷ WP e @ E {{ Φ }} ⊢ WP TApp (TLam e) @ E {{ Φ }}.
+  Lemma wp_TLam E e Φ : ▷ WP e @ E {{ Φ }} ⊢ WP TApp (TLam e) @ E {{ Φ }}.
   Proof.
     rewrite -(wp_lift_pure_det_step (TApp _) e None) //=.
     - by rewrite right_id.
@@ -382,32 +381,31 @@ Section lang_rules.
   Qed.
 
   Lemma wp_Fold E e v Φ :
-    to_val e = Some v →
-    ▷ Φ v ⊢ WP Unfold (Fold e) @ E {{ Φ }}.
+    to_val e = Some v → ▷ (|={E}=> Φ v) ⊢ WP Unfold (Fold e) @ E {{ Φ }}.
   Proof.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Unfold _) (of_val v) None) //=; auto.
-    - rewrite right_id; auto using uPred.later_mono, wp_value'.
+    - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.
 
   Lemma wp_fst E e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 →
-    ▷ Φ v1 ⊢ WP Fst (Pair e1 e2) @ E {{ Φ }}.
+    ▷ (|={E}=> Φ v1) ⊢ WP Fst (Pair e1 e2) @ E {{ Φ }}.
   Proof.
     intros <-%of_to_val <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Fst (Pair _ _)) (of_val v1) None) //=.
-    - rewrite right_id; auto using uPred.later_mono, wp_value'.
+    - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.
 
   Lemma wp_snd E e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 →
-    ▷ Φ v2 ⊢ WP Snd (Pair e1 e2) @ E {{ Φ }}.
+    ▷ (|={E}=> Φ v2) ⊢ WP Snd (Pair e1 e2) @ E {{ Φ }}.
   Proof.
     intros <-%of_to_val <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Snd (Pair _ _)) (of_val v2) None) //=.
-    - rewrite right_id; auto using uPred.later_mono, wp_value'.
+    - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.
 
@@ -434,18 +432,18 @@ Section lang_rules.
   Qed.
 
   Lemma wp_fork E e Φ :
-    ▷ Φ UnitV ★ ▷ WP e {{ _, True }} ⊢ WP Fork e @ E {{ Φ }}.
+    ▷ (|={E}=> Φ UnitV) ★ ▷ WP e {{ _, True }} ⊢ WP Fork e @ E {{ Φ }}.
   Proof.
     (rewrite -(wp_lift_pure_det_step (Fork e) Unit (Some e)) //=);
       last by intros; inv_step; eauto.
-    rewrite later_sep -(wp_value _ _ (Unit)) //.
+    rewrite later_sep -(wp_value_pvs _ _ (Unit)) //.
   Qed.
 
   Lemma wp_if_false E e1 e2 Φ :
     ▷ WP e2 @ E {{ Φ }} ⊢ WP If (♭ false) e1 e2 @ E {{ Φ }}.
   Proof.
     rewrite -(wp_lift_pure_det_step (If (♭ false) _ _) (e2) None) //=.
-    - rewrite right_id; auto using uPred.later_mono, wp_value'.
+    - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.
 
@@ -458,11 +456,11 @@ Section lang_rules.
   Qed.
 
   Lemma wp_nat_bin_op E op a b Φ :
-    ▷ Φ (binop_meaning op a b) ⊢ WP BinOp op (♯ a) (♯ b) @ E {{ Φ }}.
+    ▷ (|={E}=> Φ (binop_meaning op a b)) ⊢ WP BinOp op (♯ a) (♯ b) @ E {{ Φ }}.
   Proof.
     rewrite -(wp_lift_pure_det_step
                 (BinOp _ _ _) (of_val (binop_meaning op a b)) None) //=.
-    - rewrite right_id; auto using uPred.later_mono, wp_value'.
+    - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.
 End lang_rules.

@@ -28,7 +28,7 @@ Section typed_interp.
                 WP e.[env_subst vs] {{ interp L τ Δ }}.
   Proof.
     revert Δ HΔ vs.
-    induction Htyped; intros Δ HΔ vs Hlen; iIntros "#[Hheap HΓ]"; cbn.
+    induction Htyped; iIntros {Δ HΔ vs Hlen} "#[Hheap HΓ]"; cbn.
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
@@ -43,7 +43,7 @@ Section typed_interp.
       smart_wp_bind (BinOpLCtx _ e2.[env_subst vs]) v "#Hv" IHHtyped1.
       smart_wp_bind (BinOpRCtx _ v) v' "# Hv'" IHHtyped2.
       iDestruct "Hv" as {n} "%"; iDestruct "Hv'" as {n'} "%"; subst. simpl.
-      iApply wp_nat_bin_op. iNext; destruct op; simpl;
+      iApply wp_nat_bin_op. iNext; iPvsIntro; destruct op; simpl;
       try destruct eq_nat_dec; try destruct le_dec; try destruct lt_dec;
         eauto 10.
     - (* pair *)
@@ -131,11 +131,9 @@ Section typed_interp.
       iPvsIntro.
       iApply wp_alloc; auto 1 using to_of_val.
       iFrame "Hheap". iNext.
-      iIntros {l} "Hl".
+      iIntros {l} "Hl". iPvsIntro.
       iPvs (inv_alloc _ with "[Hl]") as "HN";
-        [| | iPvsIntro; iExists _; iSplit; trivial].
-      trivial.
-      iNext; iExists _; iFrame "Hl"; trivial.
+        [| | iPvsIntro; iExists _; iSplit; trivial]; eauto.
     - (* Load *)
       smart_wp_bind LoadCtx v "#Hv" IHHtyped; cbn. iClear "HΓ".
       iDestruct "Hv" as {l} "[% #Hv]"; subst.
@@ -144,9 +142,7 @@ Section typed_interp.
       iInv (L .@ l) as {w} "[Hw1 #Hw2]".
       iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
       specialize (HNLdisj l); set_solver_ndisj.
-      iFrame "Hw1". iNext.
-      iIntros "Hw1". iSplitL; trivial.
-      iNext; iExists _. iFrame "Hw1"; trivial.
+      iFrame "Hw1". iIntros "> Hw1". iPvsIntro; iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHHtyped2; cbn. iClear "HΓ".
@@ -158,9 +154,7 @@ Section typed_interp.
       iApply (wp_store N); auto using to_of_val.
       specialize (HNLdisj l); set_solver_ndisj.
       iFrame "Hheap Hz1".
-      iIntros "> Hz1".
-      iSplitL; [|iPvsIntro; trivial].
-      iNext; iExists _. iFrame "Hz1"; trivial.
+      iIntros "> Hz1". iPvsIntro. iSplitL; [|iPvsIntro; trivial]; eauto.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHHtyped1; cbn.
       smart_wp_bind (CasMCtx _ _) v2 "#Hv2" IHHtyped2; cbn.
@@ -172,15 +166,12 @@ Section typed_interp.
       destruct (val_dec_eq v2 w) as [|Hneq]; subst.
       + iApply (wp_cas_suc N); eauto using to_of_val.
         specialize (HNLdisj l); set_solver_ndisj.
-        iFrame "Hheap Hw1".
-        iNext. iIntros "Hw1".
+        iFrame "Hheap Hw1". iIntros "> Hw1"; iPvsIntro.
         iSplitL; [|iPvsIntro]; eauto.
       + iApply (wp_cas_fail N); eauto using to_of_val.
         clear Hneq. specialize (HNLdisj l); set_solver_ndisj.
         (* Weird that Hneq above makes set_solver_ndisj diverge or
            take exceptionally long!?!? *)
-        iFrame "Hheap Hw1".
-        iNext. iIntros "Hw1".
-        iSplitL; [|iPvsIntro]; eauto.
+        iFrame "Hheap Hw1". iIntros "> Hw1". iPvsIntro. iSplitL; [|iPvsIntro]; eauto.
   Qed.
 End typed_interp.

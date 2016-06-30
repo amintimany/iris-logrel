@@ -289,6 +289,7 @@ Section CG_Counter.
     iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
       iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
     iApply wp_alloc; trivial; iFrame "Hheap"; iNext; iIntros {cnt} "Hcnt /=".
+    iPvsIntro.
     (* establishing the invariant *)
     iAssert ((∃ n, l ↦ₛ (♭v false) ★ cnt ↦ᵢ (♯v n) ★ cnt' ↦ₛ (♯v n) )%I)
       with "[Hl Hcnt Hcnt']" as "Hinv".
@@ -316,14 +317,14 @@ Section CG_Counter.
       iInv> (N .@4) as {n} "[Hl [Hcnt Hcnt']]".
       iApply wp_load; [|iFrame "Hheap"].
       { abstract prove_disj N 2 4. }
-      iNext; iFrame "Hcnt"; iIntros "Hcnt".
+      iIntros "> {$Hcnt} Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iApply wp_lam; trivial. asimpl. iNext.
       (* fine-grained performs increment *)
       iApply (@wp_bind _ _ _ [IfCtx _ _; CasRCtx (LocV _) (NatV _)]);
         iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
       iApply wp_nat_bin_op; simpl.
-      iNext.
+      iNext. iPvsIntro.
       iApply (@wp_bind _ _ _ [IfCtx _ _]);
         iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
       iInv> (N .@4) as {n'} "[Hl [Hcnt Hcnt']]".
@@ -336,7 +337,7 @@ Section CG_Counter.
         { iFrame "Hspec Hcnt' Hl Hj"; trivial. }
         iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"].
         { abstract prove_disj N 2 4. }
-        iNext; iFrame "Hcnt"; iIntros "Hcnt".
+        iNext; iFrame "Hcnt"; iIntros "Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_true. iNext. iApply wp_value; trivial.
         iExists UnitV; iFrame; auto.
@@ -345,7 +346,7 @@ Section CG_Counter.
         iApply (wp_cas_fail _ _ _ _ (♯v n')); simpl; trivial;
         [inversion 1; subst; auto | | iFrame "Hheap"].
         { abstract prove_disj N 2 4. }
-        iNext; iFrame "Hcnt"; iIntros "Hcnt".
+        iNext; iFrame "Hcnt"; iIntros "Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of read *)
@@ -362,7 +363,7 @@ Section CG_Counter.
       { by iFrame "Hspec Hcnt' Hj". }
       iApply wp_load; [|iFrame "Hheap"].
       { abstract prove_disj N 2 4. }
-      iFrame "Hcnt"; iIntros "> Hcnt".
+      iFrame "Hcnt"; iIntros "> Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iExists (♯v _); eauto.
       Unshelve.
