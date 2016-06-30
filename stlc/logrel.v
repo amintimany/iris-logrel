@@ -1,7 +1,5 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
-        iris_logrel.stlc.rules.
+From iris.program_logic Require Export weakestpre.
+From iris_logrel.stlc Require Export lang typing.
 
 (** interp : is a unary logical relation. *)
 Section logrel.
@@ -22,7 +20,7 @@ Global Instance interp_always_stable τ v : PersistentP (interp τ v).
 Proof. revert v; induction τ=> v /=; apply _. Qed.
 
 Lemma typed_subst_invariant Γ e τ s1 s2 :
-  typed Γ e τ → (∀ x, x < List.length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
+  typed Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
   assert (∀ s1 s2 x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
@@ -34,7 +32,7 @@ Definition env_subst (vs : list val) (x : var) : expr :=
   from_option id (Var x) (of_val <$> vs !! x).
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
-  typed Δ e τ -> List.length Δ = S (List.length ws) →
+  typed Δ e τ → length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.

@@ -1,32 +1,23 @@
-Require Import iris.proofmode.weakestpre iris.proofmode.tactics.
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.auth.
-Require Import iris_logrel.F_mu_ref.lang iris_logrel.F_mu_ref.typing
-        iris_logrel.F_mu_ref.rules iris_logrel.F_mu_ref.logrel
-        iris_logrel.F_mu_ref.fundamental.
-Require Import iris.program_logic.adequacy.
-Import uPred.
+From iris_logrel.F_mu_ref Require Export fundamental.
+From iris.proofmode Require Import tactics pviewshifts.
+From iris.program_logic Require Import adequacy.
 
 Section Soundness.
   Definition Σ := #[ auth.authGF heapUR ].
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
-  Proof.
-    replace (env_subst []) with (@ids expr _) by reflexivity.
-    asimpl; trivial.
-  Qed.
+  Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.
 
   Definition free_type_context: varC -n> valC -n> iPropG lang Σ :=
     λne x y, True%I.
 
   Lemma wp_soundness e τ :
     typed [] e τ →
-    ownership.ownP ∅ ⊢ WP e {{ v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref" .@ 1)
-                                        τ free_type_context v}}.
+    ownership.ownP ∅ ⊢ WP e {{ v, ∃ H : heapG Σ,
+      interp (nroot .@ "Fμ,ref" .@ 1) τ free_type_context v}}.
   Proof.
     iIntros {H1} "Hemp".
-    iDestruct (heap_alloc (nroot .@ "Fμ,ref" .@ 2) _ _ _ _ with "Hemp") as "Hp".
-    iPvs "Hp" as {H} "[Hheap Hemp]".
+    iPvs (heap_alloc (nroot .@ "Fμ,ref" .@ 2) _ _ _ _ with "Hemp") as {H} "[Hheap Hemp]".
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
     rewrite -(empty_env_subst e).

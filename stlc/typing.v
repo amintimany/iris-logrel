@@ -1,5 +1,4 @@
-Require Import iris_logrel.stlc.lang.
-Require Import iris.prelude.base.
+From iris_logrel.stlc Require Export lang.
 
 Inductive type :=
   | TUnit : type

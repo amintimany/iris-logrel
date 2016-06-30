@@ -1,6 +1,6 @@
-Require Export iris_logrel.prelude.base.
-Require Import iris.prelude.gmap.
-Require Import iris.program_logic.language.
+From iris_logrel.prelude Require Export base.
+From iris.program_logic Require Import language.
+From iris.prelude Require Import gmap.
 
 Module lang.
   Definition loc := positive.
@@ -9,8 +9,8 @@ Module lang.
 
   Inductive binop := Add | Sub | Eq | Le | Lt.
 
-  Instance Natbinop_dec_eq (op op' : binop) : Decision (op = op').
-  Proof. unfold Decision. decide equality. Qed.
+  Instance binop_dec_eq (op op' : binop) : Decision (op = op').
+  Proof. solve_decision. Defined.
 
   Inductive expr :=
   | Var (x : var)

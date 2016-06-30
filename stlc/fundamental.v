@@ -1,9 +1,7 @@
-Require Import iris.proofmode.tactics.
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.stlc.lang iris_logrel.stlc.typing
-        iris_logrel.stlc.rules iris_logrel.stlc.logrel.
-Import uPred.
+From iris_logrel.stlc Require Export logrel.
+From iris.proofmode Require Import tactics.
+From iris_logrel.stlc Require Import rules.
+From iris.algebra Require Export upred_big_op.
 
 Section typed_interp.
   Context {Σ : iFunctor}.
@@ -18,7 +16,7 @@ Section typed_interp.
 
   Lemma typed_interp Γ vs e τ :
     typed Γ e τ → length Γ = length vs →
-    [∧] zip_with (@interp Σ) Γ vs ⊢ wp ⊤ (e.[env_subst vs]) (interp τ).
+    [∧] zip_with (@interp Σ) Γ vs ⊢ WP e.[env_subst vs] {{ interp τ }}.
   Proof.
     intros Htyped; revert vs.
     induction Htyped; intros vs Hlen; iIntros "#Hctx"; cbn.

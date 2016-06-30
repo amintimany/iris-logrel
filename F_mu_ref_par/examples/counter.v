@@ -1,8 +1,6 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris_logrel.F_mu_ref_par Require Import lang examples.lock typing
-     logrel_binary fundamental_binary rules_binary rules
-     soundness_binary context_refinement.
-Import uPred.
+From iris_logrel.F_mu_ref_par Require Export examples.lock.
+From iris_logrel.F_mu_ref_par Require Import soundness_binary.
 
 Definition CG_increment (x : expr) : expr :=
   Lam (Store x.[ren (+ 2)] (BinOp Add (♯ 1) (Load x.[ren (+ 2)]))).
@@ -201,8 +199,7 @@ Section CG_Counter.
     constructor. apply CG_counter_body_type; by constructor.
   Qed.
 
-  Lemma CG_counter_closed f :
-    CG_counter.[f] = CG_counter.
+  Lemma CG_counter_closed f : CG_counter.[f] = CG_counter.
   Proof.
     asimpl; rewrite CG_locked_increment_subst counter_read_subst; by asimpl.
   Qed.

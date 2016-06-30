@@ -1,11 +1,6 @@
-Require Import iris.proofmode.weakestpre iris.proofmode.tactics.
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.auth.
-Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
-        iris_logrel.F_mu_ref_par.rules iris_logrel.F_mu_ref_par.logrel_unary
-        iris_logrel.F_mu_ref_par.fundamental_unary.
-Require Import iris.program_logic.adequacy.
-Import uPred.
+From iris_logrel.F_mu_ref_par Require Export fundamental_unary.
+From iris.proofmode Require Import tactics pviewshifts.
+From iris.program_logic Require Import adequacy.
 
 Section Soundness.
   Definition Σ := #[ auth.authGF heapUR ].
@@ -15,8 +10,8 @@ Section Soundness.
 
   Lemma wp_soundness e τ :
     typed [] e τ →
-    ownership.ownP ∅ ⊢ WP e {{v, ∃ H, @interp Σ H (nroot .@ "Fμ,ref,par" .@ 1)
-                                      τ free_type_context v }}.
+    ownership.ownP ∅ ⊢ WP e {{v, ∃ H : heapIG Σ,
+      interp (nroot .@ "Fμ,ref,par" .@ 1) τ free_type_context v }}.
   Proof.
     iIntros {H1} "Hemp".
     iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")

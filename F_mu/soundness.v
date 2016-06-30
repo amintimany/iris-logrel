@@ -1,20 +1,12 @@
-Require Import iris.proofmode.tactics.
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu.lang iris_logrel.F_mu.typing
-        iris_logrel.F_mu.rules iris_logrel.F_mu.logrel
-        iris_logrel.F_mu.fundamental.
-Require Import iris.program_logic.adequacy.
-Import uPred.
+From iris_logrel.F_mu Require Export fundamental.
+From iris.proofmode Require Import tactics.
+From iris.program_logic Require Import adequacy.
 
 Section Soundness.
   Definition Σ := #[].
 
   Lemma empty_env_subst e : e.[env_subst []] = e.
-  Proof.
-    replace (env_subst []) with (@ids expr _) by reflexivity.
-    asimpl; trivial.
-  Qed.
+  Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.
 
   Definition free_type_context : varC -n> valC -n> iProp lang (globalF Σ) :=
     λne x y, True%I.

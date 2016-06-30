@@ -1,12 +1,8 @@
-Require Import iris.proofmode.invariants iris.proofmode.weakestpre
-        iris.proofmode.tactics.
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.auth iris.algebra.dec_agree iris.algebra.frac
-        iris.algebra.upred_big_op.
-From iris_logrel.F_mu_ref_par Require Import lang typing rules_binary
-        rules logrel_binary fundamental_binary context_refinement.
-Require Import iris.program_logic.adequacy.
-Import uPred.
+From iris_logrel.F_mu_ref_par Require Export context_refinement.
+From iris.algebra Require Import upred_big_op frac dec_agree.
+From iris.program_logic Require Import ownership auth.
+From iris.proofmode Require Import tactics pviewshifts invariants.
+From iris.program_logic Require Import adequacy.
 
 Section Soundness.
   Context {Σ : gFunctors}
@@ -29,13 +25,12 @@ Section Soundness.
     iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
       as {H} "[#Hheap _]".
     iPvs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
-                  ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as "Hcfg".
+      ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as {γ} "[Hcfg1 Hcfg2]".
     { constructor; eauto.
       - intros n; simpl. exists ∅. unfold to_cfg; simpl. rewrite to_empty_heap.
           by rewrite left_id right_id.
       - repeat constructor; simpl; by auto.
     }
-    iDestruct "Hcfg" as {γ} "[Hcfg1 Hcfg2]".
     iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv ([e'], ∅)))
       with "[Hcfg1]" as "Hinv".
     { iExists _; iFrame "Hcfg1".
@@ -44,8 +39,7 @@ Section Soundness.
     iPvs (inv_alloc (nroot .@ "Fμ,ref,par" .@ 3) with "[Hinv]") as "#Hcfg";
       trivial.
     { iNext. iExact "Hinv". }
-    iPoseProof (H1 H (@CFGSG _ _ γ) _ Δφ _ [] _ _ 0 []
-                with "[Hcfg2]") as "HBR".
+    iPoseProof (H1 H (@CFGSG _ _ γ) _ Δφ _ [] _ _ 0 [] with "[Hcfg2]") as "HBR".
     { unfold Spec_ctx, auth.auth_ctx, tpool_mapsto, auth.auth_own.
       simpl. rewrite empty_env_subst. by iFrame "Hheap Hcfg Hcfg2". }
     simpl. rewrite empty_env_subst.
@@ -95,9 +89,9 @@ Section Soundness.
   Qed.
 
   Lemma Binary_Soundness Γ e e' τ :
-    (∀ f, e.[iter (List.length Γ) up f] = e) →
-    (∀ f, e'.[iter (List.length Γ) up f] = e') →
-    (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ Γ e e' τ HΔ) →
+    (∀ f, e.[base.iter (length Γ) up f] = e) →
+    (∀ f, e'.[base.iter (length Γ) up f] = e') →
+    (∀ H H' N Δ HΔ, @bin_log_related Σ H H' N Δ Γ e e' τ HΔ) →
     context_refines Γ e e' τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.

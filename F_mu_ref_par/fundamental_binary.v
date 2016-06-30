@@ -1,14 +1,7 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
-        iris_logrel.F_mu_ref_par.rules iris_logrel.F_mu_ref_par.rules_binary
-        iris_logrel.F_mu_ref_par.logrel_binary.
-From iris.program_logic Require Export lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.program_logic Require Import ownership auth.
-Require Import iris.proofmode.tactics iris.proofmode.invariants.
-Import uPred.
+From iris_logrel.F_mu_ref_par Require Export logrel_binary.
+From iris.proofmode Require Import tactics pviewshifts invariants.
+From iris_logrel.F_mu_ref_par Require Import rules_binary.
+From iris.algebra Require Export upred_big_op.
 
 Section typed_interp.
   Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ} {N : namespace}.
@@ -34,7 +27,7 @@ Section typed_interp.
   Qed.
 
   Definition bin_log_related Δ Γ e e' τ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :=
-    ∀ vs, List.length Γ = List.length vs →
+    ∀ vs, length Γ = length vs →
     ∀ ρ j K,
       heapI_ctx (N .@ 2) ★ Spec_ctx (N .@ 3) ρ ★
         [∧] zip_with (λ τ, interp (N .@ 1) τ Δ) Γ vs ★
@@ -70,7 +63,7 @@ Section typed_interp.
       (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TProd τ1 τ2) :
     Δ ∥ Γ ⊩ Fst e ≤log≤ Fst e' ∷ τ1.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (FstCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [FstCtx])); cbn.
     iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]"; simplify_eq.
@@ -86,7 +79,7 @@ Section typed_interp.
       (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ TProd τ1 τ2) :
     Δ ∥ Γ ⊩ Snd e ≤log≤ Snd e' ∷ τ2.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (SndCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [SndCtx])); cbn.
     iDestruct "Hiv" as {w1 w2} "#[% [Hiv2 Hiv3]]".
@@ -103,7 +96,7 @@ Section typed_interp.
       (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ1) :
     Δ ∥ Γ ⊩ InjL e ≤log≤ InjL e' ∷ (TSum τ1 τ2).
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (InjLCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [InjLCtx])); cbn.
     value_case. iExists (InjLV v'); iFrame "Hv".
@@ -116,7 +109,7 @@ Section typed_interp.
       (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ τ2) :
     Δ ∥ Γ ⊩ InjR e ≤log≤ InjR e' ∷ TSum τ1 τ2.
   Proof.
-    intros vs Hlen ρ j K. iIntros "[#Hheap [#Hspec [#HΓ Htr]]]"; cbn.
+    intros vs Hlen ρ j K. iIntros "(#Hheap & #Hspec & #HΓ & Htr)"; cbn.
     smart_wp_bind (InjRCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [InjRCtx])); cbn.
     value_case. iExists (InjRV v'); iFrame "Hv".
@@ -127,10 +120,10 @@ Section typed_interp.
 
   Lemma typed_binary_interp_Case Δ Γ (e0 e1 e2 e0' e1' e2' : expr) τ1 τ2 τ3
       {HΔ : ✓✓ Δ}
-      (Hclosed2 : ∀ f, e1.[iter (S (List.length Γ)) up f] = e1)
-      (Hclosed3 : ∀ f, e2.[iter (S (List.length Γ)) up f] = e2)
-      (Hclosed2' : ∀ f, e1'.[iter (S (List.length Γ)) up f] = e1')
-      (Hclosed3' : ∀ f, e2'.[iter (S (List.length Γ)) up f] = e2')
+      (Hclosed2 : ∀ f, e1.[iter (S (length Γ)) up f] = e1)
+      (Hclosed3 : ∀ f, e2.[iter (S (length Γ)) up f] = e2)
+      (Hclosed2' : ∀ f, e1'.[iter (S (length Γ)) up f] = e1')
+      (Hclosed3' : ∀ f, e2'.[iter (S (length Γ)) up f] = e2')
       (IHHtyped1 : Δ ∥ Γ ⊩ e0 ≤log≤ e0' ∷ TSum τ1 τ2)
       (IHHtyped2 : Δ ∥ τ1 :: Γ ⊩ e1 ≤log≤ e1' ∷ τ3)
       (IHHtyped3 : Δ ∥ τ2 :: Γ ⊩ e2 ≤log≤ e2' ∷ τ3) :
@@ -205,8 +198,8 @@ Section typed_interp.
   Qed.
 
   Lemma typed_binary_interp_Lam Δ Γ (e e' : expr) τ1 τ2 {HΔ : ✓✓ Δ}
-      (Hclosed : ∀ f, e.[iter (S (S (List.length Γ))) up f] = e)
-      (Hclosed' : ∀ f, e'.[iter (S (S (List.length Γ))) up f] = e')
+      (Hclosed : ∀ f, e.[iter (S (S (length Γ))) up f] = e)
+      (Hclosed' : ∀ f, e'.[iter (S (S (length Γ))) up f] = e')
       (IHHtyped : Δ ∥ TArrow τ1 τ2 :: τ1 :: Γ ⊩ e ≤log≤ e' ∷ τ2) :
     Δ ∥ Γ ⊩ Lam e ≤log≤ Lam e' ∷ TArrow τ1 τ2.
   Proof.

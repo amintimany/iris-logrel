@@ -1,10 +1,9 @@
+From iris.program_logic Require Import auth.
+From iris_logrel.F_mu_ref_par Require Import soundness_binary.
+From iris_logrel.F_mu_ref_par.examples Require Import lock.
+From iris_logrel.F_mu_ref_par.examples.stack Require Import
+  CG_stack FG_stack stack_rules.
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris.program_logic Require Import auth namespaces.
-From iris_logrel.F_mu_ref_par Require Import lang examples.lock
-     examples.stack.CG_stack examples.stack.FG_stack examples.stack.stack_rules
-     typing logrel_binary fundamental_binary rules_binary rules
-context_refinement soundness_binary.
-Import uPred.
 
 Section Stack_refinement.
   Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}

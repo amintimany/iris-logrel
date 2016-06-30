@@ -1,8 +1,8 @@
-From iris.program_logic Require Import auth lifting.
-From iris_logrel.F_mu_ref_par Require Import lang rules.
-From iris.algebra Require Import upred_big_op frac dec_agree list upred_big_op.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.proofmode Require Import tactics invariants.
+From iris.program_logic Require Import lifting.
+From iris.algebra Require Import upred_big_op frac dec_agree.
+From iris.program_logic Require Import ownership auth.
+From iris_logrel.F_mu_ref_par Require Export rules.
+From iris.proofmode Require Import tactics weakestpre invariants.
 Import uPred.
 
 (** The CMRA for the heap of the specification. *)
@@ -136,7 +136,7 @@ Section cfg.
     ✓ ({[ j := Excl' e ]} ⋅ tp) → ∃ l1 l2,
       (∀ e', of_tpool ({[ j := Excl' e' ]} ⋅ tp) = l1 ++ e' :: l2) ∧
       (∀ e' k e'',
-        j < k → List.length tp < k →
+        j < k → length tp < k →
         of_tpool ({[ j := Excl' e' ]} ⋅ {[ k := Excl' e'' ]} ⋅ tp) =
         l1 ++ e' :: l2 ++ [e'']).
   Proof.
@@ -198,7 +198,7 @@ Section cfg.
   Qed.
 
   Lemma thread_alloc_safe k j (e e' : exprC) (tp : tpoolUR) :
-    j < k → List.length tp < k →
+    j < k → length tp < k →
     ✓ ({[j := Excl' e ]} ⋅ tp) →
     ✓ ({[j := Excl' e ]} ⋅ {[k := Excl' e' ]} ⋅ tp).
   Proof.
@@ -211,7 +211,7 @@ Section cfg.
   Qed.
 
   Lemma thread_alloc_update k j e e' h ρ :
-    j < k → List.length (ρ.1) < k →
+    j < k → length (ρ.1) < k →
     ✓ (({[j := Excl' e ]}, h) ⋅ ρ) →
     ● (({[j := Excl' e ]}, h) ⋅ ρ : cfgUR) ⋅ ◯ ({[j := Excl' e]}, h)
       ~~> ● (({[j := Excl' e]} ⋅ {[k := Excl' e']}, h) ⋅ ρ)
@@ -587,7 +587,7 @@ Section cfg.
   Proof. apply step_pure => σ; econstructor. Qed.
 
   Lemma step_fork_base k j K e h ρ :
-    j < k → List.length (ρ.1) < k →
+    j < k → length (ρ.1) < k →
     ✓ (({[j := Excl' (fill K (Fork e))]}, h) ⋅ ρ) →
     step (of_cfg (({[j := Excl' (fill K (Fork e))]}, h) ⋅ ρ))
          (of_cfg (({[j := Excl' (fill K Unit)]} ⋅ {[k := Excl' e]}, h) ⋅ ρ)).
@@ -614,9 +614,9 @@ Section cfg.
     iDestruct "Hstep" as %Hstep.
     iPvs (own_update with "Hown") as "Hown".
     rewrite comm; apply (thread_update _ _ (fill K Unit)); trivial.
-    set (k := S (max (List.length (ρ''.1)) j)).
+    set (k := S (max (length (ρ''.1)) j)).
     assert (Hx1 : k > j) by (unfold k; lia).
-    assert (Hx2 : k > List.length (ρ''.1)) by (unfold k; lia).
+    assert (Hx2 : k > length (ρ''.1)) by (unfold k; lia).
     clearbody k.
     iPvs (own_update with "Hown") as "Hown".
     eapply (thread_alloc_update k _ _ e); trivial.

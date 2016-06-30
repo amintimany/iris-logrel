@@ -1,13 +1,7 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu_ref.lang iris_logrel.F_mu_ref.typing
-        iris_logrel.F_mu_ref.rules iris_logrel.F_mu_ref.logrel.
-From iris.program_logic Require Export lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.program_logic Require Import ownership auth.
-Require Import iris.proofmode.tactics iris.proofmode.invariants.
-Import uPred.
+From iris_logrel.F_mu_ref Require Export logrel.
+From iris.proofmode Require Import tactics pviewshifts invariants.
+From iris_logrel.F_mu_ref Require Import rules.
+From iris.algebra Require Export upred_big_op.
 
 Section typed_interp.
   Context {Σ : gFunctors} `{i : heapG Σ} {L : namespace}.
@@ -24,7 +18,7 @@ Section typed_interp.
       (HNLdisj : ∀ l : loc, N ⊥ L .@ l)
       (Htyped : typed Γ e τ)
       (HΔ : ∀ x v, PersistentP (Δ x v)) :
-    List.length Γ = List.length vs →
+    length Γ = length vs →
     heap_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs
     ⊢ WP e.[env_subst vs] {{ interp L τ Δ }}.
   Proof.
@@ -104,7 +98,7 @@ Section typed_interp.
       rewrite fixpoint_unfold.
       iIntros "#Hv"; cbn.
       change (fixpoint _) with (interp L (TRec τ) Δ).
-      iDestruct "Hv" as {w} "[% #Hw]"; rewrite H.
+      iDestruct "Hv" as {w} "[% #Hw]"; subst.
       iApply wp_Fold; cbn; auto using to_of_val.
       rewrite -interp_subst; auto.
     - (* Alloc *)
@@ -112,8 +106,7 @@ Section typed_interp.
       iApply wp_atomic; cbn; trivial; [rewrite to_of_val; auto|].
       iPvsIntro.
       iApply wp_alloc; auto 1 using to_of_val.
-      iFrame "Hheap". iNext.
-      iIntros {l} "Hl". iPvsIntro.
+      iFrame "Hheap". iNext. iIntros {l} "Hl". iPvsIntro.
       iPvs (inv_alloc _ with "[Hl]") as "HN";
         [| | iPvsIntro; iExists _; iSplit; trivial]; eauto.
     - (* Load *)

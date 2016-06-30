@@ -1,8 +1,5 @@
-From iris.program_logic Require Import lifting.
-From iris_logrel.F_mu_ref_par Require Import lang typing rules.
-From iris.algebra Require Import upred_big_op frac dec_agree upred_big_op.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.program_logic Require Import ownership auth.
+From iris.program_logic Require Export weakestpre.
+From iris_logrel.F_mu_ref_par Require Export rules typing.
 Import uPred.
 
 (** interp : is a unary logical relation. *)

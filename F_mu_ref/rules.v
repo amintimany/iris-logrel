@@ -1,12 +1,9 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu_ref.lang.
-From iris.program_logic Require Export lifting.
+From iris.program_logic Require Export weakestpre global_functor invariants.
+From iris.program_logic Require Import lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.proofmode Require Import weakestpre.
 From iris.program_logic Require Import ownership auth.
-Require Import iris.proofmode.tactics iris.proofmode.invariants.
+From iris_logrel.F_mu_ref Require Export lang.
+From iris.proofmode Require Import tactics weakestpre invariants.
 Import uPred.
 
 Definition heapUR : ucmraT := gmapUR loc (prodR fracR (dec_agreeR val)).

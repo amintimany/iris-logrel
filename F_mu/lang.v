@@ -1,5 +1,5 @@
-Require Export iris_logrel.prelude.base.
-Require Import iris.program_logic.language.
+From iris_logrel.prelude Require Export base.
+From iris.program_logic Require Import language.
 
 Module lang.
   Inductive expr :=

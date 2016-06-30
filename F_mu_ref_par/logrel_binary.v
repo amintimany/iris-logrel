@@ -1,12 +1,6 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
-        iris_logrel.F_mu_ref_par.rules iris_logrel.F_mu_ref_par.rules_binary.
-From iris.program_logic Require Export lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.program_logic Require Import ownership auth.
-Require Import iris.proofmode.pviewshifts.
+From iris.proofmode Require Import tactics.
+From iris.program_logic Require Export weakestpre.
+From iris_logrel.F_mu_ref_par Require Export rules_binary typing.
 Import uPred.
 
 (** interp : is a unary logical relation. *)
@@ -452,25 +446,17 @@ Section logrel.
       {HΔ : ∀ x vw, PersistentP (Δ x vw)} :
     interp τ Δ (v, v') ⊢ ■ (v = v').
   Proof.
-    revert v v'; induction H => v v'; iIntros "#H1".
-    - simpl; iDestruct "H1" as "[% %]"; subst; trivial.
-    - simpl; iDestruct "H1" as {n} "[% %]"; subst; trivial.
-    - simpl; iDestruct "H1" as {b} "[% %]"; subst; trivial.
-    - iDestruct "H1" as {w1 w2} "[% [H1 H2]]".
-      destruct w1; destruct w2; simpl in *.
-      inversion H1; subst.
+    revert v v'; induction H; iIntros {v v'} "#H1 /=".
+    - by iDestruct "H1" as "[% %]"; subst.
+    - by iDestruct "H1" as {n} "[% %]"; subst.
+    - by iDestruct "H1" as {b} "[% %]"; subst.
+    - iDestruct "H1" as { [??] [??] } "[% [H1 H2]]"; simplify_eq/=.
       rewrite IHEqType1 IHEqType2.
-      iDestruct "H1" as "%". iDestruct "H2" as "%". subst; trivial.
+      by iDestruct "H1" as "%"; iDestruct "H2" as "%"; subst.
     - iDestruct "H1" as "[H1|H1]".
-      + iDestruct "H1" as {w} "[% H1]".
-        destruct w; simpl in *.
-        inversion H1; subst.
-        rewrite IHEqType1.
-        iDestruct "H1" as "%". subst; trivial.
-      + iDestruct "H1" as {w} "[% H1]".
-        destruct w; simpl in *.
-        inversion H1; subst.
-        rewrite IHEqType2.
-        iDestruct "H1" as "%". subst; trivial.
+      + iDestruct "H1" as { [??] } "[% H1]"; simplify_eq/=.
+        rewrite IHEqType1. by iDestruct "H1" as "%"; subst.
+      + iDestruct "H1" as { [??] } "[% H1]"; simplify_eq/=.
+        rewrite IHEqType2. by iDestruct "H1" as "%"; subst.
   Qed.
 End logrel.

@@ -1,6 +1,6 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu.lang.
+From iris.program_logic Require Export weakestpre.
+From iris.program_logic Require Import lifting.
+From iris_logrel.F_mu Require Export lang.
 
 Section lang_rules.
   Context {Σ : iFunctor}.
@@ -123,7 +123,7 @@ Section lang_rules.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Case (InjL _) _ _) (e1.[of_val v0/]) None) //=; auto.
     - rewrite right_id; auto using uPred.later_mono, wp_value'.
-  Qed.  
+  Qed.
 
   Lemma wp_case_inr E e0 v0 e1 e2 Q :
     to_val e0 = Some v0 →

@@ -1,6 +1,6 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.stlc.lang.
+From iris.program_logic Require Export weakestpre.
+From iris.program_logic Require Import lifting.
+From iris_logrel.stlc Require Export lang.
 
 Section lang_rules.
   Context {Σ : iFunctor}.

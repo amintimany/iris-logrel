@@ -1,8 +1,4 @@
-Require Import iris_logrel.prelude.base.
-From iris_logrel.F_mu_ref_par Require Import lang typing rules_binary
-        rules logrel_binary fundamental_binary.
-
-Local Notation expr := (expr lang).
+From iris_logrel.F_mu_ref_par Require Export fundamental_binary.
 
 Inductive context_item : Type :=
 | CTX_Lam
@@ -183,8 +179,8 @@ Proof.
 Qed.
 
 Lemma typed_context_n_closed K Γ τ Γ' τ' e :
-  (∀ f, e.[iter (List.length Γ) up f] = e) → typed_context K Γ τ Γ' τ' →
-  ∀ f, (fill_ctx K e).[iter (List.length Γ') up f] = (fill_ctx K e).
+  (∀ f, e.[base.iter (length Γ) up f] = e) → typed_context K Γ τ Γ' τ' →
+  ∀ f, (fill_ctx K e).[base.iter (length Γ') up f] = (fill_ctx K e).
 Proof.
   intros H1 H2; induction H2; simpl; auto.
   (induction H => f); asimpl; simpl in *;
@@ -206,8 +202,8 @@ Section bin_log_related_under_typed_context.
   Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
 
   Lemma bin_log_related_under_typed_context Γ e e' τ Γ' τ' K :
-    (∀ f, e.[iter (List.length Γ) up f] = e) →
-    (∀ f, e'.[iter (List.length Γ) up f] = e') →
+    (∀ f, e.[base.iter (length Γ) up f] = e) →
+    (∀ f, e'.[base.iter (length Γ) up f] = e') →
     typed_context K Γ τ Γ' τ' →
     (∀ Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)},
         @bin_log_related _ _ _ N Δ Γ e e' τ HΔ) →

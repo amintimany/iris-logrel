@@ -1,5 +1,4 @@
-Require Import iris_logrel.prelude.base.
-Require Import iris_logrel.F_mu.lang.
+From iris_logrel.F_mu Require Export lang.
 
 Inductive type :=
 | TUnit : type
@@ -44,11 +43,11 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
 .
 
 Local Hint Extern 1 =>
-match goal with [H : context [List.length (map _ _)] |- _] => rewrite map_length in H end
+match goal with [H : context [length (map _ _)] |- _] => rewrite map_length in H end
 : typed_subst_invariant.
 
 Lemma typed_subst_invariant Γ e τ s1 s2 :
-  typed Γ e τ → (∀ x, x < List.length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
+  typed Γ e τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
   assert (∀ {A} `{Ids A} `{Rename A}
@@ -61,7 +60,7 @@ Definition env_subst (vs : list val) (x : var) : expr :=
   from_option id (Var x) (of_val <$> vs !! x).
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
-  typed Δ e τ -> List.length Δ = S (List.length ws) →
+  typed Δ e τ -> length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.

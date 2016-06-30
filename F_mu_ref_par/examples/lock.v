@@ -1,6 +1,5 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris_logrel.F_mu_ref_par Require Import lang rules rules_binary typing.
-Import uPred.
+From iris_logrel.F_mu_ref_par Require Export rules_binary typing.
 
 Definition newlock : expr := Alloc (♭ false).
 Definition acquire : expr :=

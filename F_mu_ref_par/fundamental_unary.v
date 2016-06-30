@@ -1,13 +1,7 @@
-Require Import iris.program_logic.lifting.
-Require Import iris.algebra.upred_big_op.
-Require Import iris_logrel.F_mu_ref_par.lang iris_logrel.F_mu_ref_par.typing
-        iris_logrel.F_mu_ref_par.rules iris_logrel.F_mu_ref_par.logrel_unary.
-From iris.program_logic Require Export lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
-From iris.program_logic Require Export invariants ghost_ownership.
-From iris.program_logic Require Import ownership auth.
-Require Import iris.proofmode.tactics iris.proofmode.invariants.
-Import uPred.
+From iris_logrel.F_mu_ref_par Require Export logrel_unary.
+From iris_logrel.F_mu_ref_par Require Import rules.
+From iris.algebra Require Export upred_big_op.
+From iris.proofmode Require Import tactics pviewshifts invariants.
 
 Section typed_interp.
   Context {Σ : gFunctors} `{i : heapIG Σ} `{L : namespace}.
@@ -23,7 +17,7 @@ Section typed_interp.
   Lemma typed_interp N (Δ : varC -n> valC -n> iPropG lang Σ) Γ vs e τ
       (HNLdisj : ∀ l : loc, N ⊥ L .@ l)
       (Htyped : typed Γ e τ) (HΔ : ∀ x v, PersistentP (Δ x v)) :
-    List.length Γ = List.length vs →
+    length Γ = length vs →
     heapI_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs ⊢
                 WP e.[env_subst vs] {{ interp L τ Δ }}.
   Proof.
@@ -166,12 +160,12 @@ Section typed_interp.
       destruct (val_dec_eq v2 w) as [|Hneq]; subst.
       + iApply (wp_cas_suc N); eauto using to_of_val.
         specialize (HNLdisj l); set_solver_ndisj.
-        iFrame "Hheap Hw1". iIntros "> Hw1"; iPvsIntro.
+        iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro.
         iSplitL; [|iPvsIntro]; eauto.
       + iApply (wp_cas_fail N); eauto using to_of_val.
         clear Hneq. specialize (HNLdisj l); set_solver_ndisj.
         (* Weird that Hneq above makes set_solver_ndisj diverge or
            take exceptionally long!?!? *)
-        iFrame "Hheap Hw1". iIntros "> Hw1". iPvsIntro. iSplitL; [|iPvsIntro]; eauto.
+        iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL; [|iPvsIntro]; eauto.
   Qed.
 End typed_interp.

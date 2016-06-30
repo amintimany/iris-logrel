@@ -1,5 +1,4 @@
-Require Import iris_logrel.prelude.base.
-Require Import iris_logrel.F_mu_ref_par.lang.
+From iris_logrel.F_mu_ref_par Require Export lang.
 
 Inductive type :=
 | TUnit : type
@@ -99,7 +98,7 @@ Definition env_subst (vs : list val) (x : var) : expr :=
 
 Lemma context_gen_weakening ξ Γ' Γ e τ :
   typed (Γ' ++ Γ) e τ →
-  typed (Γ' ++ ξ ++ Γ) e.[iter (List.length Γ') up (ren (+ (List.length ξ)))] τ.
+  typed (Γ' ++ ξ ++ Γ) e.[iter (length Γ') up (ren (+ (length ξ)))] τ.
 Proof.
   intros H1.
   remember (Γ' ++ Γ) as Ξ. revert Γ' Γ ξ HeqΞ.
@@ -110,7 +109,7 @@ Proof.
       rewrite lookup_app_r; auto with omega.
       rewrite lookup_app_r in H; auto with omega.
       match goal with
-        |- _ !! ?A = _ => by replace A with (x - List.length Γ1) by omega
+        |- _ !! ?A = _ => by replace A with (x - length Γ1) by omega
       end.
   - econstructor; eauto.
     + eapply (IHtyped2 (_ :: Γ1) Γ2 ξ Logic.eq_refl).
@@ -128,7 +127,7 @@ Proof.
 Qed.
 
 Lemma context_weakening ξ Γ e τ :
-  typed Γ e τ → typed (ξ ++ Γ) e.[(ren (+ (List.length ξ)))] τ.
+  typed Γ e τ → typed (ξ ++ Γ) e.[(ren (+ (length ξ)))] τ.
 Proof. eapply (context_gen_weakening _ []). Qed.
 
 Lemma closed_context_weakening ξ Γ e τ :
@@ -169,7 +168,7 @@ Proof.
 Qed.
 
 Lemma typed_n_closed Γ τ e :
-  typed Γ e τ -> (∀ f, e.[iter (List.length Γ) up f] = e).
+  typed Γ e τ -> (∀ f, e.[iter (length Γ) up f] = e).
 Proof.
   intros H. induction H => f; asimpl; unfold upn; simpl in *; auto with f_equal.
   - apply lookup_lt_Some in H. rewrite iter_up. destruct lt_dec; auto with omega.
@@ -178,7 +177,7 @@ Qed.
 
 Lemma n_closed_subst_head_simpl n e w ws :
   (∀ f, e.[iter n up f] = e) ->
-  S (List.length ws) = n →
+  S (length ws) = n →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.
@@ -188,7 +187,7 @@ Proof.
 Qed.
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
-  typed Δ e τ -> List.length Δ = S (List.length ws) →
+  typed Δ e τ -> length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.
@@ -198,7 +197,7 @@ Proof.
 Qed.
 
 Lemma n_closed_subst_head_simpl_2 n e w w' ws :
-  (∀ f, e.[iter n up f] = e) -> (S (S (List.length ws))) = n →
+  (∀ f, e.[iter n up f] = e) -> (S (S (length ws))) = n →
   e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
   intros H1 H2.
@@ -208,7 +207,7 @@ Proof.
 Qed.
 
 Lemma typed_subst_head_simpl_2 Δ τ e w w' ws :
-  typed Δ e τ -> List.length Δ = 2 + (List.length ws) →
+  typed Δ e τ -> length Δ = 2 + (length ws) →
   e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
   intros H1 H2.

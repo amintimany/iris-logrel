@@ -1,5 +1,4 @@
-From iris.program_logic Require Import language.
-From iris_logrel.F_mu_ref_par Require Import lang typing rules.
+From iris_logrel.F_mu_ref_par Require Import  typing.
 
 Definition FG_StackType τ :=
   TRec (Tref (TSum TUnit (TProd τ.[ren (+1)] (TVar 0)))).
@@ -111,8 +110,6 @@ Definition FG_stack : expr :=
                 (Alloc (Fold (Alloc (InjL Unit))))).
 
 Section FG_stack.
-  Context {Σ : gFunctors} {iI : heapIG Σ}.
-
   (* Fine-grained push *)
   Lemma FG_push_folding (st : expr) :
     FG_push st =

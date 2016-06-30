@@ -1,7 +1,7 @@
-From iris.program_logic Require Import lifting.
-From iris.algebra Require Import upred_big_op.
-From iris_logrel.F_mu Require Import lang typing rules logrel.
-Import uPred.
+From iris_logrel.F_mu Require Export logrel.
+From iris.proofmode Require Import tactics.
+From iris_logrel.F_mu Require Import rules.
+From iris.algebra Require Export upred_big_op.
 
 Section typed_interp.
   Context {Σ : iFunctor}.
@@ -16,7 +16,7 @@ Section typed_interp.
 
   Lemma typed_interp (Δ : varC -n> valC -n> iProp lang Σ) Γ vs e τ
       (Htyped : typed Γ e τ) (HΔ : ∀ x v, PersistentP (Δ x v)) :
-    List.length Γ = List.length vs →
+    length Γ = length vs →
     [∧] zip_with (λ τ, interp τ Δ) Γ vs ⊢ WP e.[env_subst vs] {{ interp τ Δ }}.
   Proof.
     revert Δ HΔ vs. induction Htyped; iIntros {Δ HΔ vs Hlen} "#HΓ"; cbn.

@@ -1,6 +1,5 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris_logrel.F_mu_ref_par Require Import lang examples.lock typing
-     rules_binary rules.
+From iris_logrel.F_mu_ref_par Require Import examples.lock.
 Import uPred.
 
 Definition CG_StackType τ :=

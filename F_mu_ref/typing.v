@@ -1,5 +1,4 @@
-Require Import iris_logrel.prelude.base.
-Require Import iris_logrel.F_mu_ref.lang.
+From iris_logrel.F_mu_ref Require Export lang.
 
 Inductive type :=
 | TUnit : type
@@ -67,7 +66,7 @@ Definition env_subst (vs : list val) (x : var) : expr :=
   from_option id (Var x) (of_val <$> vs !! x).
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
-  typed Δ e τ -> List.length Δ = S (List.length ws) →
+  typed Δ e τ → length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.
