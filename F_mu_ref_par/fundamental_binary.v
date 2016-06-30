@@ -214,7 +214,7 @@ Section typed_interp.
                             :: v :: vs)). simpl in IHHtyped.
     erewrite <- ?n_closed_subst_head_simpl_2 in IHHtyped; eauto; simpl;
       try rewrite map_length; auto.
-    iApply IHHtyped; auto. repeat iSplitR; eauto.
+    iApply IHHtyped; eauto 10.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
   Qed.
@@ -330,17 +330,16 @@ Section typed_interp.
     iIntros {vs Hlen ρ j K} "(#Hheap & #Hspec & #HΓ & Htr) /=".
     smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [AllocCtx])).
-    iApply wp_pvs.
     iPvs (step_alloc _ _ _ j K (# v') v' _ _ with "* [-]") as {l'} "[Hj Hl']"; eauto.
     iApply wp_alloc; auto 1 using to_of_val.
-    iIntros "{$Hheap} >". iIntros {l} "Hl". iPvsIntro.
+    iIntros "{$Hheap} >". iIntros {l} "Hl".
     iAssert ((∃ w : val * val, l ↦ᵢ w.1 ★ l' ↦ₛ w.2 ★
                                  ((@interp _ _ _ (N .@ 1) τ) Δ) w)%I)
       with "[Hl Hl']" as "Hinv".
     { iExists (v, v'); iFrame "Hl Hl' Hiv"; trivial. }
     iPvs (inv_alloc _ with "[Hinv]") as "HN"; eauto 1.
     { iNext; iExact "Hinv". }
-    iPvsIntro; iExists (LocV l'); iSplit; [iExact "Hj"|].
+    iPvsIntro. iExists (LocV l'); iSplit; [iExact "Hj"|].
     iExists (l, l'); iSplit; trivial.
     (* unshelving *)
     Unshelve. all: eauto using to_of_val.
@@ -368,7 +367,6 @@ Section typed_interp.
     smart_wp_bind (LoadCtx) v v' "[Hv #Hiv]"
                   (IHHtyped _ _ _ j (K ++ [LoadCtx])).
     iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
-    iApply wp_pvs.
     iInv (N .@ 1 .@ l) as {w} "[Hw1 [Hw2 #Hw3]]".
     iTimeless "Hw2".
     iPvs (step_load _ _ _ j K (l.2) 1 (w.2) _ with "[Hv Hw2]") as "[Hv Hw2]".
@@ -377,8 +375,7 @@ Section typed_interp.
     SolveDisj 2 l.
     iIntros "{$Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     + iNext; iExists w; by iFrame.
-    + iPvsIntro.
-      destruct w as [w1 w2]; iExists w2; iFrame "Hv Hw3"; trivial.
+    + destruct w as [w1 w2]; iExists w2; iFrame "Hv Hw3"; trivial.
       (* unshelving *)
       Unshelve. all: eauto using to_of_val.
       SolveDisj 3 l.
@@ -395,7 +392,6 @@ Section typed_interp.
     smart_wp_bind (StoreRCtx _) w w' "[Hw #Hiw]"
                   (IHHtyped2 _ _ _ j (K ++ [StoreRCtx _])).
     iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
-    iApply wp_pvs.
     iInv (N .@ 1 .@ l) as {z} "[Hw1 [Hw2 #Hw3]]".
     eapply bool_decide_spec; eauto using to_of_val.
     iTimeless "Hw2".
@@ -406,7 +402,7 @@ Section typed_interp.
     SolveDisj 2 l.
     iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     + iNext; iExists (w, w'); by iFrame.
-    + iPvsIntro. iExists UnitV; iFrame "Hw" ; iSplit; trivial.
+    + iExists UnitV; iFrame "Hw" ; iSplit; trivial.
       (* unshelving *)
       Unshelve. all: eauto using to_of_val.
       SolveDisj 3 l.
@@ -427,7 +423,6 @@ Section typed_interp.
     smart_wp_bind (CasRCtx _ _) u u' "[Hu #Hiu]"
                   (IHHtyped3 _ _ _ j (K ++ [CasRCtx _ _])).
     iDestruct "Hiv" as {l} "[% Hinv]"; simplify_eq/=.
-    iApply wp_pvs.
     iInv (N .@ 1 .@ l) as { [z1 z2] } "[Hw1 [Hw2 #Hw3]]".
     eapply bool_decide_spec; eauto 10 using to_of_val.
     iTimeless "Hw2".
@@ -442,7 +437,7 @@ Section typed_interp.
       SolveDisj 2 l.
       iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
       * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
-      * iPvsIntro. iExists (♭v true); iFrame "Hw"; eauto.
+      * iExists (♭v true); iFrame "Hw"; eauto.
     + iPvs (step_cas_fail _ _ _ j K (l.2) 1 (z2) (# w') w' (# u') u' _ _ _
             with "[Hu Hw2]") as "[Hw Hw2]"; simpl.
       { iFrame "Hspec Hu Hw2". iNext.
@@ -451,8 +446,8 @@ Section typed_interp.
       iApply (wp_cas_fail (N .@ 2)); eauto using to_of_val.
       SolveDisj 2 l.
       iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
-      * iNext; iExists (_, _); iFrame "Hw1 Hw2"; trivial.
-      * iPvsIntro. iExists (♭v false); iFrame "Hw". iExists _; iSplit; trivial.
+      * iNext; iExists (_, _); by iFrame "Hw1 Hw2".
+      * iExists (♭v false); eauto.
         (* unshelving *)
         Unshelve. all: eauto using to_of_val. all: SolveDisj 3 l.
   Qed.

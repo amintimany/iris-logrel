@@ -75,7 +75,7 @@ Fixpoint fill_ctx_item (ctx : context_item) (e : expr) : expr :=
 
 Definition context := list context_item.
 
-Definition fill_ctx K e := foldr fill_ctx_item e K.
+Definition fill_ctx (K : context) (e : expr) : expr := foldr fill_ctx_item e K.
 
 Local Open Scope bin_logrel_scope.
 
@@ -164,13 +164,13 @@ Lemma typed_context_item_typed k Γ τ Γ' τ' e :
   typed Γ' (fill_ctx_item k e) τ'.
 Proof. intros H1 H2; induction H2; simpl; eauto using typed. Qed.
 
-Inductive typed_context :
-  context → list type → type → list type → type → Prop :=
-| TPCTX_nil : ∀ Γ τ, typed_context nil Γ τ Γ τ
-| TPCTX_cons : ∀ Γ1 τ1 Γ2 τ2 Γ3 τ3 k K,
-    typed_context_item k Γ2 τ2 Γ3 τ3 →
-    typed_context K Γ1 τ1 Γ2 τ2 →
-    typed_context (k :: K) Γ1 τ1 Γ3 τ3.
+Inductive typed_context: context → list type → type → list type → type → Prop :=
+  | TPCTX_nil Γ τ :
+     typed_context nil Γ τ Γ τ
+  | TPCTX_cons Γ1 τ1 Γ2 τ2 Γ3 τ3 k K :
+     typed_context_item k Γ2 τ2 Γ3 τ3 →
+     typed_context K Γ1 τ1 Γ2 τ2 →
+     typed_context (k :: K) Γ1 τ1 Γ3 τ3.
 
 Lemma typed_context_typed K Γ τ Γ' τ' e :
   typed Γ e τ → typed_context K Γ τ Γ' τ' → typed Γ' (fill_ctx K e) τ'.
