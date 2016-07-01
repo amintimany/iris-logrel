@@ -368,14 +368,13 @@ Section Stack_refinement.
   Qed.
 End Stack_refinement.
 
-Definition Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR].
-
 Theorem stack_ctx_refinement :
-  ctx_refines [] FG_stack CG_stack (TForall (TProd (TProd
+  [] ⊨ FG_stack ≤ctx≤ CG_stack : TForall (TProd (TProd
         (TArrow (TVar 0) TUnit)
         (TArrow TUnit (TSum TUnit (TVar 0))))
-        (TArrow (TArrow (TVar 0) TUnit) TUnit))).
+        (TArrow (TArrow (TVar 0) TUnit) TUnit)).
 Proof.
+  set (Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR]).
   eapply (@binary_soundness Σ);
     eauto using FG_stack_closed, CG_stack_closed.
   all: try typeclasses eauto.

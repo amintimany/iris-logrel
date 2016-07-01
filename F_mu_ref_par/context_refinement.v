@@ -189,6 +189,8 @@ Definition ctx_refines (Γ : list type)
   typed_ctx K Γ τ [] TUnit →
   rtc step ([fill_ctx K e], ∅) (# v :: thp, σ) →
   ∃ thp' σ' v', rtc step ([fill_ctx K e'], ∅) (# v' :: thp', σ').
+Notation "Γ ⊨ e '≤ctx≤' e' : τ" :=
+  (ctx_refines Γ e e' τ) (at level 74, e, e', τ at next level).
 
 Section bin_log_related_under_typed_ctx.
   Context `{heapIG Σ, cfgSG Σ}.

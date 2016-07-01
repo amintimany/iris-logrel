@@ -357,12 +357,11 @@ Section CG_Counter.
   Qed.
 End CG_Counter.
 
-Definition Σ := #[auth.authGF heapUR; auth.authGF cfgUR].
-
 Theorem counter_ctx_refinement :
-  ctx_refines [] FG_counter CG_counter
-    (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)).
+  [] ⊨ FG_counter ≤ctx≤ CG_counter :
+         TProd (TArrow TUnit TUnit) (TArrow TUnit TNat).
 Proof.
+  set (Σ := #[auth.authGF heapUR; auth.authGF cfgUR]).
   eapply (@binary_soundness Σ);
     auto using FG_counter_closed, CG_counter_closed, FG_CG_counter_refinement.
   all: typeclasses eauto.

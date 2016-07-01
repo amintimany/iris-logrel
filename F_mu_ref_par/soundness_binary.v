@@ -81,7 +81,7 @@ Section soundness.
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
     (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
-    ctx_refines Γ e e' τ.
+    Γ ⊨ e ≤ctx≤ e' : τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.
     eapply basic_soundness; eauto.
