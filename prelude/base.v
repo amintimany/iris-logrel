@@ -1,6 +1,6 @@
 From iris.algebra Require Export base.
 From iris.algebra Require Import upred.
-From iris.program_logic Require Import weakestpre.
+From iris.program_logic Require Import weakestpre invariants.
 From Autosubst Require Export Autosubst.
 Import uPred.
 
@@ -35,6 +35,8 @@ Ltac properness :=
   | |- (WP _ {{ _ }})%I ≡ (WP _ {{ _ }})%I => apply wp_proper =>?
   | |- (▷ _)%I ≡ (▷ _)%I => apply later_proper
   | |- (□ _)%I ≡ (□ _)%I => apply always_proper
+  | |- (_ ★ _)%I ≡ (_ ★ _)%I => apply sep_proper
+  | |- (inv _ _)%I ≡ (inv _ _)%I => apply (contractive_proper _)
   end.
 
 Ltac solve_proper_alt :=
