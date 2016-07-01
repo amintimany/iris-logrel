@@ -7,16 +7,13 @@ Section soundness.
 
   Lemma wp_soundness e τ σ :
     [] ⊢ₜ e : τ →
-    ownP σ ⊢ WP e {{ v, ∃ H : heapIG Σ, interp (nroot .@ 1) τ [] v}}.
+    ownP σ ⊢ WP e {{ v, ∃ H : heapIG Σ, interp τ [] v}}.
   Proof.
     iIntros {H1} "Hemp".
-    iPvs (heap_alloc (nroot .@ 2) with "Hemp")
-      as {H} "[Hheap Hemp]"; first solve_ndisj.
+    iPvs (heap_alloc with "Hemp") as {H} "[Hheap Hemp]"; first solve_ndisj.
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
-    rewrite -(empty_env_subst e).
-    iApply (@typed_interp _ _ (nroot .@ 1) (nroot .@ 2)); eauto.
-    solve_ndisj.
+    rewrite -(empty_env_subst e). iApply typed_interp; eauto.
   Qed.
 
   Theorem soundness e τ e' thp σ σ' :

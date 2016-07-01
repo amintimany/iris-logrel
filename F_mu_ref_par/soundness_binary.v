@@ -12,35 +12,34 @@ Section soundness.
   Local Opaque to_heap.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ H H' N Δ (HΔ : ctx_PersistentP Δ),
-      @bin_log_related Σ H H' N Δ [] e e' τ) →
+    (∀ H H' Δ (HΔ : ctx_PersistentP Δ),
+      @bin_log_related Σ H H' Δ [] e e' τ) →
     ownP (Σ:=globalF Σ) ∅
     ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h) }}.
   Proof.
     iIntros {H1} "Hemp".
-    iPvs (heap_alloc (nroot .@ 2) with "Hemp")
-      as {h} "[#Hheap _]"; first solve_ndisj.
+    iPvs (heap_alloc with "Hemp") as {h} "[#Hheap _]"; first solve_ndisj.
     iPvs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
       ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as {γ} "[Hcfg1 Hcfg2]".
     { constructor; eauto.
       - intros n; simpl. exists ∅. unfold to_cfg; simpl. rewrite to_empty_heap.
           by rewrite left_id right_id.
       - repeat constructor; simpl; by auto. }
-    iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv ([e'], ∅)))
+    iAssert (@auth.auth_inv _ Σ _ _ γ (spec_inv ([e'], ∅)))
       with "[Hcfg1]" as "Hinv".
     { iExists _; iFrame "Hcfg1".
       iPureIntro. rewrite from_to_cfg; constructor. }
-    iPvs (inv_alloc (nroot .@ 3) with "[Hinv]") as "#Hcfg"; trivial.
+    iPvs (inv_alloc specN with "[Hinv]") as "#Hcfg"; trivial.
     { iNext. iExact "Hinv". }
-    iPoseProof (H1 h (@CFGSG _ _ γ) _ [] _ [] _ 0 [] with "[Hcfg2]") as "HBR".
+    iPoseProof (H1 h (@CFGSG _ _ γ) [] _ [] _ 0 [] with "[Hcfg2]") as "HBR".
     { done. }
-    { rewrite /Spec_ctx /auth_ctx /tpool_mapsto /auth_own empty_env_subst /=.
+    { rewrite /spec_ctx /auth_ctx /tpool_mapsto /auth_own empty_env_subst /=.
       by iFrame "Hheap Hcfg Hcfg2". }
     rewrite /= empty_env_subst.
     iApply wp_pvs.
     iApply wp_wand_l; iSplitR; [|iApply "HBR"].
     iIntros {v}; iDestruct 1 as {v'} "[Hj #Hinterp]".
-    iInv> (nroot .@ 3) as {ρ} "[Hown #Hp]".
+    iInv> specN as {ρ} "[Hown #Hp]".
     iDestruct "Hp" as %Hp.
     unfold tpool_mapsto, auth.auth_own; simpl.
     iCombine "Hj" "Hown" as "Hown".
@@ -64,7 +63,7 @@ Section soundness.
   Qed.
 
   Lemma basic_soundness e e' τ v thp hp :
-    (∀ H H' N Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' N Δ [] e e' τ) →
+    (∀ H H' Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' Δ [] e e' τ) →
     rtc step ([e], ∅) (# v :: thp, hp) →
     (∃ thp' hp' v', rtc step ([e'], ∅) (# v' :: thp', hp')).
   Proof.
@@ -82,7 +81,7 @@ Section soundness.
   Lemma binary_soundness Γ e e' τ :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    (∀ H H' N Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' N Δ Γ e e' τ) →
+    (∀ H H' Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' Δ Γ e e' τ) →
     ctx_refines Γ e e' τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.

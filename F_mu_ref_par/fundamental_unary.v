@@ -4,7 +4,7 @@ From iris.algebra Require Export upred_big_op.
 From iris.proofmode Require Import tactics pviewshifts invariants.
 
 Section typed_interp.
-  Context `{heapIG Σ} (L : namespace).
+  Context `{heapIG Σ}.
   Notation D := (valC -n> iPropG lang Σ).
   Implicit Types Δ : listC D.
 
@@ -15,11 +15,11 @@ Section typed_interp.
 
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
-  Lemma typed_interp N Δ Γ vs e τ (HΔ : ctx_PersistentP Δ) (HNLdisj : N ⊥ L) :
+  Lemma typed_interp Δ Γ vs e τ (HΔ : ctx_PersistentP Δ) :
     Γ ⊢ₜ e : τ →
     length Γ = length vs →
-    heapI_ctx N ∧ [∧] zip_with (λ τ, interp L τ Δ) Γ vs
-    ⊢ WP e.[env_subst vs] {{ interp L τ Δ }}.
+    heapI_ctx ∧ [∧] zip_with (λ τ, interp τ Δ) Γ vs
+    ⊢ WP e.[env_subst vs] {{ interp τ Δ }}.
   Proof.
     intros Htyped; revert Δ HΔ vs.
     induction Htyped; iIntros {Δ HΔ vs Hlen} "#[Hheap HΓ] /=".
@@ -91,7 +91,7 @@ Section typed_interp.
       rewrite zip_with_fmap_l. by iApply context_interp_ren_S.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
-      iApply wp_wand_r; iSplitL; [iApply ("Hv" $! (interp L τ' Δ)); iPureIntro; apply _|]; cbn.
+      iApply wp_wand_r; iSplitL; [iApply ("Hv" $! (interp τ' Δ)); iPureIntro; apply _|]; cbn.
       iIntros {w} "?". by rewrite -interp_subst; simpl.
     - (* Fold *)
       iApply (@wp_bind _ _ _ [FoldCtx]);
@@ -103,7 +103,7 @@ Section typed_interp.
       iApply (@wp_bind _ _ _ [UnfoldCtx]);
         iApply wp_wand_l; iSplitL; [|iApply IHHtyped; auto].
       iIntros {v} "#Hv". rewrite /= fixpoint_unfold.
-      change (fixpoint _) with (interp L (TRec τ) Δ); simpl.
+      change (fixpoint _) with (interp (TRec τ) Δ); simpl.
       iDestruct "Hv" as {w} "#[% Hw]"; subst.
       iApply wp_Fold; cbn; auto using to_of_val.
       iNext; iPvsIntro. by rewrite -interp_subst.
@@ -124,8 +124,8 @@ Section typed_interp.
       iDestruct "Hv" as {l} "[% #Hv]"; subst.
       iApply wp_atomic; cbn; eauto using to_of_val.
       iPvsIntro.
-      iInv (L .@ l) as {w} "[Hw1 #Hw2]".
-      iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
+      iInv (logN .@ l) as {w} "[Hw1 #Hw2]".
+      iApply (wp_load _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
       iIntros "{$Hw1} > Hw1". iPvsIntro; iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
@@ -133,9 +133,9 @@ Section typed_interp.
       iDestruct "Hv" as {l} "[% #Hv]"; subst.
       iApply wp_atomic; cbn; [trivial| rewrite ?to_of_val; auto |].
       iPvsIntro.
-      iInv (L .@ l) as {z} "[Hz1 #Hz2]".
+      iInv (logN .@ l) as {z} "[Hz1 #Hz2]".
       eapply bool_decide_spec; eauto using to_of_val.
-      iApply (wp_store N); auto using to_of_val. solve_ndisj.
+      iApply wp_store; auto using to_of_val. solve_ndisj.
       iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro. iSplitL; eauto 10.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHHtyped1; cbn.
@@ -144,12 +144,12 @@ Section typed_interp.
       iDestruct "Hv1" as {l} "[% Hinv]"; subst.
       iApply wp_atomic; cbn; eauto 10 using to_of_val.
       iPvsIntro.
-      iInv (L .@ l) as {w} "[Hw1 #Hw2]"; [cbn; eauto 10 using to_of_val|].
-      destruct (val_dec_eq v2 w) as [|Hneq]; subst.
-      + iApply (wp_cas_suc N); eauto using to_of_val. solve_ndisj.
+      iInv (logN .@ l) as {w} "[Hw1 #Hw2]"; [cbn; eauto 10 using to_of_val|].
+      destruct (decide (v2 = w)) as [|Hneq]; subst.
+      + iApply wp_cas_suc; eauto using to_of_val. solve_ndisj.
         iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro.
         iSplitL; [|iPvsIntro]; eauto.
-      + iApply (wp_cas_fail N); eauto using to_of_val. solve_ndisj.
+      + iApply wp_cas_fail; eauto using to_of_val. solve_ndisj.
         iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL; eauto.
   Qed.
 End typed_interp.

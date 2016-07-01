@@ -17,9 +17,11 @@ Ltac auto_proper ::=
   (* repeatedly apply congruence lemmas and use the equalities in the hypotheses. *)
   try (f_equiv; fast_done || auto_proper).
 
+Definition logN : namespace := nroot .@ "logN".
+
 (** interp : is a unary logical relation. *)
 Section logrel.
-  Context `{heapIG Σ, cfgSG Σ} (L : namespace).
+  Context `{heapIG Σ, cfgSG Σ}.
   Notation D := (prodC valC valC -n> iPropG lang Σ).
   Implicit Types τi : D.
   Implicit Types Δ : listC D.
@@ -92,7 +94,7 @@ Section logrel.
   Program Definition interp_ref
       (interp : listC D -n> D) : listC D -n> D := λne Δ ww,
     (∃ ll, ww = (LocV (ll.1), LocV (ll.2)) ∧
-           inv (L .@ ll) (interp_ref_inv ll (interp Δ)))%I.
+           inv (logN .@ ll) (interp_ref_inv ll (interp Δ)))%I.
   Solve Obligations with solve_proper.
 
   Fixpoint interp (τ : type) : listC D -n> D :=

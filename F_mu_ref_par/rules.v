@@ -6,6 +6,7 @@ From iris.program_logic Require Import ownership auth.
 From iris_logrel.F_mu_ref_par Require Export lang.
 Import uPred.
 
+Definition heapN : namespace := nroot .@ "heap".
 Definition heapUR : ucmraT := gmapUR loc (prodR fracR (dec_agreeR val)).
 
 (** The CMRA for the heap of the implementation. This is linked to the
@@ -23,14 +24,13 @@ Section definitionsI.
     auth_own heapI_name {[ l := (q, DecAgree v) ]}.
   Definition heapI_inv (h : heapUR) : iPropG lang Σ :=
     ownP (of_heap h).
-  Definition heapI_ctx (N : namespace) : iPropG lang Σ :=
-    auth_ctx heapI_name N heapI_inv.
+  Definition heapI_ctx : iPropG lang Σ := auth_ctx heapI_name heapN heapI_inv.
 
   Global Instance heapI_mapsto_timeless l q v : TimelessP (heapI_mapsto l q v).
   Proof. apply _. Qed.
   Global Instance heapI_inv_proper : Proper ((≡) ==> (≡)) heapI_inv.
   Proof. solve_proper. Qed.
-  Global Instance heapI_ctx_persistent N : PersistentP (heapI_ctx N).
+  Global Instance heapI_ctx_persistent : PersistentP heapI_ctx.
   Proof. apply _. Qed.
 End definitionsI.
 Typeclasses Opaque heapI_ctx heapI_mapsto.
@@ -41,7 +41,6 @@ Notation "l ↦ᵢ v" := (heapI_mapsto l 1 v) (at level 20) : uPred_scope.
 
 Section lang_rules.
   Context {Σ : gFunctors}.
-  Implicit Types N : namespace.
   Implicit Types P Q : iPropG lang Σ.
   Implicit Types Φ : val → iPropG lang Σ.
   Implicit Types σ : state.
@@ -175,13 +174,13 @@ Section lang_rules.
   Context `{HIGΣ : heapIG Σ}.
 
   (** Allocation *)
-  Lemma heap_alloc N E σ :
-    authG lang Σ heapUR → nclose N ⊆ E →
-    ownP σ ={E}=> ∃ _ : heapIG Σ, heapI_ctx N ∧ [★ map] l ↦ v ∈ σ, l ↦ᵢ v.
+  Lemma heap_alloc E σ :
+    authG lang Σ heapUR → nclose heapN ⊆ E →
+    ownP σ ={E}=> ∃ _ : heapIG Σ, heapI_ctx ∧ [★ map] l ↦ v ∈ σ, l ↦ᵢ v.
   Proof.
     intros. rewrite -{1}(from_to_heap σ). etrans.
     { rewrite [ownP _]later_intro.
-      apply (auth_alloc (ownP ∘ of_heap) N E (to_heap σ)); last done.
+      apply (auth_alloc (ownP ∘ of_heap) heapN E (to_heap σ)); last done.
       apply to_heap_valid. }
     apply pvs_mono, exist_elim=> γ.
     rewrite -(exist_intro (HeapIG _ _ γ)) /heapI_ctx; apply and_mono_r.
@@ -280,9 +279,9 @@ Section lang_rules.
   Qed.
 
   (** Weakest precondition *)
-  Lemma wp_alloc N E e v Φ :
-    to_val e = Some v → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ (∀ l, l ↦ᵢ v ={E}=★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
+  Lemma wp_alloc E e v Φ :
+    to_val e = Some v → nclose heapN ⊆ E →
+    heapI_ctx ★ ▷ (∀ l, l ↦ᵢ v ={E}=★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
   Proof.
     iIntros {??} "[#Hinv HΦ]". rewrite /heapI_ctx.
     iPvs (auth_empty heapI_name) as "Hheap".
@@ -297,9 +296,9 @@ Section lang_rules.
     iIntros "Hheap". iApply "HΦ". by rewrite /heapI_mapsto.
   Qed.
 
-  Lemma wp_load N E l q v Φ :
-    nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v ={E}=★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
+  Lemma wp_load E l q v Φ :
+    nclose heapN ⊆ E →
+    heapI_ctx ★ ▷ l ↦ᵢ{q} v ★ ▷ (l ↦ᵢ{q} v ={E}=★ Φ v) ⊢ WP Load (Loc l) @ E {{ Φ }}.
   Proof.
     iIntros {?} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
     iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
@@ -310,9 +309,9 @@ Section lang_rules.
     rewrite of_heap_singleton_op //. by iFrame.
   Qed.
 
-  Lemma wp_store N E l v' e v Φ :
-    to_val e = Some v → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v ={E}=★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
+  Lemma wp_store E l v' e v Φ :
+    to_val e = Some v → nclose heapN ⊆ E →
+    heapI_ctx ★ ▷ l ↦ᵢ v' ★ ▷ (l ↦ᵢ v ={E}=★ Φ UnitV) ⊢ WP Store (Loc l) e @ E {{ Φ }}.
   Proof.
     iIntros {??} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
     iApply wp_pvs; iApply (auth_fsa heapI_inv (wp_fsa _)); simpl; eauto.
@@ -324,9 +323,9 @@ Section lang_rules.
     rewrite of_heap_singleton_op //; eauto. by iFrame.
   Qed.
 
-  Lemma wp_cas_fail N E l q v' e1 v1 e2 v2 Φ :
-    to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' ={E}=★ Φ (♭v false))
+  Lemma wp_cas_fail E l q v' e1 v1 e2 v2 Φ :
+    to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose heapN ⊆ E →
+    heapI_ctx ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' ={E}=★ Φ (♭v false))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     iIntros {????} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
@@ -338,9 +337,9 @@ Section lang_rules.
     rewrite of_heap_singleton_op //. by iFrame.
   Qed.
 
-  Lemma wp_cas_suc N E l e1 v1 e2 v2 Φ :
-    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-    heapI_ctx N ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 ={E}=★ Φ (♭v true))
+  Lemma wp_cas_suc E l e1 v1 e2 v2 Φ :
+    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose heapN ⊆ E →
+    heapI_ctx ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 ={E}=★ Φ (♭v true))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     iIntros {???} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.

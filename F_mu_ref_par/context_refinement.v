@@ -191,7 +191,7 @@ Definition ctx_refines (Γ : list type)
   ∃ thp' σ' v', rtc step ([fill_ctx K e'], ∅) (# v' :: thp', σ').
 
 Section bin_log_related_under_typed_ctx.
-  Context `{heapIG Σ, cfgSG Σ} {N : namespace}.
+  Context `{heapIG Σ, cfgSG Σ}.
   Notation D := (prodC valC valC -n> iPropG lang Σ).
   Implicit Types Δ : listC D.
 
@@ -199,9 +199,9 @@ Section bin_log_related_under_typed_ctx.
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
     typed_ctx K Γ τ Γ' τ' →
-    (∀ Δ (HΔ : ctx_PersistentP Δ), @bin_log_related _ _ _ N Δ Γ e e' τ) →
+    (∀ Δ (HΔ : ctx_PersistentP Δ), @bin_log_related _ _ _ Δ Γ e e' τ) →
     ∀ Δ (HΔ : ctx_PersistentP Δ),
-      @bin_log_related _ _ _ N Δ Γ' (fill_ctx K e) (fill_ctx K e') τ'.
+      @bin_log_related _ _ _ Δ Γ' (fill_ctx K e) (fill_ctx K e') τ'.
   Proof.
     revert Γ τ Γ' τ' e e'.
     induction K as [|k K]=> Γ τ Γ' τ' e e' H1 H2; simpl.

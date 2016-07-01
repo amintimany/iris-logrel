@@ -1,10 +1,13 @@
+From iris.prelude Require Import strings.
 From iris.program_logic Require Export weakestpre.
 From iris_logrel.F_mu_ref Require Export rules typing.
 Import uPred.
 
+Definition logN : namespace := nroot .@ "logN".
+
 (** interp : is a unary logical relation. *)
 Section logrel.
-  Context `{heapG Σ} (L : namespace).
+  Context `{heapG Σ}.
   Notation D := (valC -n> iPropG lang Σ).
   Implicit Types τi : D.
   Implicit Types Δ : listC D.
@@ -61,7 +64,7 @@ Section logrel.
 
   Program Definition interp_ref
       (interp : listC D -n> D) : listC D -n> D := λne Δ w,
-    (∃ l, w = LocV l ∧ inv (L .@ l) (interp_ref_inv l (interp Δ)))%I.
+    (∃ l, w = LocV l ∧ inv (logN .@ l) (interp_ref_inv l (interp Δ)))%I.
   Solve Obligations with solve_proper.
 
   Fixpoint interp (τ : type) : listC D -n> D :=

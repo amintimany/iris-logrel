@@ -5,6 +5,8 @@ From iris_logrel.F_mu_ref_par Require Export rules.
 From iris.proofmode Require Import tactics weakestpre invariants.
 Import uPred.
 
+Definition specN := nroot .@ "spec".
+
 (** The CMRA for the heap of the specification. *)
 Definition tpoolUR : ucmraT := listUR (optionUR (exclR exprC)).
 
@@ -31,17 +33,17 @@ Section definitionsS.
   Definition tpool_mapsto (j : nat) (e: expr) : iPropG lang Σ :=
     auth_own cfg_name ({[ j := Excl' e ]}, ∅ : heapUR).
 
-  Definition Spec_inv (ρ : cfg lang) (ρ' : cfgUR) : iPropG lang Σ :=
+  Definition spec_inv (ρ : cfg lang) (ρ' : cfgUR) : iPropG lang Σ :=
     (■ ρ →⋆ of_cfg ρ')%I.
 
-  Definition Spec_ctx (S : namespace) (ρ : cfg lang) : iPropG lang Σ :=
-    auth_ctx cfg_name S (Spec_inv ρ).
+  Definition spec_ctx (ρ : cfg lang) : iPropG lang Σ :=
+    auth_ctx cfg_name specN (spec_inv ρ).
 
   Global Instance heapS_mapsto_timeless l q v : TimelessP (heapS_mapsto l q v).
   Proof. apply _. Qed.
-  Global Instance Spec_inv_Proper : Proper ((≡) ==> (≡) ==> (≡)) Spec_inv.
+  Global Instance spec_inv_Proper : Proper ((≡) ==> (≡) ==> (≡)) spec_inv.
   Proof. solve_proper. Qed.
-  Global Instance Spec_ctx_persistent N ρ : PersistentP (Spec_ctx N ρ).
+  Global Instance spec_ctx_persistent ρ : PersistentP (spec_ctx ρ).
   Proof. apply _. Qed.
 End definitionsS.
 Typeclasses Opaque heapS_mapsto tpool_mapsto.
@@ -52,8 +54,7 @@ Notation "l ↦ₛ v" := (heapS_mapsto l 1 v) (at level 20) : uPred_scope.
 Notation "j ⤇ e" := (tpool_mapsto j e) (at level 20) : uPred_scope.
 
 Section cfg.
-  Context {Σ : gFunctors}.
-  Implicit Types N : namespace.
+  Context `{cfgSG Σ}.
   Implicit Types P Q : iPropG lang Σ.
   Implicit Types Φ : val → iPropG lang Σ.
   Implicit Types σ : state.
@@ -79,8 +80,6 @@ Section cfg.
 
   Global Instance step_proper : Proper ((≡) ==> (≡) ==> iff) (@step lang).
   Proof. by intros ??????; fold_leibniz; subst. Qed.
-
-  Context`{icfg : cfgSG Σ}.
 
   Lemma tpool_update_validN n j e e' tp :
     ✓{n} ({[ j := Excl' e ]} ⋅ tp) → ✓{n} ({[ j := Excl' e' ]} ⋅ tp).
@@ -112,7 +111,7 @@ Section cfg.
   Lemma of_tpool_2_singletons j k e e' :
     j < k → of_tpool ({[ j := Excl' e ]} ⋅ {[ k := Excl' e' ]}) = [e; e'].
   Proof.
-    revert k; induction j => k; destruct k; simpl; auto with omega => H.
+    revert k; induction j => k; destruct k; simpl; auto with omega => ?.
     - apply (f_equal (cons _)), of_tpool_singleton.
     - apply IHj; omega.
   Qed.
@@ -140,9 +139,9 @@ Section cfg.
         of_tpool ({[ j := Excl' e' ]} ⋅ {[ k := Excl' e'' ]} ⋅ tp) =
         l1 ++ e' :: l2 ++ [e'']).
   Proof.
-    revert j. induction tp as [|t tp]=> j H.
+    revert j. induction tp as [|t tp]=> j Hj.
     - exists [], []; split.
-      + intros e'. clear H.
+      + intros e'. clear Hj.
         induction j; simpl; trivial; simpl in *.
         rewrite ->(comm op) in IHj; trivial.
       + intros e' k e'' H1 H2; simpl in *. replace [] with (∅ : tpoolUR)
@@ -150,13 +149,13 @@ Section cfg.
         apply of_tpool_2_singletons; auto with omega.
     - destruct j as [j|]; simpl in *.
       + destruct t as [?|].
-        { by move: H=> /Forall_cons [[/exclusive_r ? ?] ?]. }
+        { by move: Hj=> /Forall_cons [[/exclusive_r ? ?] ?]. }
         eexists [], (of_tpool tp); split; eauto.
         intros e' k e'' Hc1 Hc2. destruct k as [|k]; [omega|].
         simpl; apply (f_equal (cons _)). rewrite left_id.
         rewrite list_op_app ?replicate_length; last lia.
         by rewrite of_tpool_app list_op_units.
-      + move: H=> /Forall_cons [Ht ?].
+      + move: Hj=> /Forall_cons [Ht ?].
         destruct t as [[t|]|]; simpl in *.
         * edestruct IHtp as [l1 [l2 [Hl1 Hl2]]]; eauto.
           exists (t :: l1), l2; split.
@@ -178,7 +177,7 @@ Section cfg.
     ● (({[j := Excl' e]}, h) ⋅ ρ : cfgUR) ⋅ ◯ (({[j := Excl' e]}, h))
       ~~> ● (({[j := Excl' e']}, h) ⋅ ρ) ⋅ ◯ (({[j := Excl' e']}, h)).
   Proof.
-    intros H. apply auth_update, prod_local_update; simpl; try done.
+    intros Hj. apply auth_update, prod_local_update; simpl; try done.
     by apply list_singleton_local_update, option_local_update, exclusive_local_update.
   Qed.
 
@@ -188,9 +187,9 @@ Section cfg.
   Lemma tpool_valid_prepend_units_valid j (th : tpoolUR) :
     ✓ th → ✓ (replicate j ∅ ⋅ th).
   Proof.
-    revert th; induction j => th H.
-    - destruct th; inversion H; constructor; trivial.
-    - destruct th; inversion H; constructor.
+    revert th; induction j => th Hj.
+    - destruct th; inversion Hj; constructor; trivial.
+    - destruct th; inversion Hj; constructor.
       + constructor.
       + by apply Forall_replicate.
       + rewrite left_id; trivial.
@@ -258,14 +257,14 @@ Section cfg.
     - econstructor; eauto.
   Qed.
 
-  Lemma step_pure N E ρ j K e e' :
+  Lemma step_pure E ρ j K e e' :
     (∀ σ, head_step e σ e' σ None) →
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K e ={E}=> j ⤇ fill K e'.
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K e ={E}=> j ⤇ fill K e'.
   Proof.
     iIntros {H1 H2} "[#Hspec Hj]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
@@ -308,13 +307,13 @@ Section cfg.
       by eapply of_heap_None, (not_elem_of_dom (D := gset _)), is_fresh.
   Qed.
 
-  Lemma step_alloc N E ρ j K e v:
-    to_val e = Some v → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Alloc e) ={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ v.
+  Lemma step_alloc E ρ j K e v:
+    to_val e = Some v → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Alloc e) ={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ v.
   Proof.
     iIntros {H1 H2} "[#Hinv HΦ]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iCombine "HΦ" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
@@ -344,7 +343,7 @@ Section cfg.
       ~~> ● ((th, {[l := (1%Qp, DecAgree v')]}) ⋅ ρ)
            ⋅ ◯ (th, {[l := (1%Qp, DecAgree v')]}).
   Proof.
-    intros H. apply auth_update, prod_local_update; simpl; first done.
+    intros Hl. apply auth_update, prod_local_update; simpl; first done.
     by apply singleton_local_update, exclusive_local_update.
   Qed.
 
@@ -364,18 +363,18 @@ Section cfg.
     - econstructor; eauto. apply LoadS. apply lookup_insert.
   Qed.
 
-  Lemma step_load N E ρ j K l q v:
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Load (Loc l)) ★ l ↦ₛ{q} v
+  Lemma step_load E ρ j K l q v:
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Load (Loc l)) ★ l ↦ₛ{q} v
       ={E}=> j ⤇ fill K (of_val v) ★ l ↦ₛ{q} v.
   Proof.
     iIntros {H1} "[#Hinv [Hj Hl]]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %H%auth_valid_discrete.
-    revert H; rewrite /= pair_op /= !left_id !right_id.
+    iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
+    revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
     iPvs (own_update with "Hown") as "[H1 H2]".
@@ -409,18 +408,18 @@ Section cfg.
       apply StoreS; trivial. eexists; apply lookup_insert.
   Qed.
 
-  Lemma step_store N E ρ j K l v' e v:
-    to_val e = Some v → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Store (Loc l) e) ★ l ↦ₛ v'
+  Lemma step_store E ρ j K l v' e v:
+    to_val e = Some v → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Store (Loc l) e) ★ l ↦ₛ v'
       ={E}=> j ⤇ fill K Unit ★ l ↦ₛ v.
   Proof.
     iIntros {H1 H2} "[#Hinv [Hj Hl]]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %H%auth_valid_discrete.
-    revert H; rewrite /= pair_op /= !left_id !right_id.
+    iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
+    revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
     iPvs (own_update with "Hown") as "Hown".
@@ -456,19 +455,19 @@ Section cfg.
     - econstructor; eauto. eapply CasFailS; eauto. apply lookup_insert.
   Qed.
 
-  Lemma step_cas_fail N E ρ j K l q v' e1 v1 e2 v2:
-    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v' ≠ v1) ★ l ↦ₛ{q} v'
+  Lemma step_cas_fail E ρ j K l q v' e1 v1 e2 v2:
+    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v' ≠ v1) ★ l ↦ₛ{q} v'
       ={E}=> j ⤇ fill K (♭ false) ★ l ↦ₛ{q} v'.
   Proof.
     iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hl]]]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iTimeless "Hneq". iDestruct "Hneq" as %Hneq.
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %H%auth_valid_discrete.
-    revert H; rewrite /= pair_op /= !left_id !right_id.
+    iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
+    revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
     iPvs (own_update with "Hown") as "[H1 H2]".
@@ -504,19 +503,19 @@ Section cfg.
       econstructor; eauto. eapply CasSucS; eauto. apply lookup_insert.
   Qed.
 
-  Lemma step_cas_suc N E ρ j K l e1 v1 v1' e2 v2:
-    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v1 = v1') ★ l ↦ₛ v1'
+  Lemma step_cas_suc E ρ j K l e1 v1 v1' e2 v2:
+    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v1 = v1') ★ l ↦ₛ v1'
       ={E}=> j ⤇ fill K (♭ true) ★ l ↦ₛ v2.
   Proof.
     iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hl]]]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iTimeless "Heq". iDestruct "Heq" as %Heq; subst.
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %H%auth_valid_discrete.
-    revert H; rewrite /= pair_op /= !left_id !right_id.
+    iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
+    revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
     iPvs (own_update with "Hown") as "Hown".
@@ -532,57 +531,57 @@ Section cfg.
     - iPvsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
   Qed.
 
-  Lemma step_lam N E ρ j K e1 e2 v :
-    to_val e2 = Some v → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (App (Lam e1) e2)
+  Lemma step_lam E ρ j K e1 e2 v :
+    to_val e2 = Some v → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (App (Lam e1) e2)
       ={E}=> j ⤇ fill K (e1.[Lam e1,e2/]).
   Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_Tlam N E ρ j K e :
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (TApp (TLam e)) ={E}=> j ⤇ fill K e.
+  Lemma step_Tlam E ρ j K e :
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (TApp (TLam e)) ={E}=> j ⤇ fill K e.
   Proof. apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_Fold N E ρ j K e v :
-    to_val e = Some v → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Unfold (Fold e)) ={E}=> j ⤇ fill K e.
+  Lemma step_Fold E ρ j K e v :
+    to_val e = Some v → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Unfold (Fold e)) ={E}=> j ⤇ fill K e.
   Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_fst N E ρ j K e1 v1 e2 v2 :
-    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Fst (Pair e1 e2)) ={E}=> j ⤇ fill K e1.
+  Lemma step_fst E ρ j K e1 v1 e2 v2 :
+    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Fst (Pair e1 e2)) ={E}=> j ⤇ fill K e1.
   Proof. intros H1 H2; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_snd N E ρ j K e1 v1 e2 v2 :
-    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Snd (Pair e1 e2)) ={E}=> j ⤇ fill K e2.
+  Lemma step_snd E ρ j K e1 v1 e2 v2 :
+    to_val e1 = Some v1 → to_val e2 = Some v2 → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Snd (Pair e1 e2)) ={E}=> j ⤇ fill K e2.
   Proof. intros H1 H2; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_case_inl N E ρ j K e0 v0 e1 e2 :
-    to_val e0 = Some v0 → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Case (InjL e0) e1 e2)
+  Lemma step_case_inl E ρ j K e0 v0 e1 e2 :
+    to_val e0 = Some v0 → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Case (InjL e0) e1 e2)
       ={E}=> j ⤇ fill K (e1.[e0/]).
   Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_case_inr N E ρ j K e0 v0 e1 e2 :
-    to_val e0 = Some v0 → nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Case (InjR e0) e1 e2)
+  Lemma step_case_inr E ρ j K e0 v0 e1 e2 :
+    to_val e0 = Some v0 → nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Case (InjR e0) e1 e2)
       ={E}=> j ⤇ fill K (e2.[e0/]).
   Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_if_false N E ρ j K e1 e2 :
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (If (♭ false) e1 e2) ={E}=> j ⤇ fill K e2.
+  Lemma step_if_false E ρ j K e1 e2 :
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (If (♭ false) e1 e2) ={E}=> j ⤇ fill K e2.
   Proof. apply step_pure => σ; econstructor. Qed.
 
-  Lemma step_if_true N E ρ j K e1 e2 :
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (If (♭ true) e1 e2) ={E}=> j ⤇ fill K e1.
+  Lemma step_if_true E ρ j K e1 e2 :
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (If (♭ true) e1 e2) ={E}=> j ⤇ fill K e1.
   Proof. apply step_pure => σ; econstructor. Qed.
 
-  Lemma step_nat_bin_op N E ρ j K op a b :
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (BinOp op (♯ a) (♯ b))
+  Lemma step_nat_bin_op E ρ j K op a b :
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (BinOp op (♯ a) (♯ b))
       ={E}=> j ⤇ fill K (of_val (binop_meaning op a b)).
   Proof. apply step_pure => σ; econstructor. Qed.
 
@@ -600,16 +599,16 @@ Section cfg.
     econstructor; eauto. constructor.
   Qed.
 
-  Lemma step_fork N E ρ j K e :
-    nclose N ⊆ E →
-    Spec_ctx N ρ ★ j ⤇ fill K (Fork e) ={E}=> ∃ j', j ⤇ fill K Unit ★ j' ⤇ e.
+  Lemma step_fork E ρ j K e :
+    nclose specN ⊆ E →
+    spec_ctx ρ ★ j ⤇ fill K (Fork e) ={E}=> ∃ j', j ⤇ fill K Unit ★ j' ⤇ e.
   Proof.
     iIntros {H1} "[#Hspec Hj]".
-    unfold Spec_ctx, auth_ctx, tpool_mapsto, auth_own.
-    iInv> N as {ρ'} "[Hown #Hstep]".
+    unfold spec_ctx, auth_ctx, tpool_mapsto, auth_own.
+    iInv> specN as {ρ'} "[Hown #Hstep]".
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %H%auth_valid_discrete.
-    revert H; rewrite /= pair_op /= !left_id !right_id.
+    iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
+    revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
     iPvs (own_update with "Hown") as "Hown".

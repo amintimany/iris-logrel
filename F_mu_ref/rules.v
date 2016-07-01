@@ -6,6 +6,7 @@ From iris_logrel.F_mu_ref Require Export lang.
 From iris.proofmode Require Import tactics weakestpre invariants.
 Import uPred.
 
+Definition heapN : namespace := nroot .@ "heap".
 Definition heapUR : ucmraT := gmapUR loc (prodR fracR (dec_agreeR val)).
 
 (** The CMRA we need. *)
@@ -24,12 +25,11 @@ Section definitions.
     auth_own heap_name {[ l := (q, DecAgree v) ]}.
   Definition heap_inv (h : heapUR) : iPropG lang Σ :=
     ownP (of_heap h).
-  Definition heap_ctx (N : namespace) : iPropG lang Σ :=
-    auth_ctx heap_name N heap_inv.
+  Definition heap_ctx : iPropG lang Σ := auth_ctx heap_name heapN heap_inv.
 
   Global Instance heap_inv_proper : Proper ((≡) ==> (≡)) heap_inv.
   Proof. solve_proper. Qed.
-  Global Instance heap_ctx_always_stable N : PersistentP (heap_ctx N).
+  Global Instance heap_ctx_always_stable : PersistentP heap_ctx.
   Proof. apply _. Qed.
 End definitions.
 Typeclasses Opaque heap_ctx heap_mapsto.
@@ -40,7 +40,6 @@ Notation "l ↦ v" := (heap_mapsto l 1 v) (at level 20) : uPred_scope.
 
 Section lang_rules.
     Context {Σ : gFunctors}.
-    Implicit Types N : namespace.
     Implicit Types P Q : iPropG lang Σ.
     Implicit Types Φ : val → iPropG lang Σ.
     Implicit Types σ : state.
@@ -159,13 +158,13 @@ Section lang_rules.
     Proof. unfold of_heap; apply map_eq => i; rewrite !lookup_omap; f_equal. Qed.
 
     (** Allocation *)
-    Lemma heap_alloc N E σ :
-      authG lang Σ heapUR → nclose N ⊆ E →
-      ownP σ ={E}=> ∃ _ : heapG Σ, heap_ctx N ∧ [★ map] l ↦ v ∈ σ, l ↦ v.
+    Lemma heap_alloc E σ :
+      authG lang Σ heapUR → nclose heapN ⊆ E →
+      ownP σ ={E}=> ∃ _ : heapG Σ, heap_ctx ∧ [★ map] l ↦ v ∈ σ, l ↦ v.
     Proof.
       intros. rewrite -{1}(from_to_heap σ). etrans.
       { rewrite [ownP _]later_intro.
-        apply (auth_alloc (ownP ∘ of_heap) N E (to_heap σ)); last done.
+        apply (auth_alloc (ownP ∘ of_heap) heapN E (to_heap σ)); last done.
         apply to_heap_valid. }
       apply pvs_mono, exist_elim=> γ.
       rewrite -(exist_intro (HeapG _ _ γ)) /heap_ctx; apply and_mono_r.
@@ -179,7 +178,7 @@ Section lang_rules.
         by rewrite auth_own_op IH. 
     Qed.
 
-    Context `{HGΣ : heapG Σ}.
+    Context `{heapG Σ}.
 
     (** General properties of mapsto *)
     Lemma heap_mapsto_op_eq l q1 q2 v : l ↦{q1} v ★ l ↦{q2} v ⊣⊢ l ↦{q1+q2} v.
@@ -217,7 +216,7 @@ Section lang_rules.
       cbn; rewrite to_of_val.
       apply pure_elim_l=>-[l [-> [-Heq [-> ?]]]]; inversion Heq; subst.
         by rewrite (forall_elim l) right_id pure_equiv // left_id wand_elim_r.
-        cbn; rewrite H; eauto.
+        cbn; rewrite H0; eauto.
     Qed.
 
     Lemma wp_load_pst E σ l v Φ :
@@ -238,9 +237,9 @@ Section lang_rules.
         by intros; inv_step; eauto.
     Qed.
 
-    Lemma wp_alloc N E e v Φ :
-      to_val e = Some v → nclose N ⊆ E →
-      heap_ctx N ★ ▷ (∀ l, l ↦ v ={E}=★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
+    Lemma wp_alloc E e v Φ :
+      to_val e = Some v → nclose heapN ⊆ E →
+      heap_ctx ★ ▷ (∀ l, l ↦ v ={E}=★ Φ (LocV l)) ⊢ WP Alloc e @ E {{ Φ }}.
     Proof.
       iIntros {??} "[#Hinv HΦ]". rewrite /heap_ctx.
       iPvs (auth_empty heap_name) as "Hheap".
@@ -255,9 +254,9 @@ Section lang_rules.
       iIntros "Hheap". iApply "HΦ". by rewrite /heap_mapsto.
     Qed.
 
-    Lemma wp_load N E l q v Φ :
-      nclose N ⊆ E →
-      heap_ctx N ★ ▷ l ↦{q} v ★ ▷ (l ↦{q} v ={E}=★ Φ v)
+    Lemma wp_load E l q v Φ :
+      nclose heapN ⊆ E →
+      heap_ctx ★ ▷ l ↦{q} v ★ ▷ (l ↦{q} v ={E}=★ Φ v)
       ⊢ WP Load (Loc l) @ E {{ Φ }}.
     Proof.
       iIntros {?} "[#Hh [Hl HΦ]]". rewrite /heap_ctx /heap_mapsto.
@@ -269,9 +268,9 @@ Section lang_rules.
       rewrite of_heap_singleton_op //. by iFrame.
     Qed.
 
-    Lemma wp_store N E l v' e v Φ :
-      to_val e = Some v → nclose N ⊆ E →
-      heap_ctx N ★ ▷ l ↦ v' ★ ▷ (l ↦ v ={E}=★ Φ UnitV)
+    Lemma wp_store E l v' e v Φ :
+      to_val e = Some v → nclose heapN ⊆ E →
+      heap_ctx ★ ▷ l ↦ v' ★ ▷ (l ↦ v ={E}=★ Φ UnitV)
       ⊢ WP Store (Loc l) e @ E {{ Φ }}.
     Proof.
       iIntros {??} "[#Hh [Hl HΦ]]". rewrite /heap_ctx /heap_mapsto.
