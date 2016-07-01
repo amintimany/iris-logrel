@@ -4,52 +4,47 @@ From iris.program_logic Require Import ownership auth.
 From iris.proofmode Require Import tactics pviewshifts invariants.
 From iris.program_logic Require Import ownership adequacy.
 
-Section Soundness.
-  Context `{Hhp : authG lang Σ heapUR, Hcfg : authG lang Σ cfgUR}.
-
-  Definition free_type_context : varC -n> bivalC -n> iPropG lang Σ := λne x y,
-    True%I.
-
-  Local Notation Δφ := free_type_context.
+Section soundness.
+  Context `{authG lang Σ heapUR, authG lang Σ cfgUR}.
+  Notation D := (prodC valC valC -n> iPropG lang Σ).
+  Implicit Types Δ : listC D.
 
   Local Opaque to_heap.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ H H' N Δ HΔ, @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
-    @ownP lang (globalF Σ) ∅
-    ⊢ WP e {{ _, ■ (∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h)) }}.
+    (∀ H H' N Δ (HΔ : ctx_PersistentP Δ),
+      @bin_log_related Σ H H' N Δ [] e e' τ) →
+    ownP (Σ:=globalF Σ) ∅
+    ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h) }}.
   Proof.
     iIntros {H1} "Hemp".
-    iPvs (heap_alloc (nroot .@ "Fμ,ref,par" .@ 2) _ _ _ _ with "Hemp")
-      as {H} "[#Hheap _]".
+    iPvs (heap_alloc (nroot .@ 2) with "Hemp")
+      as {h} "[#Hheap _]"; first solve_ndisj.
     iPvs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
       ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as {γ} "[Hcfg1 Hcfg2]".
     { constructor; eauto.
       - intros n; simpl. exists ∅. unfold to_cfg; simpl. rewrite to_empty_heap.
           by rewrite left_id right_id.
-      - repeat constructor; simpl; by auto.
-    }
+      - repeat constructor; simpl; by auto. }
     iAssert (@auth.auth_inv _ Σ _ _ γ (Spec_inv ([e'], ∅)))
       with "[Hcfg1]" as "Hinv".
     { iExists _; iFrame "Hcfg1".
-      iPureIntro. rewrite from_to_cfg; constructor.
-    }
-    iPvs (inv_alloc (nroot .@ "Fμ,ref,par" .@ 3) with "[Hinv]") as "#Hcfg";
-      trivial.
+      iPureIntro. rewrite from_to_cfg; constructor. }
+    iPvs (inv_alloc (nroot .@ 3) with "[Hinv]") as "#Hcfg"; trivial.
     { iNext. iExact "Hinv". }
-    iPoseProof (H1 H (@CFGSG _ _ γ) _ Δφ _ [] _ _ 0 [] with "[Hcfg2]") as "HBR".
-    { unfold Spec_ctx, auth.auth_ctx, tpool_mapsto, auth.auth_own.
-      simpl. rewrite empty_env_subst. by iFrame "Hheap Hcfg Hcfg2". }
-    simpl. rewrite empty_env_subst.
+    iPoseProof (H1 h (@CFGSG _ _ γ) _ [] _ [] _ 0 [] with "[Hcfg2]") as "HBR".
+    { done. }
+    { rewrite /Spec_ctx /auth_ctx /tpool_mapsto /auth_own empty_env_subst /=.
+      by iFrame "Hheap Hcfg Hcfg2". }
+    rewrite /= empty_env_subst.
     iApply wp_pvs.
     iApply wp_wand_l; iSplitR; [|iApply "HBR"].
     iIntros {v}; iDestruct 1 as {v'} "[Hj #Hinterp]".
-    iInv> (nroot .@ "Fμ,ref,par" .@ 3) as {ρ} "[Hown #Hp]".
+    iInv> (nroot .@ 3) as {ρ} "[Hown #Hp]".
     iDestruct "Hp" as %Hp.
     unfold tpool_mapsto, auth.auth_own; simpl.
     iCombine "Hj" "Hown" as "Hown".
-    iDestruct (@own_valid _ Σ (authR cfgUR) _ γ _ with "#Hown")
-      as "#Hvalid".
+    iDestruct (@own_valid _ Σ (authR cfgUR) _ γ with "#Hown") as "#Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' #Hb]";
       simpl; iClear "Hvalid".
     iDestruct "Hb" as %Hb.
@@ -66,35 +61,33 @@ Section Soundness.
       destruct r as [q r|]; simpl in *; eauto.
       inversion Hx1 as [|? ? Hx]; subst.
       destruct q as [?|]. by move: Hx=> [/exclusive_r ??]. done.
-      Unshelve. all: trivial.
   Qed.
 
-  Lemma basic_soundness e e' τ :
-    (∀ H H' N Δ HΔ , @bin_log_related Σ H H' N Δ [] e e' τ HΔ) →
-    ∀ v thp hp,
-      rtc step ([e], ∅) ((# v) :: thp, hp) →
-      (∃ thp' hp' v', rtc step ([e'], ∅) ((# v') :: thp', hp')).
+  Lemma basic_soundness e e' τ v thp hp :
+    (∀ H H' N Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' N Δ [] e e' τ) →
+    rtc step ([e], ∅) (# v :: thp, hp) →
+    (∃ thp' hp' v', rtc step ([e'], ∅) (# v' :: thp', hp')).
   Proof.
-    intros H1 v thp hp H2.
+    intros H1 H2.
     match goal with
       |- ?A =>
       eapply (@wp_adequacy_result lang _ ⊤ (λ _, A) e v thp ∅ ∅ hp); eauto
     end.
     - apply ucmra_unit_valid.
     - iIntros "[Hp Hg]".
-      iApply wp_wand_l; iSplitR; [| by iApply wp_basic_soundness].
-        by iIntros {w} "H".
+      iApply wp_wand_l; iSplitR; [| iApply wp_basic_soundness]; auto.
+      by iIntros {w} "H".
   Qed.
 
-  Lemma Binary_Soundness Γ e e' τ :
+  Lemma binary_soundness Γ e e' τ :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    (∀ H H' N Δ HΔ, @bin_log_related Σ H H' N Δ Γ e e' τ HΔ) →
-    context_refines Γ e e' τ.
+    (∀ H H' N Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' N Δ Γ e e' τ) →
+    ctx_refines Γ e e' τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.
     eapply basic_soundness; eauto.
-    intros H H' N Δ HΔ.
-    eapply (bin_log_related_under_typed_context _ _ _ _ []); eauto.
+    intros H' H'' N Δ HΔ.
+    eapply (bin_log_related_under_typed_ctx _ _ _ _ []); eauto.
   Qed.
-End Soundness.
+End soundness.

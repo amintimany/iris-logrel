@@ -57,13 +57,13 @@ Section logrel.
     intros interp n Δ1 Δ2 HΔ; apply fixpoint_ne => τi w. solve_proper.
   Qed.
 
-  Program Definition interp_ref_pred (l : loc) : D -n> iPropG lang Σ := λne τi,
+  Program Definition interp_ref_inv (l : loc) : D -n> iPropG lang Σ := λne τi,
     (∃ v, l ↦ᵢ v ★ τi v)%I.
   Solve Obligations with solve_proper.
 
   Program Definition interp_ref
       (interp : listC D -n> D) : listC D -n> D := λne Δ w,
-    (∃ l, w = LocV l ∧ inv (L .@ l) (interp_ref_pred l (interp Δ)))%I.
+    (∃ l, w = LocV l ∧ inv (L .@ l) (interp_ref_inv l (interp Δ)))%I.
   Solve Obligations with solve_proper.
 
   Fixpoint interp (τ : type) : listC D -n> D :=

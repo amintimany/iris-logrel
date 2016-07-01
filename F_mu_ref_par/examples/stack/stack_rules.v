@@ -20,19 +20,17 @@ Class stackG Σ :=
   StackG { stack_inG :> authG lang Σ stackUR; stack_name : gname }.
 
 Section Rules.
-  Context {Σ : gFunctors} {istk : stackG Σ}.
+  Context `{stackG Σ}.
+  Notation D := (prodC valC valC -n> iPropG lang Σ).
 
   Definition stack_mapsto (l : loc) (v: val) : iPropG lang Σ :=
-    auth_own stack_name ({[ l := DecAgree v ]}).
+    auth_own stack_name {[ l := DecAgree v ]}.
 
   Notation "l ↦ˢᵗᵏ v" := (stack_mapsto l v) (at level 20) : uPred_scope.
 
-  Lemma stack_mapsto_dup l v : True%I ⊢ l ↦ˢᵗᵏ v -★ (l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ v).
+  Lemma stack_mapsto_dup l v : l ↦ˢᵗᵏ v ⊢ l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ v.
   Proof.
-    iIntros "H".
-    unfold stack_mapsto, auth_own.
-    rewrite -own_op -auth_frag_op.
-    rewrite -stackR_self_op; trivial.
+    by rewrite /stack_mapsto /auth_own -own_op -auth_frag_op -stackR_self_op.
   Qed.
 
   Lemma stack_mapstos_agree l v w:
@@ -47,53 +45,37 @@ Section Rules.
     cbv -[decide] in Hvalid; destruct decide; trivial.
   Qed.
 
-  Program Definition StackLink_pre (Q : bivalC -n> iPropG lang Σ)
-      {HQ : ∀ vw, PersistentP (Q vw)} :
-      (bivalC -n> iPropG lang Σ) -n> bivalC  -n> iPropG lang Σ := λne P v,
+  Program Definition StackLink_pre (Q : D) : D -n> D := λne P v,
     (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
             ((w = InjLV UnitV ∧ v.2 = FoldV (InjLV UnitV)) ∨
             (∃ y1 z1 y2 z2, w = InjRV (PairV y1 (FoldV z1)) ★
               v.2 = FoldV (InjRV (PairV y2 z2)) ★ Q (y1, y2) ★ ▷ P(z1, z2))))%I.
-  Next Obligation.
-    intros Q HQ P n [v1 v2] [w1 w2] [Hv1 Hv2]; simpl in *;
-      by rewrite Hv1 Hv2.
-  Qed.
-  Next Obligation. solve_proper. Qed.
+  Solve Obligations with solve_proper.
 
-  Global Instance StackLink_pre_contractive Q {HQ} :
-    Contractive (@StackLink_pre Q HQ).
+  Global Instance StackLink_pre_contractive Q : Contractive (StackLink_pre Q).
   Proof.
     intros n P1 P2 HP v; simpl. repeat (apply exist_ne => ?).
     repeat apply sep_ne; trivial. rewrite or_ne; trivial.
     repeat (apply exist_ne => ?).
     repeat apply sep_ne; trivial.
-    apply later_contractive => i H. by apply HP.
+    apply later_contractive => i ?. by apply HP.
   Qed.
 
-  Definition StackLink Q {HQ} := fixpoint (@StackLink_pre Q HQ).
+  Definition StackLink Q := fixpoint (StackLink_pre Q).
 
-  Lemma StackLink_unfold Q {HQ} v :
-    @StackLink Q HQ v ≡
-               (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
-                                  ((w = InjLV UnitV ∧
-                                    v.2 = FoldV (InjLV UnitV)) ∨
-                                   (∃ y1 z1 y2 z2,
-                                       (w = InjRV (PairV y1 (FoldV z1)))
-                                         ★ (v.2 = FoldV (InjRV (PairV y2 z2)))
-                                         ★ Q (y1, y2)
-                                         ★ ▷ @StackLink Q HQ (z1, z2)
-                                   )
-                                  )
-               )%I.
-  Proof.
-    unfold StackLink at 1.
-    rewrite fixpoint_unfold; trivial.
-  Qed.
+  Lemma StackLink_unfold Q v :
+    StackLink Q v ≡ (∃ l w,
+      v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
+      ((w = InjLV UnitV ∧ v.2 = FoldV (InjLV UnitV)) ∨
+      (∃ y1 z1 y2 z2, w = InjRV (PairV y1 (FoldV z1))
+                      ★ v.2 = FoldV (InjRV (PairV y2 z2))
+                      ★ Q (y1, y2) ★ ▷ @StackLink Q (z1, z2))))%I.
+  Proof. by rewrite {1}/StackLink fixpoint_unfold. Qed.
 
   Global Opaque StackLink. (* So that we can only use the unfold above. *)
 
-  Lemma StackLink_dup Q {HQ} v :
-    @StackLink Q HQ v ⊢ @StackLink Q HQ v ★ @StackLink Q HQ v.
+  Lemma StackLink_dup (Q : D) v `{∀ vw, PersistentP (Q vw)} :
+    StackLink Q v ⊢ StackLink Q v ★ StackLink Q v.
   Proof.
     iIntros "H". iLöb {v} as "Hlat". rewrite StackLink_unfold.
     iDestruct "H" as {l w} "[% [Hl Hr]]"; subst.
@@ -113,8 +95,8 @@ Section Rules.
   Lemma stackR_valid (h : stackUR) (i : loc) :
     ✓ h → h !! i = None ∨ ∃ v, h !! i = Some (DecAgree v).
   Proof.
-    intros H; specialize (H i).
-    match type of H with
+    intros Hh; specialize (Hh i).
+    by match type of Hh with
       ✓ ?A => match goal with
              | |- ?B = _ ∨ (∃ _, ?C = _) =>
                change B with A; change C with A;
@@ -182,10 +164,10 @@ Section Rules.
       end
     end.
     - set (H5 := dec_agree_valid_op_eq _ _ H4); clearbody H5. subst.
-      inversion H1; subst.
+      inversion H3; subst.
       destruct x as [x|]; cbv -[decide]; try destruct decide;
         constructor; intuition trivial.
-    - inversion H1; subst. constructor; trivial.
+    - inversion H3; subst. constructor; trivial.
   Qed.
 
   Context {iI : heapIG Σ}.

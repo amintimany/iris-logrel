@@ -35,8 +35,9 @@ Definition FG_counter : expr :=
   App (Lam (FG_counter_body (Var 1))) (Alloc (♯ 0)).
 
 Section CG_Counter.
-  Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}.
-  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
+  Context `{iS : cfgSG Σ, heapIG Σ}.
+  Notation D := (prodC valC valC -n> iPropG lang Σ).
+  Implicit Types Δ : listC D.
 
   (* Coarse-grained increment *)
   Lemma CG_increment_type x Γ :
@@ -50,7 +51,7 @@ Section CG_Counter.
 
   Lemma CG_increment_closed (x : expr) :
     (∀ f, x.[f] = x) → ∀ f, (CG_increment x).[f] = CG_increment x.
-  Proof. intros H f. unfold CG_increment. asimpl. rewrite ?H; trivial. Qed.
+  Proof. intros Hx f. unfold CG_increment. asimpl. rewrite ?Hx; trivial. Qed.
 
   Lemma CG_increment_subst (x : expr) f :
     (CG_increment x).[f] = CG_increment x.[f].
@@ -221,7 +222,7 @@ Section CG_Counter.
 
   Lemma FG_increment_closed (x : expr) :
     (∀ f, x.[f] = x) → ∀ f, (FG_increment x).[f] = FG_increment x.
-  Proof. intros H f. asimpl. unfold FG_increment. rewrite ?H; trivial. Qed.
+  Proof. intros Hx f. asimpl. unfold FG_increment. rewrite ?Hx; trivial. Qed.
 
   Lemma FG_counter_body_type x Γ :
     typed Γ x (Tref TNat) →
@@ -251,14 +252,14 @@ Section CG_Counter.
   Lemma FG_counter_closed f : FG_counter.[f] = FG_counter.
   Proof. asimpl; rewrite counter_read_subst; by asimpl. Qed.
 
-  Lemma FG_CG_counter_refinement N Δ {HΔ : ∀ x v, PersistentP (Δ x v)} :
+  Lemma FG_CG_counter_refinement N Δ {HΔ : ctx_PersistentP Δ} :
     @bin_log_related _ _ _ N Δ [] FG_counter CG_counter
-                      (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)) HΔ.
+                      (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)).
   Proof.
     (* executing the preambles *)
-    intros [|v vs] Hlen; simplify_eq.
+    intros [|v vs] ρ j K [=].
     cbn -[FG_counter CG_counter].
-    iIntros {ρ j K} "(#Hheap & #Hspec & _ & Hj)".
+    iIntros "(#Hheap & #Hspec & _ & Hj)".
     rewrite ?empty_env_subst /CG_counter /FG_counter.
     iPvs (steps_newlock _ _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
@@ -358,11 +359,11 @@ End CG_Counter.
 
 Definition Σ := #[auth.authGF heapUR; auth.authGF cfgUR].
 
-Theorem counter_context_refinement :
-  context_refines [] FG_counter CG_counter
+Theorem counter_ctx_refinement :
+  ctx_refines [] FG_counter CG_counter
     (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)).
 Proof.
-  eapply (@Binary_Soundness Σ);
+  eapply (@binary_soundness Σ);
     auto using FG_counter_closed, CG_counter_closed, FG_CG_counter_refinement.
   all: typeclasses eauto.
 Qed.

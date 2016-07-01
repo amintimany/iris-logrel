@@ -1,6 +1,6 @@
 From iris_logrel.F_mu_ref_par Require Export fundamental_binary.
 
-Inductive context_item :=
+Inductive ctx_item :=
   | CTX_Lam
   | CTX_AppL (e2 : expr)
   | CTX_AppR (e1 : expr)
@@ -40,7 +40,7 @@ Inductive context_item :=
   | CTX_CAS_M (e0 : expr) (e2 : expr)
   | CTX_CAS_R (e0 : expr) (e1 : expr).
 
-Fixpoint fill_ctx_item (ctx : context_item) (e : expr) : expr :=
+Fixpoint fill_ctx_item (ctx : ctx_item) (e : expr) : expr :=
   match ctx with
   | CTX_Lam => Lam e
   | CTX_AppL e2 => App e e2
@@ -73,142 +73,135 @@ Fixpoint fill_ctx_item (ctx : context_item) (e : expr) : expr :=
   | CTX_CAS_R e0 e1 => CAS e0 e1 e
   end.
 
-Definition context := list context_item.
+Definition ctx := list ctx_item.
 
-Definition fill_ctx (K : context) (e : expr) : expr := foldr fill_ctx_item e K.
+Definition fill_ctx (K : ctx) (e : expr) : expr := foldr fill_ctx_item e K.
 
-Local Open Scope bin_logrel_scope.
+(** typed ctx *)
+Inductive typed_ctx_item :
+    ctx_item → list type → type → list type → type → Prop :=
+  | TP_CTX_Lam Γ τ τ' :
+     typed_ctx_item CTX_Lam (TArrow τ τ' :: τ :: Γ) τ' Γ (TArrow τ τ')
+  | TP_CTX_AppL Γ e2 τ τ' :
+     typed Γ e2 τ →
+     typed_ctx_item (CTX_AppL e2) Γ (TArrow τ τ') Γ τ'
+  | TP_CTX_AppR Γ e1 τ τ' :
+     typed Γ e1 (TArrow τ τ') →
+     typed_ctx_item (CTX_AppR e1) Γ τ Γ τ'
+  | TP_CTX_PairL Γ e2 τ τ' :
+     typed Γ e2 τ' →
+     typed_ctx_item (CTX_PairL e2) Γ τ Γ (TProd τ τ')
+  | TP_CTX_PairR Γ e1 τ τ' :
+     typed Γ e1 τ →
+     typed_ctx_item (CTX_PairR e1) Γ τ' Γ (TProd τ τ')
+  | TP_CTX_Fst Γ τ τ' :
+     typed_ctx_item CTX_Fst Γ (TProd τ τ') Γ τ
+  | TP_CTX_Snd Γ τ τ' :
+     typed_ctx_item CTX_Snd Γ (TProd τ τ') Γ τ'
+  | TP_CTX_InjL Γ τ τ' :
+     typed_ctx_item CTX_InjL Γ τ Γ (TSum τ τ')
+  | TP_CTX_InjR Γ τ τ' :
+     typed_ctx_item CTX_InjR Γ τ' Γ (TSum τ τ')
+  | TP_CTX_CaseL Γ e1 e2 τ1 τ2 τ' :
+     typed (τ1 :: Γ) e1 τ' → typed (τ2 :: Γ) e2 τ' →
+     typed_ctx_item (CTX_CaseL e1 e2) Γ (TSum τ1 τ2) Γ τ'
+  | TP_CTX_CaseM Γ e0 e2 τ1 τ2 τ' :
+     typed Γ e0 (TSum τ1 τ2) → typed (τ2 :: Γ) e2 τ' →
+     typed_ctx_item (CTX_CaseM e0 e2) (τ1 :: Γ) τ' Γ τ'
+  | TP_CTX_CaseR Γ e0 e1 τ1 τ2 τ' :
+     typed Γ e0 (TSum τ1 τ2) → typed (τ1 :: Γ) e1 τ' →
+     typed_ctx_item (CTX_CaseR e0 e1) (τ2 :: Γ) τ' Γ τ'
+  | TP_CTX_IfL Γ e1 e2 τ :
+     typed Γ e1 τ → typed Γ e2 τ →
+     typed_ctx_item (CTX_IfL e1 e2) Γ (TBool) Γ τ
+  | TP_CTX_IfM Γ e0 e2 τ :
+     typed Γ e0 (TBool) → typed Γ e2 τ →
+     typed_ctx_item (CTX_IfM e0 e2) Γ τ Γ τ
+  | TP_CTX_IfR Γ e0 e1 τ :
+     typed Γ e0 (TBool) → typed Γ e1 τ →
+     typed_ctx_item (CTX_IfR e0 e1) Γ τ Γ τ
+  | TP_CTX_BinOpL op Γ e2 :
+     typed Γ e2 TNat →
+     typed_ctx_item (CTX_BinOpL op e2) Γ TNat Γ (binop_res_type op)
+  | TP_CTX_BinOpR op e1 Γ :
+     typed Γ e1 TNat →
+     typed_ctx_item (CTX_BinOpR op e1) Γ TNat Γ (binop_res_type op)
+  | TP_CTX_Fold Γ τ :
+     typed_ctx_item CTX_Fold Γ τ.[(TRec τ)/] Γ (TRec τ)
+  | TP_CTX_Unfold Γ τ :
+     typed_ctx_item CTX_Unfold Γ (TRec τ) Γ τ.[(TRec τ)/]
+  | TP_CTX_TLam Γ τ :
+     typed_ctx_item CTX_TLam (subst (ren (+1)) <$> Γ) τ Γ (TForall τ)
+  | TP_CTX_TApp Γ τ τ' :
+     typed_ctx_item CTX_TApp Γ (TForall τ) Γ τ.[τ'/]
+  | TP_CTX_Fork Γ :
+     typed_ctx_item CTX_Fork Γ TUnit Γ TUnit
+  | TPCTX_Alloc Γ τ :
+     typed_ctx_item CTX_Alloc Γ τ Γ (Tref τ)
+  | TP_CTX_Load Γ τ :
+     typed_ctx_item CTX_Load Γ (Tref τ) Γ τ
+  | TP_CTX_StoreL Γ e2 τ :
+     typed Γ e2 τ → typed_ctx_item (CTX_StoreL e2) Γ (Tref τ) Γ TUnit
+  | TP_CTX_StoreR Γ e1 τ :
+     typed Γ e1 (Tref τ) →
+     typed_ctx_item (CTX_StoreR e1) Γ τ Γ TUnit
+  | TP_CTX_CasL Γ e1  e2 τ :
+     EqType τ → typed Γ e1 τ → typed Γ e2 τ →
+     typed_ctx_item (CTX_CAS_L e1 e2) Γ (Tref τ) Γ TBool
+  | TP_CTX_CasM Γ e0 e2 τ :
+     EqType τ → typed Γ e0 (Tref τ) → typed Γ e2 τ →
+     typed_ctx_item (CTX_CAS_M e0 e2) Γ τ Γ TBool
+  | TP_CTX_CasR Γ e0 e1 τ :
+     EqType τ → typed Γ e0 (Tref τ) → typed Γ e1 τ →
+     typed_ctx_item (CTX_CAS_R e0 e1) Γ τ Γ TBool.
 
-(** typed context *)
-Inductive typed_context_item :
-  context_item → list type → type → list type → type → Prop :=
-| TP_CTX_Lam : ∀ Γ τ τ',
-    typed_context_item CTX_Lam (TArrow τ τ' :: τ :: Γ) τ' Γ (TArrow τ τ')
-| TP_CTX_AppL (e2 : expr) : ∀ Γ τ τ',
-    typed Γ e2 τ →
-    typed_context_item (CTX_AppL e2) Γ (TArrow τ τ') Γ τ'
-| TP_CTX_AppR (e1 : expr) : ∀ Γ τ τ',
-    typed Γ e1 (TArrow τ τ') →
-    typed_context_item (CTX_AppR e1) Γ τ Γ τ'
-| TP_CTX_PairL (e2 : expr) : ∀ Γ τ τ',
-    typed Γ e2 τ' →
-    typed_context_item (CTX_PairL e2) Γ τ Γ (TProd τ τ')
-| TP_CTX_PairR (e1 : expr) : ∀ Γ τ τ',
-    typed Γ e1 τ →
-    typed_context_item (CTX_PairR e1) Γ τ' Γ (TProd τ τ')
-| TP_CTX_Fst : ∀ Γ τ τ',
-    typed_context_item CTX_Fst Γ (TProd τ τ') Γ τ
-| TP_CTX_Snd : ∀ Γ τ τ',
-    typed_context_item CTX_Snd Γ (TProd τ τ') Γ τ'
-| TP_CTX_InjL : ∀ Γ τ τ',
-    typed_context_item CTX_InjL Γ τ Γ (TSum τ τ')
-| TP_CTX_InjR : ∀ Γ τ τ',
-    typed_context_item CTX_InjR Γ τ' Γ (TSum τ τ')
-| TP_CTX_CaseL (e1 : expr) (e2 : expr) : ∀ Γ τ1 τ2 τ',
-    typed (τ1 :: Γ) e1 τ' → typed (τ2 :: Γ) e2 τ' →
-    typed_context_item (CTX_CaseL e1 e2) Γ (TSum τ1 τ2) Γ τ'
-| TP_CTX_CaseM (e0 : expr) (e2 : expr) : ∀ Γ τ1 τ2 τ',
-    typed Γ e0 (TSum τ1 τ2) → typed (τ2 :: Γ) e2 τ' →
-    typed_context_item (CTX_CaseM e0 e2) (τ1 :: Γ) τ' Γ τ'
-| TP_CTX_CaseR (e0 : expr) (e1 : expr) : ∀ Γ τ1 τ2 τ',
-    typed Γ e0 (TSum τ1 τ2) → typed (τ1 :: Γ) e1 τ' →
-    typed_context_item (CTX_CaseR e0 e1) (τ2 :: Γ) τ' Γ τ'
-| TP_CTX_IfL (e1 : expr) (e2 : expr) : ∀ Γ τ,
-    typed Γ e1 τ → typed Γ e2 τ →
-    typed_context_item (CTX_IfL e1 e2) Γ (TBool) Γ τ
-| TP_CTX_IfM (e0 : expr) (e2 : expr) : ∀ Γ τ,
-    typed Γ e0 (TBool) → typed Γ e2 τ →
-    typed_context_item (CTX_IfM e0 e2) Γ τ Γ τ
-| TP_CTX_IfR (e0 : expr) (e1 : expr) : ∀ Γ τ,
-    typed Γ e0 (TBool) → typed Γ e1 τ →
-    typed_context_item (CTX_IfR e0 e1) Γ τ Γ τ
-| TP_CTX_BinOpL op (e2 : expr) : ∀ Γ,
-    typed Γ e2 TNat →
-    typed_context_item (CTX_BinOpL op e2) Γ TNat Γ (binop_res_type op)
-| TP_CTX_BinOpR op (e1 : expr) : ∀ Γ,
-    typed Γ e1 TNat →
-    typed_context_item (CTX_BinOpR op e1) Γ TNat Γ (binop_res_type op)
-| TP_CTX_Fold : ∀ Γ τ,
-    typed_context_item CTX_Fold Γ τ.[(TRec τ)/] Γ (TRec τ)
-| TP_CTX_Unfold : ∀ Γ τ,
-    typed_context_item CTX_Unfold Γ (TRec τ) Γ τ.[(TRec τ)/]
-| TP_CTX_TLam : ∀ Γ τ,
-    typed_context_item
-      CTX_TLam (map (λ t : type, t.[ren (+1)]) Γ) τ Γ (TForall τ)
-| TP_CTX_TApp : ∀ Γ τ τ',
-    typed_context_item CTX_TApp Γ (TForall τ) Γ τ.[τ'/]
-| TP_CTX_Fork : ∀ Γ,
-    typed_context_item CTX_Fork Γ TUnit Γ TUnit
-| TPCTX_Alloc : ∀ Γ τ,
-    typed_context_item CTX_Alloc Γ τ Γ (Tref τ)
-| TP_CTX_Load : ∀ Γ τ,
-    typed_context_item CTX_Load Γ (Tref τ) Γ τ
-| TP_CTX_StoreL (e2 : expr) : ∀ Γ τ,
-    typed Γ e2 τ →
-    typed_context_item (CTX_StoreL e2) Γ (Tref τ) Γ TUnit
-| TP_CTX_StoreR (e1 : expr) : ∀ Γ τ,
-    typed Γ e1 (Tref τ) →
-    typed_context_item (CTX_StoreR e1) Γ τ Γ TUnit
-| TP_CTX_CasL (e1 : expr)  (e2 : expr) : ∀ Γ τ,
-    EqType τ → typed Γ e1 τ → typed Γ e2 τ →
-    typed_context_item (CTX_CAS_L e1 e2) Γ (Tref τ) Γ TBool
-| TP_CTX_CasM (e0 : expr) (e2 : expr) : ∀ Γ τ,
-    EqType τ → typed Γ e0 (Tref τ) → typed Γ e2 τ →
-    typed_context_item (CTX_CAS_M e0 e2) Γ τ Γ TBool
-| TP_CTX_CasR (e0 : expr) (e1 : expr) : ∀ Γ τ,
-    EqType τ → typed Γ e0 (Tref τ) → typed Γ e1 τ →
-    typed_context_item (CTX_CAS_R e0 e1) Γ τ Γ TBool.
-
-Lemma typed_context_item_typed k Γ τ Γ' τ' e :
-  typed Γ e τ → typed_context_item k Γ τ Γ' τ' →
+Lemma typed_ctx_item_typed k Γ τ Γ' τ' e :
+  typed Γ e τ → typed_ctx_item k Γ τ Γ' τ' →
   typed Γ' (fill_ctx_item k e) τ'.
-Proof. intros H1 H2; induction H2; simpl; eauto using typed. Qed.
+Proof. induction 2; simpl; eauto using typed. Qed.
 
-Inductive typed_context: context → list type → type → list type → type → Prop :=
+Inductive typed_ctx: ctx → list type → type → list type → type → Prop :=
   | TPCTX_nil Γ τ :
-     typed_context nil Γ τ Γ τ
+     typed_ctx nil Γ τ Γ τ
   | TPCTX_cons Γ1 τ1 Γ2 τ2 Γ3 τ3 k K :
-     typed_context_item k Γ2 τ2 Γ3 τ3 →
-     typed_context K Γ1 τ1 Γ2 τ2 →
-     typed_context (k :: K) Γ1 τ1 Γ3 τ3.
+     typed_ctx_item k Γ2 τ2 Γ3 τ3 →
+     typed_ctx K Γ1 τ1 Γ2 τ2 →
+     typed_ctx (k :: K) Γ1 τ1 Γ3 τ3.
 
-Lemma typed_context_typed K Γ τ Γ' τ' e :
-  typed Γ e τ → typed_context K Γ τ Γ' τ' → typed Γ' (fill_ctx K e) τ'.
-Proof.
-  intros H1 H2; induction H2; simpl; eauto using typed_context_item_typed.
-Qed.
+Lemma typed_ctx_typed K Γ τ Γ' τ' e :
+  typed Γ e τ → typed_ctx K Γ τ Γ' τ' → typed Γ' (fill_ctx K e) τ'.
+Proof. induction 2; simpl; eauto using typed_ctx_item_typed. Qed.
 
-Lemma typed_context_n_closed K Γ τ Γ' τ' e :
-  (∀ f, e.[base.iter (length Γ) up f] = e) → typed_context K Γ τ Γ' τ' →
+Lemma typed_ctx_n_closed K Γ τ Γ' τ' e :
+  (∀ f, e.[base.iter (length Γ) up f] = e) → typed_ctx K Γ τ Γ' τ' →
   ∀ f, (fill_ctx K e).[base.iter (length Γ') up f] = (fill_ctx K e).
 Proof.
   intros H1 H2; induction H2; simpl; auto.
-  (induction H => f); asimpl; simpl in *;
-    repeat match goal with H : _ |- _ => rewrite map_length in H end;
+  induction H => f; asimpl; simpl in *;
+    repeat match goal with H : _ |- _ => rewrite fmap_length in H end;
     try f_equal;
     eauto using typed_n_closed;
     try match goal with H : _ |- _ => eapply (typed_n_closed _ _ _ H) end.
 Qed.
 
-Definition context_refines Γ e e' τ :=
-  ∀ K,
-    typed_context K Γ τ [] TUnit →
-    ∀ thp h v, rtc step ([fill_ctx K e], ∅) ((# v) :: thp, h) →
-               ∃ thp' h' v',
-                 rtc step ([fill_ctx K e'], ∅) ((# v') :: thp', h').
+Definition ctx_refines (Γ : list type)
+    (e e' : expr) (τ : type) := ∀ K thp σ v,
+  typed_ctx K Γ τ [] TUnit →
+  rtc step ([fill_ctx K e], ∅) (# v :: thp, σ) →
+  ∃ thp' σ' v', rtc step ([fill_ctx K e'], ∅) (# v' :: thp', σ').
 
-Section bin_log_related_under_typed_context.
-  Context {Σ : gFunctors} {iI : heapIG Σ} {iS : cfgSG Σ} {N : namespace}.
-  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
+Section bin_log_related_under_typed_ctx.
+  Context `{heapIG Σ, cfgSG Σ} {N : namespace}.
+  Notation D := (prodC valC valC -n> iPropG lang Σ).
+  Implicit Types Δ : listC D.
 
-  Lemma bin_log_related_under_typed_context Γ e e' τ Γ' τ' K :
+  Lemma bin_log_related_under_typed_ctx Γ e e' τ Γ' τ' K :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    typed_context K Γ τ Γ' τ' →
-    (∀ Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)},
-        @bin_log_related _ _ _ N Δ Γ e e' τ HΔ) →
-    ∀ Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)},
-      @bin_log_related _ _ _ N Δ Γ' (fill_ctx K e) (fill_ctx K e') τ' HΔ.
+    typed_ctx K Γ τ Γ' τ' →
+    (∀ Δ (HΔ : ctx_PersistentP Δ), @bin_log_related _ _ _ N Δ Γ e e' τ) →
+    ∀ Δ (HΔ : ctx_PersistentP Δ),
+      @bin_log_related _ _ _ N Δ Γ' (fill_ctx K e) (fill_ctx K e') τ'.
   Proof.
     revert Γ τ Γ' τ' e e'.
     induction K as [|k K]=> Γ τ Γ' τ' e e' H1 H2; simpl.
@@ -218,7 +211,7 @@ Section bin_log_related_under_typed_context.
       inversion Hx1; subst; simpl.
       + eapply typed_binary_interp_Lam; eauto;
           match goal with
-            H : _ |- _ => eapply (typed_context_n_closed _ _ _ _ _ _ _ H)
+            H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
       + eapply typed_binary_interp_App; eauto using typed_binary_interp.
       + eapply typed_binary_interp_App; eauto using typed_binary_interp.
@@ -229,7 +222,7 @@ Section bin_log_related_under_typed_context.
       + eapply typed_binary_interp_InjL; eauto.
       + eapply typed_binary_interp_InjR; eauto.
       + match goal with
-          H : typed_context_item _ _ _ _ _ |- _ => inversion H; subst
+          H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
         eapply typed_binary_interp_Case;
           eauto using typed_binary_interp;
@@ -237,7 +230,7 @@ Section bin_log_related_under_typed_context.
             H : _ |- _ => eapply (typed_n_closed _ _ _ H)
           end.
       + match goal with
-          H : typed_context_item _ _ _ _ _ |- _ => inversion H; subst
+          H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
         eapply typed_binary_interp_Case;
           eauto using typed_binary_interp;
@@ -245,10 +238,10 @@ Section bin_log_related_under_typed_context.
                 H : _ |- _ => eapply (typed_n_closed _ _ _ H)
               end;
           match goal with
-            H : _ |- _ => eapply (typed_context_n_closed _ _ _ _ _ _ _ H)
+            H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
       + match goal with
-          H : typed_context_item _ _ _ _ _ |- _ => inversion H; subst
+          H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
         eapply typed_binary_interp_Case;
           eauto using typed_binary_interp;
@@ -256,25 +249,25 @@ Section bin_log_related_under_typed_context.
                 H : _ |- _ => eapply (typed_n_closed _ _ _ H)
               end;
           match goal with
-            H : _ |- _ => eapply (typed_context_n_closed _ _ _ _ _ _ _ H)
+            H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
       + eapply typed_binary_interp_If;
-          eauto using typed_context_typed, typed_binary_interp.
+          eauto using typed_ctx_typed, typed_binary_interp.
       + eapply typed_binary_interp_If;
-          eauto using typed_context_typed, typed_binary_interp.
+          eauto using typed_ctx_typed, typed_binary_interp.
       + eapply typed_binary_interp_If;
-          eauto using typed_context_typed, typed_binary_interp.
+          eauto using typed_ctx_typed, typed_binary_interp.
       + eapply typed_binary_interp_nat_bin_op;
-          eauto using typed_context_typed, typed_binary_interp.
+          eauto using typed_ctx_typed, typed_binary_interp.
       + eapply typed_binary_interp_nat_bin_op;
-          eauto using typed_context_typed, typed_binary_interp.
+          eauto using typed_ctx_typed, typed_binary_interp.
       + eapply typed_binary_interp_Fold; eauto.
       + eapply typed_binary_interp_Unfold; eauto.
-      + eapply typed_binary_interp_TLam; eauto.
-      + eapply typed_binary_interp_TApp; trivial.
-      + eapply typed_binary_interp_Fork; trivial.
-      + eapply typed_binary_interp_Alloc; trivial.
-      + eapply typed_binary_interp_Load; trivial.
+      + eapply typed_binary_interp_TLam; eauto with typeclass_instances.
+      + eapply typed_binary_interp_TApp; eauto.
+      + eapply typed_binary_interp_Fork; eauto.
+      + eapply typed_binary_interp_Alloc; eauto.
+      + eapply typed_binary_interp_Load; eauto.
       + eapply typed_binary_interp_Store; eauto using typed_binary_interp.
       + eapply typed_binary_interp_Store; eauto using typed_binary_interp.
       + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
@@ -282,4 +275,4 @@ Section bin_log_related_under_typed_context.
       + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
         Unshelve. all: trivial.
   Qed.
-End bin_log_related_under_typed_context.
+End bin_log_related_under_typed_ctx.

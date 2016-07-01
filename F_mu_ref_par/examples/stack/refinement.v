@@ -6,11 +6,11 @@ From iris_logrel.F_mu_ref_par.examples.stack Require Import
 From iris.proofmode Require Import invariants ghost_ownership tactics.
 
 Section Stack_refinement.
-  Context {Σ : gFunctors} {iS : cfgSG Σ} {iI : heapIG Σ}
-          {iSTK : authG lang Σ stackUR}.
-  Implicit Types Δ : varC -n> bivalC -n> iPropG lang Σ.
+  Context `{cfgSG Σ, heapIG Σ, authG lang Σ stackUR}.
+  Notation D := (prodC valC valC -n> iPropG lang Σ).
+  Implicit Types Δ : listC D.
 
-  Lemma FG_CG_counter_refinement N Δ {HΔ : ∀ x vw, PersistentP (Δ x vw)} :
+  Lemma FG_CG_counter_refinement N Δ {HΔ : ctx_PersistentP Δ} :
     @bin_log_related _ _ _ N Δ [] FG_stack CG_stack
                         (TForall
                            (TProd
@@ -19,10 +19,10 @@ Section Stack_refinement.
                                  (TArrow TUnit (TSum TUnit (TVar 0)))
                               )
                               (TArrow (TArrow (TVar 0) TUnit) TUnit)
-                        )) HΔ.
+                        )).
   Proof.
     (* executing the preambles *)
-    iIntros { [|??] [=] ρ j K } "[#Hheap [#Hspec [_ Hj]]]".
+    iIntros { [|??] ρ j K [=] } "[#Hheap [#Hspec [_ Hj]]]".
     cbn -[FG_stack CG_stack].
     rewrite ?empty_env_subst /CG_stack /FG_stack.
     iApply wp_value; eauto.
@@ -64,7 +64,7 @@ Section Stack_refinement.
     { constructor; eauto. eapply ucmra_unit_valid. }
     set (istkG := StackG _ _ γ).
     change γ with (@stack_name _ istkG).
-    change iSTK with (@stack_inG _ istkG).
+    change H1 with (@stack_inG _ istkG).
     clearbody istkG. clear γ.
     iAssert (@stack_owns _ istkG _ ∅) with "[Hemp]" as "Hoe".
     { unfold stack_owns; rewrite big_sepM_empty; iFrame "Hemp"; trivial. }
@@ -374,8 +374,8 @@ End Stack_refinement.
 
 Definition Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR].
 
-Theorem stack_context_refinement :
-  context_refines [] FG_stack CG_stack
+Theorem stack_ctx_refinement :
+  ctx_refines [] FG_stack CG_stack
     (TForall
        (TProd
           (TProd
@@ -386,8 +386,8 @@ Theorem stack_context_refinement :
        )
     ).
 Proof.
-  eapply (@Binary_Soundness Σ);
+  eapply (@binary_soundness Σ);
     eauto using FG_stack_closed, CG_stack_closed.
   all: try typeclasses eauto.
-  intros. apply FG_CG_counter_refinement.
+  intros. apply FG_CG_counter_refinement, _.
 Qed.
