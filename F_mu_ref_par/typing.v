@@ -54,7 +54,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
   | App_typed e1 e2 τ1 τ2 :
      Γ ⊢ₜ e1 : TArrow τ1 τ2 → Γ ⊢ₜ e2 : τ1 → Γ ⊢ₜ App e1 e2 : τ2
   | TLam_typed e τ :
-     map (λ t, t.[ren (+1)]) Γ ⊢ₜ e : τ → Γ ⊢ₜ TLam e : TForall τ
+     subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ TLam e : TForall τ
   | TApp_typed e τ τ' : Γ ⊢ₜ e : TForall τ → Γ ⊢ₜ TApp e : τ.[τ'/]
   | TFold e τ : Γ ⊢ₜ e : τ.[TRec τ/] → Γ ⊢ₜ Fold e : TRec τ
   | TUnfold e τ : Γ ⊢ₜ e : TRec τ → Γ ⊢ₜ Unfold e : τ.[TRec τ/]
@@ -67,72 +67,26 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
      Γ ⊢ₜ CAS e1 e2 e3 : TBool
 where "Γ ⊢ₜ e : τ" := (typed Γ e τ).
 
-Local Hint Extern 1 =>
-  match goal with
-  | H : context [length (map _ _)] |- _ => rewrite map_length in H
-  end : typed_subst_invariant.
-
 Lemma typed_subst_invariant Γ e τ s1 s2 :
   Γ ⊢ₜ e : τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
-  assert (∀ {A} `{Ids A} `{Rename A}
-            (s1 s2 : nat → A) x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) →
-                               up s1 x = up s2 x).
+  assert (∀ x Γ, x < length (subst (ren (+1)) <$> Γ) → x < length Γ).
+  { intros ??. by rewrite fmap_length. } 
+  assert (∀ {A} `{Ids A} `{Rename A} (s1 s2 : nat → A) x,
+    (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
-  (induction Htyped => s1 s2 Hs; f_equal/=);
-    eauto using lookup_lt_Some with omega typed_subst_invariant.
+  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega.
 Qed.
-
-Definition env_subst (vs : list val) (x : var) : expr :=
-  from_option id (Var x) (of_val <$> vs !! x).
-
-Lemma context_gen_weakening ξ Γ' Γ e τ :
-  Γ' ++ Γ ⊢ₜ e : τ →
-  Γ' ++ ξ ++ Γ ⊢ₜ e.[iter (length Γ') up (ren (+ (length ξ)))] : τ.
-Proof.
-  intros H1.
-  remember (Γ' ++ Γ) as Ξ. revert Γ' Γ ξ HeqΞ.
-  induction H1 => Γ1 Γ2 ξ HeqΞ; subst; asimpl in *; eauto using typed.
-  - rewrite iter_up; destruct lt_dec as [Hl | Hl].
-    + constructor. rewrite lookup_app_l; trivial. by rewrite lookup_app_l in H.
-    + asimpl. constructor. rewrite lookup_app_r; auto with omega.
-      rewrite lookup_app_r; auto with omega.
-      rewrite lookup_app_r in H; auto with omega.
-      match goal with
-        |- _ !! ?A = _ => by replace A with (x - length Γ1) by omega
-      end.
-  - econstructor; eauto.
-    + eapply (IHtyped2 (_ :: Γ1) Γ2 ξ Logic.eq_refl).
-    + eapply (IHtyped3 (_ :: Γ1) Γ2 ξ Logic.eq_refl).
-  - constructor.
-    eapply (IHtyped (_ :: _ :: Γ1) Γ2 ξ Logic.eq_refl).
-  - constructor.
-    specialize (IHtyped
-                  (map (λ t : type, t.[ren (+1)]) Γ1)
-                  (map (λ t : type, t.[ren (+1)]) Γ2)
-                  (map (λ t : type, t.[ren (+1)]) ξ)).
-    asimpl in *. rewrite ?map_length in IHtyped.
-    repeat rewrite map_app. apply IHtyped.
-    by repeat rewrite map_app.
-Qed.
-
-Lemma context_weakening ξ Γ e τ :
-  Γ ⊢ₜ e : τ → ξ ++ Γ ⊢ₜ e.[(ren (+ (length ξ)))] : τ.
-Proof. eapply (context_gen_weakening _ []). Qed.
-
-Lemma closed_context_weakening ξ Γ e τ :
-  (∀ f, e.[f] = e) → Γ ⊢ₜ e : τ → ξ ++ Γ ⊢ₜ e : τ.
-Proof. intros H1 H2. erewrite <- H1. by eapply context_weakening. Qed.
 
 Lemma n_closed_invariant n (e : expr) s1 s2 :
   (∀ f, e.[iter n up f] = e) → (∀ x, x < n → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Hnc. specialize (Hnc (ren (+1))).
   revert n Hnc s1 s2.
-  (induction e => m Hmc s1 s2 H1); asimpl in *; try f_equal;
+  induction e => m Hmc s1 s2 H1; asimpl in *; try f_equal;
     try (match goal with H : _ |- _ => eapply H end; eauto;
-         try inversion Hmc; try match goal with H : _ |- _ => (by rewrite H) end;
+         try inversion Hmc; try match goal with H : _ |- _ => by rewrite H end;
          fail).
   - apply H1. rewrite iter_up in Hmc. destruct lt_dec; try omega.
     asimpl in *. cbv in x. replace (m + (x - m)) with x in Hmc by omega.
@@ -157,6 +111,9 @@ Proof.
     + intros [|x] H2; [by cbv |].
       asimpl; rewrite H1; auto with omega.
 Qed.
+
+Definition env_subst (vs : list val) (x : var) : expr :=
+  from_option id (Var x) (of_val <$> vs !! x).
 
 Lemma typed_n_closed Γ τ e :
   Γ ⊢ₜ e : τ → (∀ f, e.[iter (length Γ) up f] = e).
@@ -207,24 +164,39 @@ Proof.
   by rewrite Hv.
 Qed.
 
-Local Opaque eq_nat_dec.
+Lemma empty_env_subst e : e.[env_subst []] = e.
+Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.
 
-Lemma iter_up_subst_type (m : nat) (τ : type) (x : var) :
-  iter m up (τ .: ids) x =
-    if lt_dec x m then ids x else
-    if eq_nat_dec x m then τ.[ren (+m)] else ids (x - 1).
+(** Weakening *)
+Lemma context_gen_weakening ξ Γ' Γ e τ :
+  Γ' ++ Γ ⊢ₜ e : τ →
+  Γ' ++ ξ ++ Γ ⊢ₜ e.[iter (length Γ') up (ren (+ (length ξ)))] : τ.
 Proof.
-  revert x τ.
-  induction m; intros x τ; cbn.
-  - destruct x; cbn.
-    + destruct eq_nat_dec; auto with omega.
-      asimpl; trivial.
-    + destruct eq_nat_dec; auto with omega.
-  - destruct x; asimpl; trivial.
-    rewrite IHm.
-    repeat destruct lt_dec; repeat destruct eq_nat_dec;
-      asimpl; auto with omega.
+  intros H1.
+  remember (Γ' ++ Γ) as Ξ. revert Γ' Γ ξ HeqΞ.
+  induction H1 => Γ1 Γ2 ξ HeqΞ; subst; asimpl in *; eauto using typed.
+  - rewrite iter_up; destruct lt_dec as [Hl | Hl].
+    + constructor. rewrite lookup_app_l; trivial. by rewrite lookup_app_l in H.
+    + asimpl. constructor. rewrite lookup_app_r; auto with omega.
+      rewrite lookup_app_r; auto with omega.
+      rewrite lookup_app_r in H; auto with omega.
+      match goal with
+        |- _ !! ?A = _ => by replace A with (x - length Γ1) by omega
+      end.
+  - econstructor; eauto. by apply (IHtyped2 (_::_)). by apply (IHtyped3 (_::_)).
+  - constructor. by apply (IHtyped (_ :: _ :: _)).
+  - constructor.
+    specialize (IHtyped
+      (subst (ren (+1)) <$> Γ1) (subst (ren (+1)) <$> Γ2) (subst (ren (+1)) <$> ξ)).
+    asimpl in *. rewrite ?map_length in IHtyped.
+    repeat rewrite fmap_app. apply IHtyped.
+    by repeat rewrite fmap_app.
 Qed.
 
-Lemma empty_env_subst e : e.[env_subst []] = e.
-Proof. change (env_subst []) with (@ids expr _); by asimpl. Qed.
+Lemma context_weakening ξ Γ e τ :
+  Γ ⊢ₜ e : τ → ξ ++ Γ ⊢ₜ e.[(ren (+ (length ξ)))] : τ.
+Proof. eapply (context_gen_weakening _ []). Qed.
+
+Lemma closed_context_weakening ξ Γ e τ :
+  (∀ f, e.[f] = e) → Γ ⊢ₜ e : τ → ξ ++ Γ ⊢ₜ e : τ.
+Proof. intros H1 H2. erewrite <- H1. by eapply context_weakening. Qed.
