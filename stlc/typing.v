@@ -24,3 +24,28 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
   | App_typed e1 e2 τ1 τ2 :
      Γ ⊢ₜ e1 : TArrow τ1 τ2 → Γ ⊢ₜ e2 : τ1 → Γ ⊢ₜ App e1 e2 : τ2
 where "Γ ⊢ₜ e : τ" := (typed Γ e τ).
+
+Lemma typed_subst_invariant Γ e τ s1 s2 :
+  Γ ⊢ₜ e : τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
+Proof.
+  intros Htyped; revert s1 s2.
+  assert (∀ s1 s2 x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
+  { rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
+  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega.
+Qed.
+
+Definition env_subst (vs : list val) (x : var) : expr :=
+  from_option id (Var x) (of_val <$> vs !! x).
+
+Lemma typed_subst_head_simpl Δ τ e w ws :
+  Δ ⊢ₜ e : τ → length Δ = S (length ws) →
+  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
+Proof.
+  intros H1 H2.
+  rewrite /env_subst. eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
+  by rewrite Hv.
+Qed.
+
+Lemma empty_env_subst e : e.[env_subst []] = e.
+Proof. change (env_subst []) with ids. by asimpl. Qed.

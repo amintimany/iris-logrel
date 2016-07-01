@@ -3,7 +3,7 @@ From iris.proofmode Require Import tactics pviewshifts.
 From iris.program_logic Require Import ownership adequacy.
 
 Section soundness.
-  Definition Σ := #[ auth.authGF heapUR ].
+  Let Σ := #[ auth.authGF heapUR ].
 
   Lemma wp_soundness e τ σ :
     [] ⊢ₜ e : τ →
