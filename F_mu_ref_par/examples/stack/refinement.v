@@ -13,15 +13,10 @@ Section Stack_refinement.
   Implicit Types Δ : listC D.
 
   Lemma FG_CG_counter_refinement Δ {HΔ : ctx_PersistentP Δ} :
-    @bin_log_related _ _ _ Δ [] FG_stack CG_stack
-                        (TForall
-                           (TProd
-                              (TProd
-                                 (TArrow (TVar 0) TUnit)
-                                 (TArrow TUnit (TSum TUnit (TVar 0)))
-                              )
-                              (TArrow (TArrow (TVar 0) TUnit) TUnit)
-                        )).
+    Δ ∥ [] ⊨ FG_stack ≤log≤ CG_stack : TForall (TProd (TProd
+        (TArrow (TVar 0) TUnit)
+        (TArrow TUnit (TSum TUnit (TVar 0))))
+        (TArrow (TArrow (TVar 0) TUnit) TUnit)).
   Proof.
     (* executing the preambles *)
     iIntros { [|??] ρ j K [=] } "[#Hheap [#Hspec [_ Hj]]]".
@@ -376,16 +371,10 @@ End Stack_refinement.
 Definition Σ := #[authGF heapUR; authGF cfgUR; authGF stackUR].
 
 Theorem stack_ctx_refinement :
-  ctx_refines [] FG_stack CG_stack
-    (TForall
-       (TProd
-          (TProd
-             (TArrow (TVar 0) TUnit)
-             (TArrow TUnit (TSum TUnit (TVar 0)))
-          )
-          (TArrow (TArrow (TVar 0) TUnit) TUnit)
-       )
-    ).
+  ctx_refines [] FG_stack CG_stack (TForall (TProd (TProd
+        (TArrow (TVar 0) TUnit)
+        (TArrow TUnit (TSum TUnit (TVar 0))))
+        (TArrow (TArrow (TVar 0) TUnit) TUnit))).
 Proof.
   eapply (@binary_soundness Σ);
     eauto using FG_stack_closed, CG_stack_closed.

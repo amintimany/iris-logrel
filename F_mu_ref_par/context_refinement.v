@@ -199,9 +199,9 @@ Section bin_log_related_under_typed_ctx.
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
     typed_ctx K Γ τ Γ' τ' →
-    (∀ Δ (HΔ : ctx_PersistentP Δ), @bin_log_related _ _ _ Δ Γ e e' τ) →
+    (∀ Δ (HΔ : ctx_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
     ∀ Δ (HΔ : ctx_PersistentP Δ),
-      @bin_log_related _ _ _ Δ Γ' (fill_ctx K e) (fill_ctx K e') τ'.
+      Δ ∥ Γ' ⊨ fill_ctx K e ≤log≤ fill_ctx K e' : τ'.
   Proof.
     revert Γ τ Γ' τ' e e'.
     induction K as [|k K]=> Γ τ Γ' τ' e e' H1 H2; simpl.

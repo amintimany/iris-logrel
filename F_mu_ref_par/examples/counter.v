@@ -254,8 +254,7 @@ Section CG_Counter.
   Definition counterN : namespace := nroot .@ "counter".
 
   Lemma FG_CG_counter_refinement Δ {HΔ : ctx_PersistentP Δ} :
-    @bin_log_related _ _ _ Δ [] FG_counter CG_counter
-                      (TProd (TArrow TUnit TUnit) (TArrow TUnit TNat)).
+    Δ ∥ [] ⊨ FG_counter ≤log≤ CG_counter : TProd (TArrow TUnit TUnit) (TArrow TUnit TNat).
   Proof.
     (* executing the preambles *)
     intros [|v vs] ρ j K [=].

@@ -12,8 +12,7 @@ Section soundness.
   Local Opaque to_heap.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ H H' Δ (HΔ : ctx_PersistentP Δ),
-      @bin_log_related Σ H H' Δ [] e e' τ) →
+    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
     ownP (Σ:=globalF Σ) ∅
     ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h) }}.
   Proof.
@@ -63,7 +62,7 @@ Section soundness.
   Qed.
 
   Lemma basic_soundness e e' τ v thp hp :
-    (∀ H H' Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' Δ [] e e' τ) →
+    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
     rtc step ([e], ∅) (# v :: thp, hp) →
     (∃ thp' hp' v', rtc step ([e'], ∅) (# v' :: thp', hp')).
   Proof.
@@ -81,7 +80,7 @@ Section soundness.
   Lemma binary_soundness Γ e e' τ :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    (∀ H H' Δ (HΔ : ctx_PersistentP Δ), @bin_log_related Σ H H' Δ Γ e e' τ) →
+    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
     ctx_refines Γ e e' τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.
