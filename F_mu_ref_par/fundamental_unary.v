@@ -135,7 +135,7 @@ Section typed_interp.
       iPvsIntro.
       iInv (L .@ l) as {w} "[Hw1 #Hw2]".
       iApply (wp_load _ _ _ 1); [|iFrame "Hheap"]; trivial.
-      specialize (HNLdisj l); set_solver_ndisj.
+      specialize (HNLdisj l); auto with ndisj.
       iFrame "Hw1". iIntros "> Hw1". iPvsIntro; iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHHtyped1; cbn.
@@ -146,7 +146,7 @@ Section typed_interp.
       iInv (L .@ l) as {z} "[Hz1 #Hz2]".
       eapply bool_decide_spec; eauto using to_of_val.
       iApply (wp_store N); auto using to_of_val.
-      specialize (HNLdisj l); set_solver_ndisj.
+      specialize (HNLdisj l); auto with ndisj.
       iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro. iSplitL; eauto 10.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHHtyped1; cbn.
@@ -158,11 +158,11 @@ Section typed_interp.
       iInv (L .@ l) as {w} "[Hw1 #Hw2]"; [cbn; eauto 10 using to_of_val|].
       destruct (val_dec_eq v2 w) as [|Hneq]; subst.
       + iApply (wp_cas_suc N); eauto using to_of_val.
-        specialize (HNLdisj l); set_solver_ndisj.
+        specialize (HNLdisj l); auto with ndisj.
         iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro.
         iSplitL; [|iPvsIntro]; eauto.
       + iApply (wp_cas_fail N); eauto using to_of_val.
-        clear Hneq. specialize (HNLdisj l); set_solver_ndisj.
+        clear Hneq. specialize (HNLdisj l); auto with ndisj.
         (* Weird that Hneq above makes set_solver_ndisj diverge or
            take exceptionally long!?!? *)
         iIntros "{$Hheap $Hw1} > Hw1". iPvsIntro. iSplitL; eauto.

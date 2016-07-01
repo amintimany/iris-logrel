@@ -357,7 +357,7 @@ Section typed_interp.
     assert (Hneq : i ≠ 1) by omega; set (Hdsj := Disjoint_after_dot i l Hneq);
     clearbody Hdsj; clear Hneq; revert Hdsj;
     generalize (N .@ 1) as S1; generalize (N .@ 2) as S2;
-    intros S1 S2 Hsdj; set_solver_ndisj.
+    intros S1 S2 Hsdj; auto with ndisj.
 
   Lemma typed_binary_interp_Load Δ Γ e e' τ {HΔ : ✓✓ Δ}
       (IHHtyped : Δ ∥ Γ ⊩ e ≤log≤ e' ∷ (Tref τ)) :

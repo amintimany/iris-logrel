@@ -255,7 +255,7 @@ Section CG_Counter.
     let Hneq := fresh "Hneq" in
     let Hdsj := fresh "Hdsj" in
     assert (Hneq : n ≠ n') by omega;
-    set (Hdsj := ndot_ne_disjoint N n n' Hneq); set_solver_ndisj.
+    set (Hdsj := ndot_ne_disjoint N n n' Hneq); auto with ndisj.
 
   Lemma FG_CG_counter_refinement N Δ {HΔ : ∀ x v, PersistentP (Δ x v)} :
     (@bin_log_related _ _ _ N Δ [] FG_counter CG_counter
