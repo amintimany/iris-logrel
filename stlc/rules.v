@@ -70,11 +70,11 @@ Section lang_rules.
   (** Helper Lemmas for weakestpre. *)
 
   Lemma wp_bind {E e} K Q :
-    wp E e (λ v, wp E (fill K (of_val v)) Q) ⊢ wp E (fill K e) Q.
+    WP e @ E {{ v, WP fill K (of_val v) @ E {{ Q }} }} ⊢ WP fill K e @ E {{ Q }}.
   Proof. apply weakestpre.wp_bind. Qed.
 
   Lemma wp_lam E e1 e2 v Q :
-    to_val e2 = Some v → ▷ wp E e1.[e2 /] Q ⊢ wp E (App (Lam e1) e2) Q.
+    to_val e2 = Some v → ▷ WP e1.[e2 /] @ E {{ Q }} ⊢ WP App (Lam e1) e2 @ E {{ Q }}.
   Proof.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (App _ _) e1.[of_val v /] None) //=; auto.
@@ -83,7 +83,7 @@ Section lang_rules.
 
   Lemma wp_fst E e1 v1 e2 v2 Q :
     to_val e1 = Some v1 → to_val e2 = Some v2 →
-    ▷ Q v1 ⊢ wp E (Fst (Pair e1 e2)) Q.
+    ▷ Q v1 ⊢ WP Fst (Pair e1 e2) @ E {{ Q }}.
   Proof.
     intros <-%of_to_val <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Fst (Pair _ _)) (of_val v1) None) //=; auto.
@@ -92,7 +92,7 @@ Section lang_rules.
 
   Lemma wp_snd E e1 v1 e2 v2 Q :
     to_val e1 = Some v1 → to_val e2 = Some v2 →
-    ▷ Q v2 ⊢ wp E (Snd (Pair e1 e2)) Q.
+    ▷ Q v2 ⊢ WP Snd (Pair e1 e2) @ E {{ Q }}.
   Proof.
     intros <-%of_to_val <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Snd (Pair _ _)) (of_val v2) None) //=; auto.
@@ -101,16 +101,16 @@ Section lang_rules.
 
   Lemma wp_case_inl E e0 v0 e1 e2 Q :
     to_val e0 = Some v0 →
-    ▷ wp E e1.[e0/] Q ⊢ wp E (Case (InjL e0) e1 e2) Q.
+    ▷ WP e1.[e0/] @ E {{ Q }} ⊢ WP Case (InjL e0) e1 e2 @ E {{ Q }}.
   Proof.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Case (InjL _) _ _) (e1.[of_val v0/]) None) //=; auto.
     - rewrite right_id; auto using uPred.later_mono, wp_value'.
-  Qed.  
+  Qed.
 
   Lemma wp_case_inr E e0 v0 e1 e2 Q :
     to_val e0 = Some v0 →
-    ▷ wp E e2.[e0/] Q ⊢ wp E (Case (InjR e0) e1 e2) Q.
+    ▷ WP e2.[e0/] @ E {{ Q }} ⊢ WP Case (InjR e0) e1 e2 @ E {{ Q }}.
   Proof.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_step (Case (InjR _) _ _) (e2.[of_val v0/]) None) //=; auto.

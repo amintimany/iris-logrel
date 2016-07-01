@@ -13,7 +13,7 @@ Fixpoint interp (τ : type) (w : val) : iProp lang Σ :=
   | TSum τ1 τ2 =>
      (∃ w1, w = InjLV w1 ∧ interp τ1 w1) ∨ (∃ w2, w = InjRV w2 ∧ interp τ2 w2)
   | TArrow τ1 τ2 =>
-     □ ∀ v, interp τ1 v → wp ⊤ (App (of_val w) (of_val v)) (interp τ2)
+     □ ∀ v, interp τ1 v → WP App (of_val w) (of_val v) {{ interp τ2 }}
   end%I.
 
 Global Instance interp_always_stable τ v : PersistentP (interp τ v).
