@@ -5,6 +5,8 @@ From iris.algebra Require Export upred_big_op.
 
 Section typed_interp.
   Context {Σ : iFunctor}.
+  Notation D := (valC -n> iProp lang Σ).
+  Implicit Types Δ : listC D.
 
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) uconstr(Hp) :=
     iApply (@wp_bind _ _ _ [ctx]);
@@ -14,21 +16,20 @@ Section typed_interp.
 
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
-  Lemma typed_interp (Δ : varC -n> valC -n> iProp lang Σ) Γ vs e τ
-      (HΔ : ∀ x v, PersistentP (Δ x v)) :
+  Lemma typed_interp Δ Γ vs e τ (HΔ : ctx_PersistentP Δ) :
     Γ ⊢ₜ e : τ →
     length Γ = length vs →
     [∧] zip_with (λ τ, interp τ Δ) Γ vs ⊢ WP e.[env_subst vs] {{ interp τ Δ }}.
   Proof.
     intros Htyped. revert Δ HΔ vs.
-     induction Htyped; iIntros {Δ HΔ vs Hlen} "#HΓ"; cbn.
+    induction Htyped; iIntros {Δ HΔ vs Hlen} "#HΓ"; cbn.
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by  rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst Hv; value_case.
       iApply (big_and_elem_of with "HΓ").
       apply elem_of_list_lookup_2 with x.
-      rewrite lookup_zip_with; simplify_option_eq; trivial.
+      rewrite lookup_zip_with; by simplify_option_eq.
     - (* unit *) value_case.
     - (* pair *)
       smart_wp_bind (PairLCtx e2.[env_subst vs]) v "# Hv" IHHtyped1.
@@ -70,35 +71,29 @@ Section typed_interp.
       iApply wp_mono; [|iApply "Hv"]; auto.
     - (* TLam *)
       value_case.
-      iIntros { τi } "! %". iApply wp_TLam; iNext; simpl in *.
-      iApply (IHHtyped (extend_context_interp_fun1 τi Δ)); [rewrite map_length|]; trivial.
-      by iDestruct (zip_with_context_interp_subst with "HΓ") as "?".
+      iAlways; iIntros { τi } "%". iApply wp_TLam; iNext. simpl in *.
+      iApply (IHHtyped (τi :: Δ)). by rewrite fmap_length.
+      rewrite zip_with_fmap_l. by iApply context_interp_ren_S.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
       iApply wp_wand_r; iSplitL; [iApply ("Hv" $! (interp τ' Δ)); iPureIntro; apply _|].
-      iIntros{w} "?". by rewrite interp_subst.
+      iIntros {w} "?". by rewrite interp_subst.
     - (* Fold *)
       rewrite map_length in IHHtyped.
       iApply (@wp_bind _ _ _ [FoldCtx]).
-        iApply wp_wand_l.
-        iSplitL; [|iApply (IHHtyped (extend_context_interp ((interp (TRec τ)) Δ) Δ));
-                 trivial].
-      + iIntros {v} "#Hv".
-        value_case.
+      iApply wp_wand_l.
+      iSplitL; [|iApply (IHHtyped (interp (TRec τ) Δ :: Δ)); trivial].
+      + iIntros {v} "#Hv". value_case.
         change (fixpoint _) with (interp (TRec τ) Δ) at 1; trivial.
-        rewrite fixpoint_unfold; cbn.
-        iAlways; eauto.
-      + by iDestruct (zip_with_context_interp_subst with "HΓ") as "?".
+        rewrite fixpoint_unfold /=. iAlways; eauto 10.
+      + rewrite zip_with_fmap_l. by iApply context_interp_ren_S.
     - (* Unfold *)
       iApply (@wp_bind _ _ _ [UnfoldCtx]);
         iApply wp_wand_l; iSplitL; [|iApply IHHtyped; trivial].
-      iIntros {v}.
-      cbn [interp interp_rec cofe_mor_car].
-      rewrite fixpoint_unfold.
-      iIntros "#Hv"; cbn.
-      change (fixpoint _) with (interp (TRec τ) Δ).
-      iDestruct "Hv" as {w} "[% #Hw]"; rewrite H.
+      iIntros {v} "#Hv". rewrite /= fixpoint_unfold.
+      change (fixpoint _) with (interp (TRec τ) Δ); simpl.
+      iDestruct "Hv" as {w} "#[% Hw]"; subst.
       iApply wp_Fold; cbn; auto using to_of_val.
-      rewrite -interp_subst; trivial.
+      by rewrite -interp_subst.
   Qed.
 End typed_interp.

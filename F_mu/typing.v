@@ -30,25 +30,22 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
      Γ ⊢ₜ Case e0 e1 e2 : ρ
   | Lam_typed e τ1 τ2 : τ1 :: Γ ⊢ₜ e : τ2 → Γ ⊢ₜ Lam e : TArrow τ1 τ2
   | App_typed e1 e2 τ1 τ2 : Γ ⊢ₜ e1 : TArrow τ1 τ2 → Γ ⊢ₜ e2 : τ1 → Γ ⊢ₜ App e1 e2 : τ2
-  | TLam_typed e τ : map (λ t, t.[ren (+1)]) Γ ⊢ₜ e : τ → Γ ⊢ₜ TLam e : TForall τ
+  | TLam_typed e τ : subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ TLam e : TForall τ
   | TApp_typed e τ τ' : Γ ⊢ₜ e : TForall τ → Γ ⊢ₜ TApp e : τ.[τ'/]
-  | TFold e τ : map (λ t, t.[ren (+1)]) Γ ⊢ₜ e : τ → Γ ⊢ₜ Fold e : TRec τ
+  | TFold e τ : subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ Fold e : TRec τ
   | TUnfold e τ : Γ ⊢ₜ e : TRec τ → Γ ⊢ₜ Unfold e : τ.[TRec τ/]
 where "Γ ⊢ₜ e : τ" := (typed Γ e τ).
-
-Local Hint Extern 1 =>
-  match goal with
-  | H : context [length (map _ _)] |- _ => rewrite map_length in H
-  end : typed_subst_invariant.
 
 Lemma typed_subst_invariant Γ e τ s1 s2 :
   Γ ⊢ₜ e : τ → (∀ x, x < length Γ → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Htyped; revert s1 s2.
-  assert (∀ {A} `{Ids A} `{Rename A}
-            (s1 s2 : nat → A) x, (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
+  assert (∀ x Γ, x < length (subst (ren (+1)) <$> Γ) → x < length Γ).
+  { intros ??. by rewrite fmap_length. } 
+  assert (∀ {A} `{Ids A} `{Rename A} (s1 s2 : nat → A) x,
+    (x ≠ 0 → s1 (pred x) = s2 (pred x)) → up s1 x = up s2 x).
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
-  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega typed_subst_invariant.
+  induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega.
 Qed.
 
 Definition env_subst (vs : list val) (x : var) : expr :=
@@ -58,27 +55,11 @@ Lemma typed_subst_head_simpl Δ τ e w ws :
   Δ ⊢ₜ e : τ → length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
-  intros H1 H2.
-  rewrite /env_subst. eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
-  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
-  by rewrite Hv.
+  intros H1 H2. rewrite /env_subst.
+  eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' ?]; first omega.
+  by simplify_option_eq.
 Qed.
 
-Local Opaque eq_nat_dec.
-
-Lemma iter_up_subst_type (m : nat) (τ : type) (x : var) :
-  iter m up (τ .: ids) x =
-    if lt_dec x m then ids x else
-    if eq_nat_dec x m then τ.[ren (+m)] else ids (x - 1).
-Proof.
-  revert x τ.
-  induction m; intros x τ; cbn.
-  - destruct x; cbn.
-    + destruct eq_nat_dec; auto with omega.
-      asimpl; trivial.
-    + destruct eq_nat_dec; auto with omega.
-  - destruct x; asimpl; trivial.
-    rewrite IHm.
-    repeat destruct lt_dec; repeat destruct eq_nat_dec;
-      asimpl; auto with omega.
-Qed.
+Lemma empty_env_subst e : e.[env_subst []] = e.
+Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.

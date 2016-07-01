@@ -1,6 +1,8 @@
 From iris.algebra Require Export base.
-From iris.algebra Require Import cofe.
+From iris.algebra Require Import upred.
+From iris.program_logic Require Import weakestpre.
 From Autosubst Require Export Autosubst.
+Import uPred.
 
 Canonical Structure varC := leibnizC var.
 
@@ -22,3 +24,19 @@ Section Autosubst_Lemmas.
       repeat (case_match || asimpl || rewrite IH); auto with omega.
   Qed.
 End Autosubst_Lemmas.
+
+Ltac properness :=
+  repeat match goal with
+  | |- (∃ _: _, _)%I ≡ (∃ _: _, _)%I => apply exist_proper =>?
+  | |- (∀ _: _, _)%I ≡ (∀ _: _, _)%I => apply forall_proper =>?
+  | |- (_ ∧ _)%I ≡ (_ ∧ _)%I => apply and_proper
+  | |- (_ ∨ _)%I ≡ (_ ∨ _)%I => apply or_proper
+  | |- (_ → _)%I ≡ (_ → _)%I => apply impl_proper
+  | |- (WP _ {{ _ }})%I ≡ (WP _ {{ _ }})%I => apply wp_proper =>?
+  | |- (▷ _)%I ≡ (▷ _)%I => apply later_proper
+  | |- (□ _)%I ≡ (□ _)%I => apply always_proper
+  end.
+
+Ltac solve_proper_alt :=
+  repeat intro; (simpl + idtac);
+  by repeat match goal with H : _ ≡{_}≡ _|- _ => rewrite H end.

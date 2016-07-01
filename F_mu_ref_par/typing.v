@@ -167,7 +167,7 @@ Proof.
 Qed.
 
 Lemma n_closed_subst_head_simpl n e w ws :
-  (∀ f, e.[iter n up f] = e) ->
+  (∀ f, e.[iter n up f] = e) →
   S (length ws) = n →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
@@ -188,7 +188,7 @@ Proof.
 Qed.
 
 Lemma n_closed_subst_head_simpl_2 n e w w' ws :
-  (∀ f, e.[iter n up f] = e) -> (S (S (length ws))) = n →
+  (∀ f, e.[iter n up f] = e) → (S (S (length ws))) = n →
   e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
   intros H1 H2.
