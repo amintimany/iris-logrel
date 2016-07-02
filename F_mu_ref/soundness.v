@@ -13,7 +13,8 @@ Section soundness.
     iPvs (heap_alloc with "Hemp") as {H} "[Hheap Hemp]"; first solve_ndisj.
     iApply wp_wand_l. iSplitR.
     { iIntros {v} "HΦ". iExists H. iExact "HΦ". }
-    rewrite -(empty_env_subst e). iApply typed_interp; eauto.
+    rewrite -(empty_env_subst e).
+    iApply fundamental; repeat iSplit; eauto. by iApply interp_env_nil.
   Qed.
 
   Theorem soundness e τ e' thp σ σ' :

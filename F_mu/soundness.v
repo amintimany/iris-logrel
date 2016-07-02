@@ -9,7 +9,7 @@ Section soundness.
     [] ⊢ₜ e : τ → True ⊢ WP e {{ @interp (globalF Σ) τ [] }}.
   Proof.
     iIntros {H} "". rewrite -(empty_env_subst e).
-    by iApply (@typed_interp _ _ _ []).
+    iApply (@fundamental _ _ _ []); eauto. by iApply interp_env_nil.
   Qed.
 
   Theorem soundness e τ e' thp :

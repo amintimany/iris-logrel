@@ -35,7 +35,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
   | TLam_typed e τ :
      subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ TLam e : TForall τ
   | TApp_typed e τ τ' : Γ ⊢ₜ e : TForall τ → Γ ⊢ₜ TApp e : τ.[τ'/]
-  | TFold e τ : subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ Fold e : TRec τ
+  | TFold e τ : Γ ⊢ₜ e : τ.[TRec τ/] → Γ ⊢ₜ Fold e : TRec τ
   | TUnfold e τ : Γ ⊢ₜ e : TRec τ → Γ ⊢ₜ Unfold e : τ.[TRec τ/]
   | TAlloc e τ : Γ ⊢ₜ e : τ → Γ ⊢ₜ Alloc e : Tref τ
   | TLoad e τ : Γ ⊢ₜ e : Tref τ → Γ ⊢ₜ Load e : τ

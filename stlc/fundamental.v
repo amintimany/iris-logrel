@@ -14,9 +14,9 @@ Section typed_interp.
 
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
-  Lemma typed_interp Γ vs e τ :
+  Theorem fundamental Γ vs e τ :
     Γ ⊢ₜ e : τ → length Γ = length vs →
-    [∧] zip_with (@interp Σ) Γ vs ⊢ WP e.[env_subst vs] {{ interp τ }}.
+    [∧] zip_with (@interp Σ) Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
   Proof.
     intros Htyped; revert vs.
     induction Htyped; iIntros {vs Hlen} "#Hctx /=".

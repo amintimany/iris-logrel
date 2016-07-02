@@ -5,9 +5,10 @@ From iris.program_logic Require Import adequacy.
 Section soundness.
   Let Σ := #[].
 
-  Lemma wp_soundness e τ : [] ⊢ₜ e : τ → True ⊢ WP e {{ @interp (globalF Σ) τ }}.
+  Lemma wp_soundness e τ :
+    [] ⊢ₜ e : τ → (True : iProp _ (globalF Σ)) ⊢ WP e {{ ⟦ τ ⟧ }}.
   Proof.
-    iIntros {H} "". rewrite -(empty_env_subst e). iApply typed_interp; eauto.
+    iIntros {H} "". rewrite -(empty_env_subst e). iApply fundamental; eauto.
   Qed.
 
   Theorem soundness e τ e' thp :

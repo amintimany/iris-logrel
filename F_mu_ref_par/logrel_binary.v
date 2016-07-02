@@ -110,29 +110,41 @@ Section logrel.
     | TRec τ' => interp_rec (interp τ')
     | Tref τ' => interp_ref (interp τ')
     end.
+  Notation "⟦ τ ⟧" := (interp τ).
 
-  Class ctx_PersistentP Δ :=
+  Definition interp_env (Γ : list type)
+      (Δ : listC D) (vvs : list (val * val)) : iPropG lang Σ :=
+    (length Γ = length vvs ∧ [∧] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vvs)%I.
+  Notation "⟦ Γ ⟧*" := (interp_env Γ).
+
+  Definition interp_expr (τ : type) (Δ : listC D)
+      (ee : expr * expr) : iPropG lang Σ := (∀ j K,
+    j ⤇ fill K (ee.2) →
+    WP ee.1 {{ v, ∃ v', j ⤇ fill K (# v') ★ ⟦ τ ⟧ Δ (v, v') }})%I.
+
+  Class env_PersistentP Δ :=
     ctx_persistentP : Forall (λ τi, ∀ vv, PersistentP (τi vv)) Δ.
-  Global Instance ctx_persistent_nil : ctx_PersistentP [].
+  Global Instance ctx_persistent_nil : env_PersistentP [].
   Proof. by constructor. Qed.
   Global Instance ctx_persistent_cons τi Δ :
-    (∀ vv, PersistentP (τi vv)) → ctx_PersistentP Δ → ctx_PersistentP (τi :: Δ).
+    (∀ vv, PersistentP (τi vv)) → env_PersistentP Δ → env_PersistentP (τi :: Δ).
   Proof. by constructor. Qed.
   Global Instance ctx_persistent_lookup Δ x vv :
-    ctx_PersistentP Δ → PersistentP (ctx_lookup x Δ vv).
+    env_PersistentP Δ → PersistentP (ctx_lookup x Δ vv).
   Proof. intros HΔ; revert x; induction HΔ=>-[|?] /=; apply _. Qed.
-
-  Global Instance interp_var_persistent τ Δ vv :
-    ctx_PersistentP Δ → PersistentP (interp τ Δ vv).
+  Global Instance interp_persistent τ Δ vv :
+    env_PersistentP Δ → PersistentP (⟦ τ ⟧ Δ vv).
   Proof.
     revert vv Δ; induction τ=> vv Δ HΔ; simpl; try apply _.
     rewrite /PersistentP /interp_rec fixpoint_unfold /interp_rec1 /=.
     by apply always_intro'.
   Qed.
+  Global Instance interp_env_persistent Γ Δ vvs :
+    env_PersistentP Δ → PersistentP (⟦ Γ ⟧* Δ vvs) := _.
 
   Lemma interp_weaken Δ1 Π Δ2 τ :
-    interp τ.[iter (length Δ1) up (ren (+ length Π))] (Δ1 ++ Π ++ Δ2)
-    ≡ interp τ (Δ1 ++ Δ2).
+    ⟦ τ.[iter (length Δ1) up (ren (+ length Π))] ⟧ (Δ1 ++ Π ++ Δ2)
+    ≡ ⟦ τ ⟧ (Δ1 ++ Δ2).
   Proof.
     revert Δ1 Π Δ2. induction τ=> Δ1 Π Δ2; simpl; auto.
     - intros ww; simpl; properness; auto.
@@ -152,8 +164,8 @@ Section logrel.
   Qed.
 
   Lemma interp_subst_up Δ1 Δ2 τ τ' :
-    interp τ (Δ1 ++ interp τ' Δ2 :: Δ2)
-    ≡ interp τ.[iter (length Δ1) up (τ' .: ids)] (Δ1 ++ Δ2).
+    ⟦ τ ⟧ (Δ1 ++ interp τ' Δ2 :: Δ2)
+    ≡ ⟦ τ.[iter (length Δ1) up (τ' .: ids)] ⟧ (Δ1 ++ Δ2).
   Proof.
     revert Δ1 Δ2; induction τ=> Δ1 Δ2; simpl; auto.
     - intros ww; simpl; properness; auto.
@@ -176,20 +188,42 @@ Section logrel.
     - intros ww; simpl; properness; auto. by apply IHτ.
   Qed.
 
-  Lemma interp_subst Δ2 τ τ' : interp τ (interp τ' Δ2 :: Δ2) ≡ interp τ.[τ'/] Δ2.
+  Lemma interp_subst Δ2 τ τ' : ⟦ τ ⟧ (⟦ τ' ⟧ Δ2 :: Δ2) ≡ ⟦ τ.[τ'/] ⟧ Δ2.
   Proof. apply (interp_subst_up []). Qed.
 
-  Lemma context_interp_ren_S Δ (Γ : list type) (vvs : list (val * val)) τi :
-    ([∧] zip_with (λ τ, interp τ Δ) Γ vvs)
-    ⊣⊢ ([∧] zip_with (λ τ, interp τ.[ren (+1)] (τi :: Δ)) Γ vvs).
+  Lemma interp_env_length Δ Γ vvs : ⟦ Γ ⟧* Δ vvs ⊢ length Γ = length vvs.
+  Proof. by iIntros "[% ?]". Qed.
+
+  Lemma interp_env_Some_l Δ Γ vvs x τ :
+    Γ !! x = Some τ → ⟦ Γ ⟧* Δ vvs ⊢ ∃ vv, vvs !! x = Some vv ∧ ⟦ τ ⟧ Δ vv.
   Proof.
-    revert Δ vvs τi; induction Γ=> Δ [|vv vvs] τi; simpl; auto.
-    apply and_proper; auto.
-    symmetry. apply (interp_weaken [] [τi] Δ).
+    iIntros {?} "[Hlen HΓ]"; iDestruct "Hlen" as %Hlen.
+    destruct (lookup_lt_is_Some_2 vvs x) as [v Hv].
+    { by rewrite -Hlen; apply lookup_lt_Some with τ. }
+    iExists v; iSplit. done. iApply (big_and_elem_of with "HΓ").
+    apply elem_of_list_lookup_2 with x.
+    rewrite lookup_zip_with; by simplify_option_eq.
+  Qed.
+
+  Lemma interp_env_nil Δ : True ⊢ ⟦ [] ⟧* Δ [].
+  Proof. iIntros ""; iSplit; auto. Qed.
+  Lemma interp_env_cons Δ Γ vvs τ vv :
+    ⟦ τ :: Γ ⟧* Δ (vv :: vvs) ⊣⊢ ⟦ τ ⟧ Δ vv ∧ ⟦ Γ ⟧* Δ vvs.
+  Proof.
+    rewrite /interp_env /= (assoc _ (⟦ _ ⟧ _ _)) -(comm _ (_ = _)%I) -assoc.
+    by apply and_proper; [apply pure_proper; omega|].
+  Qed.
+
+  Lemma interp_env_ren Δ (Γ : list type) vvs τi :
+    ⟦ subst (ren (+1)) <$> Γ ⟧* (τi :: Δ) vvs ⊣⊢ ⟦ Γ ⟧* Δ vvs.
+  Proof.
+    apply and_proper; [apply pure_proper; by rewrite fmap_length|].
+    revert Δ vvs τi; induction Γ=> Δ [|v vs] τi; csimpl; auto.
+    apply and_proper; auto. apply (interp_weaken [] [τi] Δ).
   Qed.
 
   Lemma interp_EqType_agree τ v v' Δ :
-    ctx_PersistentP Δ → EqType τ → interp τ Δ (v, v') ⊢ ■ (v = v').
+    env_PersistentP Δ → EqType τ → interp τ Δ (v, v') ⊢ ■ (v = v').
   Proof.
     intros ? Hτ; revert v v'; induction Hτ; iIntros {v v'} "#H1 /=".
     - by iDestruct "H1" as "[% %]"; subst.
@@ -205,3 +239,8 @@ Section logrel.
         rewrite IHHτ2. by iDestruct "H1" as "%"; subst.
   Qed.
 End logrel.
+
+Typeclasses Opaque interp_env.
+Notation "⟦ τ ⟧" := (interp τ).
+Notation "⟦ τ ⟧ₑ" := (interp_expr τ).
+Notation "⟦ Γ ⟧*" := (interp_env Γ).

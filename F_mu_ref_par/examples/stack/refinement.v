@@ -12,15 +12,16 @@ Section Stack_refinement.
   Notation D := (prodC valC valC -n> iPropG lang Σ).
   Implicit Types Δ : listC D.
 
-  Lemma FG_CG_counter_refinement Δ {HΔ : ctx_PersistentP Δ} :
+  Lemma FG_CG_counter_refinement Δ {HΔ : env_PersistentP Δ} :
     Δ ∥ [] ⊨ FG_stack ≤log≤ CG_stack : TForall (TProd (TProd
         (TArrow (TVar 0) TUnit)
         (TArrow TUnit (TSum TUnit (TVar 0))))
         (TArrow (TArrow (TVar 0) TUnit) TUnit)).
   Proof.
     (* executing the preambles *)
-    iIntros { [|??] ρ j K [=] } "[#Hheap [#Hspec [_ Hj]]]".
-    cbn -[FG_stack CG_stack].
+    iIntros { [|??] ρ} "#(Hheap & Hspec & HΓ)"; iIntros {j K} "Hj"; last first.
+    { iDestruct (interp_env_length with "HΓ") as %[=]. } 
+    iClear "HΓ". cbn -[FG_stack CG_stack].
     rewrite ?empty_env_subst /CG_stack /FG_stack.
     iApply wp_value; eauto.
     iExists (TLamV _); iFrame "Hj".
@@ -29,8 +30,7 @@ Section Stack_refinement.
     iApply wp_TLam; iNext.
     iPvs (steps_newlock _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
-    rewrite fill_app; simpl.
-    iFrame "Hspec Hj"; trivial.
+    { rewrite fill_app; simpl. iFrame "Hspec Hj"; trivial. }
     rewrite fill_app; simpl.
     iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     simpl.

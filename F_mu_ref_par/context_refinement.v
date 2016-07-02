@@ -201,8 +201,8 @@ Section bin_log_related_under_typed_ctx.
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
     typed_ctx K Γ τ Γ' τ' →
-    (∀ Δ (HΔ : ctx_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
-    ∀ Δ (HΔ : ctx_PersistentP Δ),
+    (∀ Δ (HΔ : env_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
+    ∀ Δ (HΔ : env_PersistentP Δ),
       Δ ∥ Γ' ⊨ fill_ctx K e ≤log≤ fill_ctx K e' : τ'.
   Proof.
     revert Γ τ Γ' τ' e e'.
@@ -211,31 +211,31 @@ Section bin_log_related_under_typed_ctx.
     - inversion_clear 1 as [|? ? ? ? ? ? ? ? Hx1 Hx2]. intros H3 Δ HΔ.
       specialize (IHK _ _ _ _ e e' H1 H2 Hx2 H3).
       inversion Hx1; subst; simpl.
-      + eapply typed_binary_interp_Lam; eauto;
+      + eapply bin_log_related_Lam; eauto;
           match goal with
             H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
-      + eapply typed_binary_interp_App; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_App; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_Pair; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_Pair; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_Fst; eauto.
-      + eapply typed_binary_interp_Snd; eauto.
-      + eapply typed_binary_interp_InjL; eauto.
-      + eapply typed_binary_interp_InjR; eauto.
+      + eapply bin_log_related_App; eauto using binary_fundamental.
+      + eapply bin_log_related_App; eauto using binary_fundamental.
+      + eapply bin_log_related_Pair; eauto using binary_fundamental.
+      + eapply bin_log_related_Pair; eauto using binary_fundamental.
+      + eapply bin_log_related_Fst; eauto.
+      + eapply bin_log_related_Snd; eauto.
+      + eapply bin_log_related_InjL; eauto.
+      + eapply bin_log_related_InjR; eauto.
       + match goal with
           H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
-        eapply typed_binary_interp_Case;
-          eauto using typed_binary_interp;
+        eapply bin_log_related_Case;
+          eauto using binary_fundamental;
           match goal with
             H : _ |- _ => eapply (typed_n_closed _ _ _ H)
           end.
       + match goal with
           H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
-        eapply typed_binary_interp_Case;
-          eauto using typed_binary_interp;
+        eapply bin_log_related_Case;
+          eauto using binary_fundamental;
           try match goal with
                 H : _ |- _ => eapply (typed_n_closed _ _ _ H)
               end;
@@ -245,36 +245,33 @@ Section bin_log_related_under_typed_ctx.
       + match goal with
           H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
-        eapply typed_binary_interp_Case;
-          eauto using typed_binary_interp;
+        eapply bin_log_related_Case;
+          eauto using binary_fundamental;
           try match goal with
                 H : _ |- _ => eapply (typed_n_closed _ _ _ H)
               end;
           match goal with
             H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
-      + eapply typed_binary_interp_If;
-          eauto using typed_ctx_typed, typed_binary_interp.
-      + eapply typed_binary_interp_If;
-          eauto using typed_ctx_typed, typed_binary_interp.
-      + eapply typed_binary_interp_If;
-          eauto using typed_ctx_typed, typed_binary_interp.
-      + eapply typed_binary_interp_nat_bin_op;
-          eauto using typed_ctx_typed, typed_binary_interp.
-      + eapply typed_binary_interp_nat_bin_op;
-          eauto using typed_ctx_typed, typed_binary_interp.
-      + eapply typed_binary_interp_Fold; eauto.
-      + eapply typed_binary_interp_Unfold; eauto.
-      + eapply typed_binary_interp_TLam; eauto with typeclass_instances.
-      + eapply typed_binary_interp_TApp; eauto.
-      + eapply typed_binary_interp_Fork; eauto.
-      + eapply typed_binary_interp_Alloc; eauto.
-      + eapply typed_binary_interp_Load; eauto.
-      + eapply typed_binary_interp_Store; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_Store; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
-      + eapply typed_binary_interp_CAS; eauto using typed_binary_interp.
+      + eapply bin_log_related_If; eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_If; eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_If; eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_nat_bin_op;
+          eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_nat_bin_op;
+          eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_Fold; eauto.
+      + eapply bin_log_related_Unfold; eauto.
+      + eapply bin_log_related_TLam; eauto with typeclass_instances.
+      + eapply bin_log_related_TApp; eauto.
+      + eapply bin_log_related_Fork; eauto.
+      + eapply bin_log_related_Alloc; eauto.
+      + eapply bin_log_related_Load; eauto.
+      + eapply bin_log_related_Store; eauto using binary_fundamental.
+      + eapply bin_log_related_Store; eauto using binary_fundamental.
+      + eapply bin_log_related_CAS; eauto using binary_fundamental.
+      + eapply bin_log_related_CAS; eauto using binary_fundamental.
+      + eapply bin_log_related_CAS; eauto using binary_fundamental.
         Unshelve. all: trivial.
   Qed.
 End bin_log_related_under_typed_ctx.

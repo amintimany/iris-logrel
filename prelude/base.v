@@ -42,3 +42,7 @@ Ltac properness :=
 Ltac solve_proper_alt :=
   repeat intro; (simpl + idtac);
   by repeat match goal with H : _ ≡{_}≡ _|- _ => rewrite H end.
+
+Reserved Notation "⟦ τ ⟧" (at level 0, τ at level 70).
+Reserved Notation "⟦ τ ⟧ₑ" (at level 0, τ at level 70).
+Reserved Notation "⟦ Γ ⟧*" (at level 0, Γ at level 70).

@@ -12,7 +12,7 @@ Section soundness.
   Local Opaque to_heap.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
+    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : env_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
     ownP (Σ:=globalF Σ) ∅
     ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h) }}.
   Proof.
@@ -30,13 +30,11 @@ Section soundness.
       iPureIntro. rewrite from_to_cfg; constructor. }
     iPvs (inv_alloc specN with "[Hinv]") as "#Hcfg"; trivial.
     { iNext. iExact "Hinv". }
-    iPoseProof (H1 h (@CFGSG _ _ γ) [] _ [] _ 0 [] with "[Hcfg2]") as "HBR".
-    { done. }
+    iPoseProof (bin_log_related_alt (H1 h (@CFGSG _ _ γ) [] _) [] _ 0 [] with "[Hcfg2]") as "HBR".
     { rewrite /spec_ctx /auth_ctx /tpool_mapsto /auth_own empty_env_subst /=.
-      by iFrame "Hheap Hcfg Hcfg2". }
+      iFrame "Hheap Hcfg Hcfg2". by rewrite -interp_env_nil. }
     rewrite /= empty_env_subst.
-    iApply wp_pvs.
-    iApply wp_wand_l; iSplitR; [|iApply "HBR"].
+    iApply wp_pvs. iApply wp_wand_l; iSplitR; [|iApply "HBR"].
     iIntros {v}; iDestruct 1 as {v'} "[Hj #Hinterp]".
     iInv> specN as {ρ} "[Hown #Hp]".
     iDestruct "Hp" as %Hp.
@@ -62,7 +60,7 @@ Section soundness.
   Qed.
 
   Lemma basic_soundness e e' τ v thp hp :
-    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
+    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : env_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
     rtc step ([e], ∅) (# v :: thp, hp) →
     (∃ thp' hp' v', rtc step ([e'], ∅) (# v' :: thp', hp')).
   Proof.
@@ -80,7 +78,7 @@ Section soundness.
   Lemma binary_soundness Γ e e' τ :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : ctx_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
+    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : env_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
     Γ ⊨ e ≤ctx≤ e' : τ.
   Proof.
     intros H1 K HK htp hp v Hstp Hc Hc'.

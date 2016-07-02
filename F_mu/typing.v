@@ -32,7 +32,7 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
   | App_typed e1 e2 τ1 τ2 : Γ ⊢ₜ e1 : TArrow τ1 τ2 → Γ ⊢ₜ e2 : τ1 → Γ ⊢ₜ App e1 e2 : τ2
   | TLam_typed e τ : subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ TLam e : TForall τ
   | TApp_typed e τ τ' : Γ ⊢ₜ e : TForall τ → Γ ⊢ₜ TApp e : τ.[τ'/]
-  | TFold e τ : subst (ren (+1)) <$> Γ ⊢ₜ e : τ → Γ ⊢ₜ Fold e : TRec τ
+  | TFold e τ : Γ ⊢ₜ e : τ.[TRec τ/] → Γ ⊢ₜ Fold e : TRec τ
   | TUnfold e τ : Γ ⊢ₜ e : TRec τ → Γ ⊢ₜ Unfold e : τ.[TRec τ/]
 where "Γ ⊢ₜ e : τ" := (typed Γ e τ).
 

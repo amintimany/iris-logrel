@@ -253,13 +253,12 @@ Section CG_Counter.
 
   Definition counterN : namespace := nroot .@ "counter".
 
-  Lemma FG_CG_counter_refinement Δ {HΔ : ctx_PersistentP Δ} :
+  Lemma FG_CG_counter_refinement Δ {HΔ : env_PersistentP Δ} :
     Δ ∥ [] ⊨ FG_counter ≤log≤ CG_counter : TProd (TArrow TUnit TUnit) (TArrow TUnit TNat).
   Proof.
-    (* executing the preambles *)
-    intros [|v vs] ρ j K [=].
-    cbn -[FG_counter CG_counter].
-    iIntros "(#Hheap & #Hspec & _ & Hj)".
+    iIntros { [|??] ρ} "#(Hheap & Hspec & HΓ)"; iIntros {j K} "Hj"; last first.
+    { iDestruct (interp_env_length with "HΓ") as %[=]. }
+    iClear "HΓ". cbn -[FG_counter CG_counter].
     rewrite ?empty_env_subst /CG_counter /FG_counter.
     iPvs (steps_newlock _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
