@@ -4,7 +4,7 @@ Definition FG_StackType τ :=
   TRec (Tref (TSum TUnit (TProd τ.[ren (+1)] (TVar 0)))).
 
 Definition FG_push (st : expr) : expr :=
-  Lam (App (Lam
+  Rec (App (Rec
               (* try push *)
               (If (CAS (st.[ren (+4)]) (Var 1)
                        (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
@@ -16,7 +16,7 @@ Definition FG_push (st : expr) : expr :=
            (Load st.[ren (+2)]) (* read the stack pointer *)
       ).
 Definition FG_pushV (st : expr) : val :=
-  LamV (App (Lam
+  RecV (App (Rec
               (* try push *)
               (If (CAS (st.[ren (+4)]) (Var 1)
                        (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
@@ -29,9 +29,9 @@ Definition FG_pushV (st : expr) : val :=
        ).
 
 Definition FG_pop (st : expr) : expr :=
-  Lam (App (Lam
+  Rec (App (Rec
               (App
-                 (Lam
+                 (Rec
                     (
                       Case (Var 1)
                            (InjL Unit)
@@ -55,11 +55,11 @@ Definition FG_pop (st : expr) : expr :=
            (Unfold (Load st.[ren (+ 2)]))
       ).
 Definition FG_popV (st : expr) : val :=
-  LamV
+  RecV
     (App
-       (Lam
+       (Rec
           ( App
-              (Lam
+              (Rec
                  (
                    Case (Var 1)
                         (InjL Unit)
@@ -84,36 +84,36 @@ Definition FG_popV (st : expr) : val :=
     ).
 
 Definition FG_iter (f : expr) : expr :=
-  Lam
+  Rec
     (Case (Load (Unfold (Var 1)))
           Unit
-          (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
+          (App (Rec (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
                (App f.[ren (+3)] (Fst (Var 0)))
           )
     ).
 Definition FG_iterV (f : expr) : val :=
-  LamV
+  RecV
     (Case (Load (Unfold (Var 1)))
           Unit
-          (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
+          (App (Rec (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
                (App f.[ren (+3)] (Fst (Var 0)))
           )
     ).
 Definition FG_read_iter (st : expr) : expr :=
-  Lam (App (FG_iter (Var 1)) (Load st.[ren (+2)])).
+  Rec (App (FG_iter (Var 1)) (Load st.[ren (+2)])).
 
 Definition FG_stack_body (st : expr) : expr :=
   Pair (Pair (FG_push st) (FG_pop st)) (FG_read_iter st).
 
 Definition FG_stack : expr :=
-  TLam (App (Lam (FG_stack_body (Var 1)))
+  TLam (App (Rec (FG_stack_body (Var 1)))
                 (Alloc (Fold (Alloc (InjL Unit))))).
 
 Section FG_stack.
   (* Fine-grained push *)
   Lemma FG_push_folding (st : expr) :
     FG_push st =
-    Lam (App (Lam
+    Rec (App (Rec
                 (* try push *)
                 (If (CAS (st.[ren (+4)]) (Var 1)
                          (Fold (Alloc (InjR (Pair (Var 3) (Var 1)))))
@@ -163,9 +163,9 @@ Section FG_stack.
   (* Fine-grained push *)
   Lemma FG_pop_folding (st : expr) :
     FG_pop st =
-    Lam (App (Lam
+    Rec (App (Rec
                 ( App
-                    (Lam
+                    (Rec
                        (
                          Case (Var 1)
                               (InjL Unit)
@@ -227,10 +227,10 @@ Section FG_stack.
   (* Fine-grained iter *)
   Lemma FG_iter_folding (f : expr) :
     FG_iter f =
-    Lam
+    Rec
       (Case (Load (Unfold (Var 1)))
             Unit
-            (App (Lam (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
+            (App (Rec (App (Var 3) (Snd (Var 2)))) (* recursive_call *)
                  (App f.[ren (+3)] (Fst (Var 0)))
             )
       ).
@@ -334,7 +334,7 @@ Section FG_stack.
     Context (HEQTP : ∀ τ, EqType (FG_StackType τ)).
 
     Lemma FG_stack_type Γ :
-      typed Γ (FG_stack)
+      typed Γ FG_stack
             (TForall
                (TProd
                   (TProd

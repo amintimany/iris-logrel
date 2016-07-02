@@ -358,25 +358,25 @@ Section lang_rules.
     WP e @ E {{ v, WP fill K (of_val v) @ E {{ Φ }} }} ⊢ WP fill K e @ E {{ Φ }}.
   Proof. apply weakestpre.wp_bind. Qed.
 
-  Lemma wp_lam E e1 e2 v Φ :
+  Lemma wp_rec E e1 e2 v Φ :
     to_val e2 = Some v →
-    ▷ WP e1.[(Lam e1), e2 /] @ E {{ Φ }} ⊢ WP App (Lam e1) e2 @ E {{ Φ }}.
+    ▷ WP e1.[(Rec e1), e2 /] @ E {{ Φ }} ⊢ WP App (Rec e1) e2 @ E {{ Φ }}.
   Proof.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_step
-                (App _ _) e1.[(Lam e1), of_val v /] None) //=.
+                (App _ _) e1.[(Rec e1), of_val v /] None) //=.
     - by rewrite right_id.
     - intros. inv_step; auto.
   Qed.
 
-  Lemma wp_TLam E e Φ : ▷ WP e @ E {{ Φ }} ⊢ WP TApp (TLam e) @ E {{ Φ }}.
+  Lemma wp_tlam E e Φ : ▷ WP e @ E {{ Φ }} ⊢ WP TApp (TLam e) @ E {{ Φ }}.
   Proof.
     rewrite -(wp_lift_pure_det_step (TApp _) e None) //=.
     - by rewrite right_id.
     - intros. inv_step; auto.
   Qed.
 
-  Lemma wp_Fold E e v Φ :
+  Lemma wp_fold E e v Φ :
     to_val e = Some v → ▷ (|={E}=> Φ v) ⊢ WP Unfold (Fold e) @ E {{ Φ }}.
   Proof.
     intros <-%of_to_val.
@@ -451,11 +451,11 @@ Section lang_rules.
     - intros. inv_step; auto.
   Qed.
 
-  Lemma wp_nat_bin_op E op a b Φ :
-    ▷ (|={E}=> Φ (binop_meaning op a b)) ⊢ WP BinOp op (♯ a) (♯ b) @ E {{ Φ }}.
+  Lemma wp_nat_binop E op a b Φ :
+    ▷ (|={E}=> Φ (binop_eval op a b)) ⊢ WP BinOp op (♯ a) (♯ b) @ E {{ Φ }}.
   Proof.
     rewrite -(wp_lift_pure_det_step
-                (BinOp _ _ _) (of_val (binop_meaning op a b)) None) //=.
+                (BinOp _ _ _) (of_val (binop_eval op a b)) None) //=.
     - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.

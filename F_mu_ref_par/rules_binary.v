@@ -531,13 +531,13 @@ Section cfg.
     - iPvsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
   Qed.
 
-  Lemma step_lam E ρ j K e1 e2 v :
+  Lemma step_rec E ρ j K e1 e2 v :
     to_val e2 = Some v → nclose specN ⊆ E →
-    spec_ctx ρ ★ j ⤇ fill K (App (Lam e1) e2)
-      ={E}=> j ⤇ fill K (e1.[Lam e1,e2/]).
+    spec_ctx ρ ★ j ⤇ fill K (App (Rec e1) e2)
+      ={E}=> j ⤇ fill K (e1.[Rec e1,e2/]).
   Proof. intros H1; apply step_pure => σ; econstructor; eauto. Qed.
 
-  Lemma step_Tlam E ρ j K e :
+  Lemma step_tlam E ρ j K e :
     nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K (TApp (TLam e)) ={E}=> j ⤇ fill K e.
   Proof. apply step_pure => σ; econstructor; eauto. Qed.
@@ -579,10 +579,10 @@ Section cfg.
     spec_ctx ρ ★ j ⤇ fill K (If (♭ true) e1 e2) ={E}=> j ⤇ fill K e1.
   Proof. apply step_pure => σ; econstructor. Qed.
 
-  Lemma step_nat_bin_op E ρ j K op a b :
+  Lemma step_nat_binop E ρ j K op a b :
     nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K (BinOp op (♯ a) (♯ b))
-      ={E}=> j ⤇ fill K (of_val (binop_meaning op a b)).
+      ={E}=> j ⤇ fill K (of_val (binop_eval op a b)).
   Proof. apply step_pure => σ; econstructor. Qed.
 
   Lemma step_fork_base k j K e h ρ :

@@ -7,17 +7,17 @@ Definition CG_StackType τ :=
 
 (* Coarse-grained push *)
 Definition CG_push (st : expr) : expr :=
-  Lam (Store
+  Rec (Store
          (st.[ren (+2)]) (Fold (InjR (Pair (Var 1) (Load st.[ren (+ 2)]))))).
 
 Definition CG_locked_push (st l : expr) := with_lock (CG_push st) l.
 Definition CG_locked_pushV (st l : expr) : val := with_lockV (CG_push st) l.
 
 Definition CG_pop (st : expr) : expr :=
-  Lam (Case (Unfold (Load st.[ren (+ 2)]))
+  Rec (Case (Unfold (Load st.[ren (+ 2)]))
             (InjL Unit)
             (
-              App (Lam (InjR (Fst (Var 2))))
+              App (Rec (InjR (Fst (Var 2))))
                   (Store st.[ren (+ 3)] (Snd (Var 0)))
             )
       ).
@@ -25,35 +25,35 @@ Definition CG_pop (st : expr) : expr :=
 Definition CG_locked_pop (st l : expr) := with_lock (CG_pop st) l.
 Definition CG_locked_popV (st l : expr) : val := with_lockV (CG_pop st) l.
 
-Definition CG_snap (st l : expr) :=  with_lock (Lam (Load st.[ren (+2)])) l.
-Definition CG_snapV (st l : expr) : val := with_lockV (Lam (Load st.[ren (+2)])) l.
+Definition CG_snap (st l : expr) :=  with_lock (Rec (Load st.[ren (+2)])) l.
+Definition CG_snapV (st l : expr) : val := with_lockV (Rec (Load st.[ren (+2)])) l.
 
 Definition CG_iter (f : expr) : expr :=
-  Lam (Case (Unfold (Var 1))
+  Rec (Case (Unfold (Var 1))
             Unit
             (
-              App (Lam (App (Var 3) (Snd (Var 2))))
+              App (Rec (App (Var 3) (Snd (Var 2))))
                   (App f.[ren (+3)] (Fst (Var 0)))
             )
       ).
 
 Definition CG_iterV (f : expr) : val :=
-  LamV (Case (Unfold (Var 1))
+  RecV (Case (Unfold (Var 1))
             Unit
             (
-              App (Lam (App (Var 3) (Snd (Var 2))))
+              App (Rec (App (Var 3) (Snd (Var 2))))
                   (App f.[ren (+3)] (Fst (Var 0)))
             )
       ).
 
 Definition CG_snap_iter (st l : expr) : expr :=
-  Lam (App (CG_iter (Var 1)) (App (CG_snap st.[ren (+2)] l.[ren (+2)]) Unit)).
+  Rec (App (CG_iter (Var 1)) (App (CG_snap st.[ren (+2)] l.[ren (+2)]) Unit)).
 Definition CG_stack_body (st l : expr) : expr :=
   Pair (Pair (CG_locked_push st l) (CG_locked_pop st l))
        (CG_snap_iter st l).
 
 Definition CG_stack : expr :=
-  TLam (App (Lam (App (Lam (CG_stack_body (Var 1) (Var 3)))
+  TLam (App (Rec (App (Rec (CG_stack_body (Var 1) (Var 3)))
                 (Alloc (Fold (InjL Unit))))) newlock).
 
 Section CG_Stack.
@@ -82,7 +82,7 @@ Section CG_Stack.
     ={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_push.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
     iPvs (step_load _ _ j (K ++ [StoreRCtx (LocV _); FoldCtx;
                                    InjRCtx; PairRCtx _])
@@ -179,7 +179,7 @@ Section CG_Stack.
       ={E}=> j ⤇ fill K (InjR (# w)) ★ st ↦ₛ v.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
     iPvs (step_load _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
@@ -193,16 +193,16 @@ Section CG_Stack.
     rewrite ?fill_app. simpl.
     iPvs (step_case_inr _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_snd _ _ j (K ++ [AppRCtx (LamV _); StoreRCtx (LocV _)]) _ _ _ _
+    iPvs (step_snd _ _ j (K ++ [AppRCtx (RecV _); StoreRCtx (LocV _)]) _ _ _ _
                    _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
-    iPvs (step_store _ _ j (K ++ [AppRCtx (LamV _)]) _ _ _ _ _ _
+    iPvs (step_store _ _ j (K ++ [AppRCtx (RecV _)]) _ _ _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
     iPvs (step_fst _ _ j (K ++ [InjRCtx]) _ _ _ _ _ _
           with "[Hj]") as "Hj"; eauto.
@@ -222,7 +222,7 @@ Section CG_Stack.
       ={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV).
   Proof.
     iIntros {HNE} "[#Hspec [Hx Hj]]". unfold CG_pop.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
     iPvs (step_load _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
@@ -348,7 +348,7 @@ Section CG_Stack.
     iPvs (steps_with_lock _ _ j K _ _ _ _ v UnitV _ _
           with "[Hj Hx Hl]") as "Hj"; last done; [|by iFrame "Hspec Hx Hl Hj"].
     iIntros {K'} "[#Hspec [Hx Hj]]".
-    iPvs (step_lam _ _ j K' _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K' _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
     iPvs (step_load _ _ j K' _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
@@ -364,10 +364,10 @@ Section CG_Stack.
   (* Coarse-grained iter *)
   Lemma CG_iter_folding (f : expr) :
     CG_iter f =
-    Lam (Case (Unfold (Var 1))
+    Rec (Case (Unfold (Var 1))
               Unit
               (
-                App (Lam (App (Var 3) (Snd (Var 2))))
+                App (Rec (App (Var 3) (Snd (Var 2))))
                     (App f.[ren (+3)] (Fst (Var 0)))
               )
         ).
@@ -410,13 +410,13 @@ Section CG_Stack.
       ={E}=>
     j ⤇ fill K
           (App
-             (Lam
+             (Rec
                 (App ((CG_iter (# f)).[ren (+2)])
                      (Snd (Pair ((# w).[ren (+2)]) (# v).[ren (+2)]))))
              (App (# f) (# w))).
   Proof.
     iIntros {HNE} "[#Hspec Hj]". unfold CG_iter.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
     iPvs (step_Fold _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -425,7 +425,7 @@ Section CG_Stack.
     rewrite ?fill_app. asimpl.
     iPvs (step_case_inr _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_fst _ _ j (K ++ [AppRCtx (LamV _); AppRCtx f]) _ _ _ _
+    iPvs (step_fst _ _ j (K ++ [AppRCtx (RecV _); AppRCtx f]) _ _ _ _
                    _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
@@ -443,7 +443,7 @@ Section CG_Stack.
       ={E}=> j ⤇ fill K Unit.
   Proof.
     iIntros {HNE} "[#Hspec Hj]". unfold CG_iter.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
     iPvs (step_Fold _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -509,7 +509,7 @@ Section CG_Stack.
   Qed.
 
   Lemma CG_stack_type Γ :
-    typed Γ (CG_stack)
+    typed Γ CG_stack
           (TForall
              (TProd
                 (TProd

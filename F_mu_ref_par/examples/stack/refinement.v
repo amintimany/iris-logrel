@@ -26,35 +26,35 @@ Section Stack_refinement.
     iApply wp_value; eauto.
     iExists (TLamV _); iFrame "Hj".
     clear j K. iAlways. iIntros {τi j K} "% Hj /=".
-    iPvs (step_Tlam _ _ j K with "[Hj]") as "Hj"; eauto.
-    iApply wp_TLam; iNext.
-    iPvs (steps_newlock _ _ j (K ++ [AppRCtx (LamV _)]) _ with "[Hj]")
+    iPvs (step_tlam _ _ j K with "[Hj]") as "Hj"; eauto.
+    iApply wp_tlam; iNext.
+    iPvs (steps_newlock _ _ j (K ++ [AppRCtx (RecV _)]) _ with "[Hj]")
       as {l} "[Hj Hl]"; eauto.
     { rewrite fill_app; simpl. iFrame "Hspec Hj"; trivial. }
     rewrite fill_app; simpl.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     simpl.
     rewrite CG_locked_push_subst CG_locked_pop_subst
             CG_iter_subst CG_snap_subst. simpl. asimpl.
-    iPvs (step_alloc  _ _ j (K ++ [AppRCtx (LamV _)]) _ _ _ _ with "[Hj]")
+    iPvs (step_alloc  _ _ j (K ++ [AppRCtx (RecV _)]) _ _ _ _ with "[Hj]")
       as {stk'} "[Hj Hstk']"; eauto.
     rewrite fill_app; simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     simpl.
     rewrite CG_locked_push_subst CG_locked_pop_subst
             CG_iter_subst CG_snap_subst. simpl. asimpl.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
     all: trivial.
-    iApply (@wp_bind _ _ _ [AppRCtx (LamV _); AllocCtx; FoldCtx]);
+    iApply (@wp_bind _ _ _ [AppRCtx (RecV _); AllocCtx; FoldCtx]);
       iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
     iApply wp_alloc; trivial; iFrame "Hheap"; iNext; iIntros {istk} "Histk".
-    iPvsIntro. iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+    iPvsIntro. iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
       iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
     iApply wp_alloc; trivial; iFrame "Hheap"; iNext; iIntros {stk} "Hstk".
-    simpl. iApply wp_lam; trivial. iPvsIntro. iNext. simpl.
+    simpl. iApply wp_rec; trivial. iPvsIntro. iNext. simpl.
     rewrite FG_push_subst FG_pop_subst FG_iter_subst. simpl. asimpl.
     (* establishing the invariant *)
     iPvs (own_alloc (● (∅ : stackUR))) as {γ} "Hemp".
@@ -85,7 +85,7 @@ Section Stack_refinement.
     Opaque stack_owns.
     (* splitting *)
     iApply wp_value; simpl; trivial.
-    iExists (PairV (PairV (CG_locked_pushV _ _) (CG_locked_popV _ _)) (LamV _)).
+    iExists (PairV (PairV (CG_locked_pushV _ _) (CG_locked_popV _ _)) (RecV _)).
     simpl. rewrite CG_locked_push_of_val CG_locked_pop_of_val. iFrame "Hj".
     iExists (_, _), (_, _); iSplit; eauto.
     iSplit.
@@ -96,11 +96,11 @@ Section Stack_refinement.
         rewrite -(FG_push_folding (Loc stk)).
         iLöb as "Hlat".
         rewrite {2}(FG_push_folding (Loc stk)).
-        iApply wp_lam; auto using to_of_val.
+        iApply wp_rec; auto using to_of_val.
         iNext.
         rewrite -(FG_push_folding (Loc stk)).
         asimpl.
-        iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+        iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
         iInv stackN as {istk v h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
         iApply (wp_load _ _ _ _ _ _).
@@ -108,7 +108,7 @@ Section Stack_refinement.
         iSplitL "Hoe Hstk' HLK Hl Hstk".
         iNext. iExists _, _, _; by iFrame "Hoe Hstk' HLK Hl Hstk".
         clear v h.
-        iApply wp_lam; auto using to_of_val.
+        iApply wp_rec; auto using to_of_val.
         iNext. asimpl.
         iApply (@wp_bind _ _ _ [IfCtx _ _; CasRCtx (LocV _) (FoldV (LocV _));
                                 FoldCtx]);
@@ -149,11 +149,11 @@ Section Stack_refinement.
         rewrite -(FG_pop_folding (Loc stk)).
         iLöb as "Hlat".
         rewrite {2}(FG_pop_folding (Loc stk)).
-        iApply wp_lam; auto using to_of_val.
+        iApply wp_rec; auto using to_of_val.
         iNext.
         rewrite -(FG_pop_folding (Loc stk)).
         asimpl.
-        iApply (@wp_bind _ _ _ [AppRCtx (LamV _); UnfoldCtx]);
+        iApply (@wp_bind _ _ _ [AppRCtx (RecV _); UnfoldCtx]);
           iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
         iInv stackN as {istk v h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
         iApply (wp_load _ _ _ _ _ _). iIntros "{$Hheap $Hstk} > Hstk".
@@ -168,12 +168,12 @@ Section Stack_refinement.
           iPvsIntro.
           iSplitR "Hj Hmpt".
           { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl". }
-          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
-          iApply wp_Fold; simpl; auto using to_of_val.
-          iNext. iPvsIntro. iApply wp_lam; auto using to_of_val. iNext. asimpl.
+          iApply wp_fold; simpl; auto using to_of_val.
+          iNext. iPvsIntro. iApply wp_rec; auto using to_of_val. iNext. asimpl.
           clear h.
-          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
           iInv stackN as {istk3 w h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
           iDestruct (stack_owns_later_open_close with "[Hmpt Hoe]")
@@ -184,7 +184,7 @@ Section Stack_refinement.
           { iNext. iExists _, _, _. iFrame "Hstk' Hstk HLK Hl".
             iDestruct ("HLoe" with "[Histk]") as "[Hh _]"; trivial.
           }
-          iApply wp_lam; simpl; trivial.
+          iApply wp_rec; simpl; trivial.
           iNext. asimpl.
           iApply wp_case_inl; trivial.
           iNext. iApply wp_value; simpl; trivial. iExists (InjLV UnitV).
@@ -192,12 +192,12 @@ Section Stack_refinement.
         * (* The stack is not empty *)
           iPvsIntro. iSplitR "Hj Hmpt HLK'".
           { iNext. iExists _, _, _. by iFrame "Hstk' Hstk HLK Hl". }
-          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
-          iApply wp_Fold; simpl; auto using to_of_val.
-          iNext. iApply wp_lam; auto using to_of_val. iPvsIntro. iNext. asimpl.
+          iApply wp_fold; simpl; auto using to_of_val.
+          iNext. iApply wp_rec; auto using to_of_val. iPvsIntro. iNext. asimpl.
           clear h.
-          iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+          iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
           iInv stackN as {istk3 w' h} "[Hoe [Hstk' [Hstk [HLK Hl]]]]".
           iDestruct (stack_owns_later_open_close with "[Hmpt Hoe]")
@@ -208,7 +208,7 @@ Section Stack_refinement.
           iDestruct ("HLoe" with "[Histk]") as "[Hh Hmpt]"; trivial.
           iSplitR "Hj Hmpt HLK'".
           { iNext. iExists _, _, _. by iFrame "Hstk' Hstk HLK Hl". }
-          iApply wp_lam; auto using to_of_val.
+          iApply wp_rec; auto using to_of_val.
           iNext. asimpl.
           iDestruct "HLK'" as {y1 z1 y2 z2} "[% HLK']". subst. simpl.
           iApply wp_case_inr; [simpl; by rewrite ?to_of_val |].
@@ -267,8 +267,8 @@ Section Stack_refinement.
             iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of iter *)
       iAlways. clear j K. iIntros {j K [f1 f2] } "/= [#Hfs Hj]".
-      iApply wp_lam; auto using to_of_val. iNext.
-      iPvs (step_lam _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
+      iApply wp_rec; auto using to_of_val. iNext.
+      iPvs (step_rec _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
       { by iFrame "Hspec Hj". }
       asimpl. rewrite FG_iter_subst CG_snap_subst CG_iter_subst. asimpl.
       replace (FG_iter (# f1)) with (# (FG_iterV (# f1)))
@@ -292,12 +292,12 @@ Section Stack_refinement.
       rewrite ?fill_app /= -FG_iter_folding.
       iLöb {istk3 w} as "Hlat".
       rewrite {2}FG_iter_folding.
-      iApply wp_lam; simpl; trivial.
+      iApply wp_rec; simpl; trivial.
       rewrite -FG_iter_folding. asimpl. rewrite FG_iter_subst.
       iNext.
       iApply (@wp_bind _ _ _ [CaseCtx _ _; LoadCtx]); iApply wp_wand_l;
         iSplitR; [iIntros {v} "Hw"; iExact "Hw"|].
-      iApply wp_Fold; simpl; trivial.
+      iApply wp_fold; simpl; trivial.
       iNext. iPvsIntro. simpl.
       iApply (@wp_bind _ _ _ [CaseCtx _ _]); iApply wp_wand_l;
         iSplitR; [iIntros {v} "Hw"; iExact "Hw"|].
@@ -328,19 +328,19 @@ Section Stack_refinement.
         iApply wp_case_inr; simpl; rewrite ?to_of_val; trivial.
         rewrite FG_iter_subst CG_iter_subst. asimpl.
         iNext.
-        iApply (@wp_bind _ _ _ [AppRCtx (LamV _); AppRCtx _]);
+        iApply (@wp_bind _ _ _ [AppRCtx (RecV _); AppRCtx _]);
           iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
         iApply wp_fst; simpl; rewrite ?to_of_val; trivial. iNext. iPvsIntro.
-        iApply (@wp_bind _ _ _ [AppRCtx (LamV _)]);
+        iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
           iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
         rewrite StackLink_unfold.
         iDestruct "HLK''" as {istk6 w'} "[% HLK]"; simplify_eq/=.
-        iSpecialize ("Hfs" $! _ (K ++ [AppRCtx (LamV _)]) (yn1, zn1)).
+        iSpecialize ("Hfs" $! _ (K ++ [AppRCtx (RecV _)]) (yn1, zn1)).
         rewrite fill_app; simpl.
         iApply wp_wand_l; iSplitR "Hj"; [|iApply "Hfs"; by iFrame "Hrel Hj"].
         iIntros {u} "/="; iDestruct 1 as {z} "[Hj [% %]]".
         rewrite fill_app; simpl. subst. asimpl.
-        iPvs (step_lam _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
+        iPvs (step_rec _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
         { by iFrame "Hspec Hj". } asimpl. rewrite CG_iter_subst. asimpl.
         replace (CG_iter (# f2)) with (# (CG_iterV (# f2)))
           by (by rewrite CG_iter_of_val).
@@ -348,7 +348,7 @@ Section Stack_refinement.
           as "Hj".
         { rewrite fill_app; simpl. by iFrame "Hspec Hj". }
         rewrite fill_app; simpl.
-        iApply wp_lam; simpl; trivial.
+        iApply wp_rec; simpl; trivial.
         iNext. rewrite FG_iter_subst. asimpl.
         replace (FG_iter (# f1)) with (# (FG_iterV (# f1)))
           by (by rewrite FG_iter_of_val).

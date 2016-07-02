@@ -1,7 +1,7 @@
 From iris_logrel.F_mu_ref_par Require Export fundamental_binary.
 
 Inductive ctx_item :=
-  | CTX_Lam
+  | CTX_Rec
   | CTX_AppL (e2 : expr)
   | CTX_AppR (e1 : expr)
   (* Products *)
@@ -42,7 +42,7 @@ Inductive ctx_item :=
 
 Fixpoint fill_ctx_item (ctx : ctx_item) (e : expr) : expr :=
   match ctx with
-  | CTX_Lam => Lam e
+  | CTX_Rec => Rec e
   | CTX_AppL e2 => App e e2
   | CTX_AppR e1 => App e1 e
   | CTX_PairL e2 => Pair e e2
@@ -80,8 +80,8 @@ Definition fill_ctx (K : ctx) (e : expr) : expr := foldr fill_ctx_item e K.
 (** typed ctx *)
 Inductive typed_ctx_item :
     ctx_item → list type → type → list type → type → Prop :=
-  | TP_CTX_Lam Γ τ τ' :
-     typed_ctx_item CTX_Lam (TArrow τ τ' :: τ :: Γ) τ' Γ (TArrow τ τ')
+  | TP_CTX_Rec Γ τ τ' :
+     typed_ctx_item CTX_Rec (TArrow τ τ' :: τ :: Γ) τ' Γ (TArrow τ τ')
   | TP_CTX_AppL Γ e2 τ τ' :
      typed Γ e2 τ →
      typed_ctx_item (CTX_AppL e2) Γ (TArrow τ τ') Γ τ'
@@ -211,22 +211,22 @@ Section bin_log_related_under_typed_ctx.
     - inversion_clear 1 as [|? ? ? ? ? ? ? ? Hx1 Hx2]. intros H3 Δ HΔ.
       specialize (IHK _ _ _ _ e e' H1 H2 Hx2 H3).
       inversion Hx1; subst; simpl.
-      + eapply bin_log_related_Lam; eauto;
+      + eapply bin_log_related_rec; eauto;
           match goal with
             H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
-      + eapply bin_log_related_App; eauto using binary_fundamental.
-      + eapply bin_log_related_App; eauto using binary_fundamental.
-      + eapply bin_log_related_Pair; eauto using binary_fundamental.
-      + eapply bin_log_related_Pair; eauto using binary_fundamental.
-      + eapply bin_log_related_Fst; eauto.
-      + eapply bin_log_related_Snd; eauto.
-      + eapply bin_log_related_InjL; eauto.
-      + eapply bin_log_related_InjR; eauto.
+      + eapply bin_log_related_app; eauto using binary_fundamental.
+      + eapply bin_log_related_app; eauto using binary_fundamental.
+      + eapply bin_log_related_pair; eauto using binary_fundamental.
+      + eapply bin_log_related_pair; eauto using binary_fundamental.
+      + eapply bin_log_related_fst; eauto.
+      + eapply bin_log_related_snd; eauto.
+      + eapply bin_log_related_injl; eauto.
+      + eapply bin_log_related_injr; eauto.
       + match goal with
           H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
-        eapply bin_log_related_Case;
+        eapply bin_log_related_case;
           eauto using binary_fundamental;
           match goal with
             H : _ |- _ => eapply (typed_n_closed _ _ _ H)
@@ -234,7 +234,7 @@ Section bin_log_related_under_typed_ctx.
       + match goal with
           H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
-        eapply bin_log_related_Case;
+        eapply bin_log_related_case;
           eauto using binary_fundamental;
           try match goal with
                 H : _ |- _ => eapply (typed_n_closed _ _ _ H)
@@ -245,7 +245,7 @@ Section bin_log_related_under_typed_ctx.
       + match goal with
           H : typed_ctx_item _ _ _ _ _ |- _ => inversion H; subst
         end.
-        eapply bin_log_related_Case;
+        eapply bin_log_related_case;
           eauto using binary_fundamental;
           try match goal with
                 H : _ |- _ => eapply (typed_n_closed _ _ _ H)
@@ -253,22 +253,22 @@ Section bin_log_related_under_typed_ctx.
           match goal with
             H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
           end.
-      + eapply bin_log_related_If; eauto using typed_ctx_typed, binary_fundamental.
-      + eapply bin_log_related_If; eauto using typed_ctx_typed, binary_fundamental.
-      + eapply bin_log_related_If; eauto using typed_ctx_typed, binary_fundamental.
-      + eapply bin_log_related_nat_bin_op;
+      + eapply bin_log_related_if; eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_if; eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_if; eauto using typed_ctx_typed, binary_fundamental.
+      + eapply bin_log_related_nat_binop;
           eauto using typed_ctx_typed, binary_fundamental.
-      + eapply bin_log_related_nat_bin_op;
+      + eapply bin_log_related_nat_binop;
           eauto using typed_ctx_typed, binary_fundamental.
-      + eapply bin_log_related_Fold; eauto.
-      + eapply bin_log_related_Unfold; eauto.
-      + eapply bin_log_related_TLam; eauto with typeclass_instances.
-      + eapply bin_log_related_TApp; eauto.
-      + eapply bin_log_related_Fork; eauto.
-      + eapply bin_log_related_Alloc; eauto.
-      + eapply bin_log_related_Load; eauto.
-      + eapply bin_log_related_Store; eauto using binary_fundamental.
-      + eapply bin_log_related_Store; eauto using binary_fundamental.
+      + eapply bin_log_related_fold; eauto.
+      + eapply bin_log_related_unfold; eauto.
+      + eapply bin_log_related_tlam; eauto with typeclass_instances.
+      + eapply bin_log_related_tapp; eauto.
+      + eapply bin_log_related_fork; eauto.
+      + eapply bin_log_related_alloc; eauto.
+      + eapply bin_log_related_load; eauto.
+      + eapply bin_log_related_store; eauto using binary_fundamental.
+      + eapply bin_log_related_store; eauto using binary_fundamental.
       + eapply bin_log_related_CAS; eauto using binary_fundamental.
       + eapply bin_log_related_CAS; eauto using binary_fundamental.
       + eapply bin_log_related_CAS; eauto using binary_fundamental.

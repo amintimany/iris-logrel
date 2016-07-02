@@ -3,19 +3,19 @@ From iris_logrel.F_mu_ref_par Require Export rules_binary typing.
 
 Definition newlock : expr := Alloc (♭ false).
 Definition acquire : expr :=
-  Lam (If (CAS (Var 1) (♭ false) (♭ true)) (Unit) (App (Var 0) (Var 1))).
-Definition release : expr := Lam (Store (Var 1) (♭ false)).
+  Rec (If (CAS (Var 1) (♭ false) (♭ true)) (Unit) (App (Var 0) (Var 1))).
+Definition release : expr := Rec (Store (Var 1) (♭ false)).
 
 Definition with_lock (e : expr) (l : expr) : expr :=
-  Lam
-    (App (Lam (App (Lam (App (Lam (Var 3)) (App release l.[ren (+6)])))
+  Rec
+    (App (Rec (App (Rec (App (Rec (Var 3)) (App release l.[ren (+6)])))
                    (App e.[ren (+4)] (Var 3))))
          (App acquire l.[ren (+2)])
     ).
 
 Definition with_lockV (e l : expr) : val :=
-  LamV
-    (App (Lam (App (Lam (App (Lam (Var 3)) (App release l.[ren (+6)])))
+  RecV
+    (App (Rec (App (Rec (App (Rec (Var 3)) (App release l.[ren (+6)])))
                    (App e.[ren (+4)] (Var 3))))
          (App acquire l.[ren (+2)])
     ).
@@ -93,7 +93,7 @@ Section proof.
       ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (♭v true).
   Proof.
     iIntros {HNE} "[#Hspec [Hl Hj]]". unfold acquire.
-    iPvs (step_lam _ _ j K with "[Hj]") as "Hj"; eauto. done.
+    iPvs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto. done.
     iPvs (step_cas_suc _ _ j (K ++ [IfCtx _ _])
                        _ _ _ _ _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; trivial.
     rewrite ?fill_app. simpl.
@@ -114,7 +114,7 @@ Section proof.
       ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (♭v false).
   Proof.
     iIntros {HNE} "[#Hspec [Hl Hj]]". unfold release.
-    iPvs (step_lam _ _ j K with "[Hj]") as "Hj"; eauto; try done.
+    iPvs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto; try done.
     iPvs (step_store _ _ j K _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     iFrame "Hspec Hj"; trivial.
     iPvsIntro. iFrame "Hj Hl"; trivial.
@@ -133,26 +133,26 @@ Section proof.
       ={E}=> j ⤇ fill K (# v) ★ Q ★ l ↦ₛ (♭v false).
   Proof.
     iIntros {HNE H1 H2} "[#Hspec [HP [Hl Hj]]]".
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite H1.
-    iPvs (steps_acquire _ _ j (K ++ [AppRCtx (LamV _)])
+    iPvs (steps_acquire _ _ j (K ++ [AppRCtx (RecV _)])
                    _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     rewrite fill_app; simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite fill_app; simpl.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite H1.
-    iPvs (H2 (K ++ [AppRCtx (LamV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
+    iPvs (H2 (K ++ [AppRCtx (RecV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
     rewrite ?fill_app /=.
     iFrame "Hspec HP"; trivial.
     rewrite ?fill_app /=.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (steps_release _ _ j (K ++ [AppRCtx (LamV _)]) _ _ with "[Hj Hl]")
+    iPvs (steps_release _ _ j (K ++ [AppRCtx (RecV _)]) _ _ with "[Hj Hl]")
       as "[Hj Hl]"; eauto.
     rewrite ?fill_app /=. by iFrame.
     rewrite ?fill_app /=.
-    iPvs (step_lam _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. iPvsIntro; by iFrame.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.

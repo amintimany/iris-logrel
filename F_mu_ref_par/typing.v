@@ -49,8 +49,8 @@ Inductive typed (Γ : list type) : expr → type → Prop :=
      Γ ⊢ₜ Case e0 e1 e2 : τ3
   | If_typed e0 e1 e2 τ :
      Γ ⊢ₜ e0 : TBool → Γ ⊢ₜ e1 : τ → Γ ⊢ₜ e2 : τ → Γ ⊢ₜ If e0 e1 e2 : τ
-  | Lam_typed e τ1 τ2 :
-     TArrow τ1 τ2 :: τ1 :: Γ ⊢ₜ e : τ2 → Γ ⊢ₜ Lam e : TArrow τ1 τ2
+  | Rec_typed e τ1 τ2 :
+     TArrow τ1 τ2 :: τ1 :: Γ ⊢ₜ e : τ2 → Γ ⊢ₜ Rec e : TArrow τ1 τ2
   | App_typed e1 e2 τ1 τ2 :
      Γ ⊢ₜ e1 : TArrow τ1 τ2 → Γ ⊢ₜ e2 : τ1 → Γ ⊢ₜ App e1 e2 : τ2
   | TLam_typed e τ :

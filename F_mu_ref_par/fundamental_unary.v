@@ -31,7 +31,7 @@ Section typed_interp.
       smart_wp_bind (BinOpLCtx _ e2.[env_subst vs]) v "#Hv" IHHtyped1.
       smart_wp_bind (BinOpRCtx _ v) v' "# Hv'" IHHtyped2.
       iDestruct "Hv" as {n} "%"; iDestruct "Hv'" as {n'} "%"; simplify_eq/=.
-      iApply wp_nat_bin_op. iNext; iPvsIntro. iClear "Hheap HΓ".
+      iApply wp_nat_binop. iNext; iPvsIntro. iClear "Hheap HΓ".
       destruct op; simpl; try destruct eq_nat_dec;
         try destruct le_dec; try destruct lt_dec; eauto 10.
     - (* pair *)
@@ -67,11 +67,11 @@ Section typed_interp.
       iDestruct "Hv" as { [] } "%"; subst; simpl;
         [iApply wp_if_true| iApply wp_if_false]; iNext;
       [iApply IHHtyped2| iApply IHHtyped3]; auto.
-    - (* lam *)
+    - (* Rec *)
       value_case; iAlways. simpl. iLöb as "IH"; iIntros {w} "#Hw".
       iDestruct (interp_env_length with "HΓ") as %?.
-      iApply wp_lam; auto 1 using to_of_val. iNext.
-      asimpl. change (Lam _) with (# (LamV e.[upn 2 (env_subst vs)])).
+      iApply wp_rec; auto 1 using to_of_val. iNext.
+      asimpl. change (Rec _) with (# (RecV e.[upn 2 (env_subst vs)])).
       erewrite typed_subst_head_simpl_2 by naive_solver.
       iApply (IHHtyped Δ (_ :: w :: vs)). iSplit; [done|].
       iApply interp_env_cons; iSplit; [|iApply interp_env_cons]; auto.
@@ -81,7 +81,7 @@ Section typed_interp.
       iApply wp_mono; [|iApply "Hv"]; auto.
     - (* TLam *)
       value_case.
-      iAlways; iIntros { τi } "%". iApply wp_TLam; iNext.
+      iAlways; iIntros { τi } "%". iApply wp_tlam; iNext.
       iApply IHHtyped. iFrame "Hheap". by iApply interp_env_ren.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHHtyped; cbn.
@@ -99,7 +99,7 @@ Section typed_interp.
       iIntros {v} "#Hv". rewrite /= fixpoint_unfold.
       change (fixpoint _) with (⟦ TRec τ ⟧ Δ); simpl.
       iDestruct "Hv" as {w} "#[% Hw]"; subst.
-      iApply wp_Fold; cbn; auto using to_of_val.
+      iApply wp_fold; cbn; auto using to_of_val.
       iNext; iPvsIntro. by iApply interp_subst.
     - (* Fork *)
       iApply wp_fork. iNext; iSplitL; trivial.

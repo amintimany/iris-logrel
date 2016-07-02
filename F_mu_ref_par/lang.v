@@ -14,7 +14,7 @@ Module lang.
 
   Inductive expr :=
   | Var (x : var)
-  | Lam (e : {bind 2 of expr})
+  | Rec (e : {bind 2 of expr})
   | App (e1 e2 : expr)
   (* Base Types *)
   | Unit
@@ -60,7 +60,7 @@ Module lang.
   Proof. solve_decision. Defined.
 
   Inductive val :=
-  | LamV (e : {bind 1 of expr})
+  | RecV (e : {bind 1 of expr})
   | TLamV (e : {bind 1 of expr})
   | UnitV
   | NatV (n : nat)
@@ -75,7 +75,7 @@ Module lang.
   Notation "'♭v' b" := (BoolV b) (at level 20).
   Notation "'♯v' n" := (NatV n) (at level 20).
 
-  Fixpoint binop_meaning (op : binop) : nat → nat → val :=
+  Fixpoint binop_eval (op : binop) : nat → nat → val :=
     match op with
     | Add => λ a b, ♯v(a + b)
     | Sub => λ a b, ♯v(a - b)
@@ -91,7 +91,7 @@ Module lang.
 
   Fixpoint of_val (v : val) : expr :=
     match v with
-    | LamV e => Lam e
+    | RecV e => Rec e
     | TLamV e => TLam e
     | UnitV => Unit
     | NatV v => Nat v
@@ -106,7 +106,7 @@ Module lang.
 
   Fixpoint to_val (e : expr) : option val :=
     match e with
-    | Lam e => Some (LamV e)
+    | Rec e => Some (RecV e)
     | TLam e => Some (TLamV e)
     | Unit => Some UnitV
     | Nat n => Some (NatV n)
@@ -180,7 +180,7 @@ Module lang.
   (* β *)
   | BetaS e1 e2 v2 σ :
       to_val e2 = Some v2 →
-      head_step (App (Lam e1) e2) σ e1.[(Lam e1), e2/] σ None
+      head_step (App (Rec e1) e2) σ e1.[(Rec e1), e2/] σ None
   (* Products *)
   | FstS e1 v1 e2 v2 σ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
@@ -197,7 +197,7 @@ Module lang.
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
     (* nat bin op *)
   | BinOpS op a b σ :
-      head_step (BinOp op (♯ a) (♯b)) σ (of_val (binop_meaning op a b)) σ None
+      head_step (BinOp op (♯ a) (♯b)) σ (of_val (binop_eval op a b)) σ None
   (* If then else *)
   | IfFalse e1 e2 σ :
       head_step (If (♭ false) e1 e2) σ e2 σ None
