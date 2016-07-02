@@ -137,12 +137,7 @@ Qed.
 Lemma typed_subst_head_simpl Δ τ e w ws :
   Δ ⊢ₜ e : τ → length Δ = S (length ws) →
   e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
-Proof.
-  intros H1 H2.
-  rewrite /env_subst. eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
-  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
-  by rewrite Hv.
-Qed.
+Proof. eauto using n_closed_subst_head_simpl, typed_n_closed. Qed.
 
 Lemma n_closed_subst_head_simpl_2 n e w w' ws :
   (∀ f, e.[iter n up f] = e) → (S (S (length ws))) = n →
@@ -157,12 +152,7 @@ Qed.
 Lemma typed_subst_head_simpl_2 Δ τ e w w' ws :
   Δ ⊢ₜ e : τ → length Δ = 2 + length ws →
   e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
-Proof.
-  intros H1 H2.
-  rewrite /env_subst. eapply typed_subst_invariant; eauto => /= -[|[|x]] H3 //=.
-  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
-  by rewrite Hv.
-Qed.
+Proof. eauto using n_closed_subst_head_simpl_2, typed_n_closed. Qed.
 
 Lemma empty_env_subst e : e.[env_subst []] = e.
 Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.
