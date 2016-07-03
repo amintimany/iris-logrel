@@ -7,14 +7,14 @@ Section bin_log_def.
   Context `{heapIG Σ, cfgSG Σ}.
   Notation D := (prodC valC valC -n> iPropG lang Σ).
 
-  Definition bin_log_related (Δ : listC D) (Γ : list type)
-      (e e' : expr) (τ : type) : Prop := ∀ vvs ρ,
+  Definition bin_log_related (Γ : list type) (e e' : expr) (τ : type) := ∀ Δ vvs ρ,
+    env_PersistentP Δ →
     heapI_ctx ∧ spec_ctx ρ ∧
     ⟦ Γ ⟧* Δ vvs ⊢ ⟦ τ ⟧ₑ Δ (e.[env_subst (vvs.*1)], e'.[env_subst (vvs.*2)]).
 End bin_log_def.
 
-Notation "Δ ∥ Γ ⊨ e '≤log≤' e' : τ" :=
-  (bin_log_related Δ Γ e e' τ) (at level 74, Γ, e, e', τ at next level).
+Notation "Γ ⊨ e '≤log≤' e' : τ" :=
+  (bin_log_related Γ e e' τ) (at level 74, e, e', τ at next level).
 
 Section fundamental.
   Context `{heapIG Σ, cfgSG Σ}.
@@ -35,141 +35,140 @@ Section fundamental.
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
   (* Put all quantifiers at the outer level *)
-  Lemma bin_log_related_alt {Δ Γ e e' τ} :
-    Δ ∥ Γ ⊨ e ≤log≤ e' : τ → ∀ vvs ρ j K,
+  Lemma bin_log_related_alt {Γ e e' τ} : Γ ⊨ e ≤log≤ e' : τ → ∀ Δ vvs ρ j K,
+    env_PersistentP Δ →
     heapI_ctx ★ spec_ctx ρ ★ ⟦ Γ ⟧* Δ vvs ★ j ⤇ fill K (e'.[env_subst (vvs.*2)])
     ⊢ WP e.[env_subst (vvs.*1)] {{ v, ∃ v',
         j ⤇ fill K (# v') ★ interp τ Δ (v, v') }}.
   Proof.
-    iIntros {Hlog vvs ρ j K} "(#Hh & #Hs & HΓ & Hj)".
+    iIntros {Hlog Δ vvs ρ j K ?} "(#Hh & #Hs & HΓ & Hj)".
     iApply (Hlog with "[HΓ] *"); iFrame; eauto.
   Qed.
 
   Notation "' H" := (bin_log_related_alt H) (at level 8).
-  Notation "✓ₚ Δ" := (env_PersistentP Δ) (at level 20).
 
-  Lemma bin_log_related_var Δ Γ x τ {HΔ : ✓ₚ Δ} :
-    Γ !! x = Some τ → Δ ∥ Γ ⊨ Var x ≤log≤ Var x : τ.
+  Lemma bin_log_related_var Γ x τ :
+    Γ !! x = Some τ → Γ ⊨ Var x ≤log≤ Var x : τ.
   Proof.
-    iIntros {? vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {? Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     iDestruct (interp_env_Some_l with "HΓ") as { [v v'] } "[% ?]"; first done.
     rewrite /env_subst !list_lookup_fmap; simplify_option_eq. value_case; eauto.
   Qed.
 
-  Lemma bin_log_related_unit Δ Γ {HΔ: ✓ₚ Δ} : Δ ∥ Γ ⊨ Unit ≤log≤ Unit : TUnit.
+  Lemma bin_log_related_unit Γ : Γ ⊨ Unit ≤log≤ Unit : TUnit.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists UnitV; eauto.
   Qed.
 
-  Lemma bin_log_related_nat Δ Γ n {HΔ: ✓ₚ Δ} : Δ ∥ Γ ⊨ ♯ n ≤log≤ ♯ n : TNat.
+  Lemma bin_log_related_nat Γ n : Γ ⊨ ♯ n ≤log≤ ♯ n : TNat.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists (♯v _); eauto.
   Qed.
 
-  Lemma bin_log_related_bool Δ Γ b {HΔ: ✓ₚ Δ} : Δ ∥ Γ ⊨ ♭ b ≤log≤ ♭ b : TBool.
+  Lemma bin_log_related_bool Γ b : Γ ⊨ ♭ b ≤log≤ ♭ b : TBool.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists (♭v _); eauto.
   Qed.
 
-  Lemma bin_log_related_pair Δ Γ e1 e2 e1' e2' τ1 τ2 {HΔ : ✓ₚ Δ}
-      (IHHtyped1 : Δ ∥ Γ ⊨ e1 ≤log≤ e1' : τ1)
-      (IHHtyped2 : Δ ∥ Γ ⊨ e2 ≤log≤ e2' : τ2) :
-    Δ ∥ Γ ⊨ Pair e1 e2 ≤log≤ Pair e1' e2' : TProd τ1 τ2.
+  Lemma bin_log_related_pair Γ e1 e2 e1' e2' τ1 τ2
+      (IHHtyped1 : Γ ⊨ e1 ≤log≤ e1' : τ1)
+      (IHHtyped2 : Γ ⊨ e2 ≤log≤ e2' : τ2) :
+    Γ ⊨ Pair e1 e2 ≤log≤ Pair e1' e2' : TProd τ1 τ2.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (PairLCtx e2.[env_subst _]) v v' "[Hv #Hiv]"
-      ('IHHtyped1 _ _ j (K ++ [PairLCtx e2'.[env_subst _] ])).
+      ('IHHtyped1 _ _ _ j (K ++ [PairLCtx e2'.[env_subst _] ])).
     smart_wp_bind (PairRCtx v) w w' "[Hw #Hiw]"
-      ('IHHtyped2 _ _ j (K ++ [PairRCtx v'])).
+      ('IHHtyped2 _ _ _ j (K ++ [PairRCtx v'])).
     value_case. iExists (PairV v' w'); iFrame "Hw".
     iExists (v, v'), (w, w'); simpl; repeat iSplit; trivial.
   Qed.
 
-  Lemma bin_log_related_fst Δ Γ e e' τ1 τ2 {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : TProd τ1 τ2) :
-    Δ ∥ Γ ⊨ Fst e ≤log≤ Fst e' : τ1.
+  Lemma bin_log_related_fst Γ e e' τ1 τ2
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : TProd τ1 τ2) :
+    Γ ⊨ Fst e ≤log≤ Fst e' : τ1.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
-    smart_wp_bind (FstCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ j (K ++ [FstCtx])); cbn.
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    smart_wp_bind (FstCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [FstCtx])); cbn.
     iDestruct "Hiv" as { [w1 w1'] [w2 w2'] } "#[% [Hw1 Hw2]]"; simplify_eq.
     iPvs (step_fst _ _ j K (# w1') w1' (# w2') w2' with "* [-]") as "Hw"; eauto.
     iApply wp_fst; eauto.
   Qed.
 
-  Lemma bin_log_related_snd Δ Γ e e' τ1 τ2 {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : TProd τ1 τ2) :
-    Δ ∥ Γ ⊨ Snd e ≤log≤ Snd e' : τ2.
+  Lemma bin_log_related_snd Γ e e' τ1 τ2
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : TProd τ1 τ2) :
+    Γ ⊨ Snd e ≤log≤ Snd e' : τ2.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
-    smart_wp_bind (SndCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ j (K ++ [SndCtx])); cbn.
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    smart_wp_bind (SndCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [SndCtx])); cbn.
     iDestruct "Hiv" as { [w1 w1'] [w2 w2'] } "#[% [Hw1 Hw2]]"; simplify_eq.
     iPvs (step_snd _ _ j K (# w1') w1' (# w2') w2' with "* [-]") as "Hw"; eauto.
     iApply wp_snd; eauto.
   Qed.
 
-  Lemma bin_log_related_injl Δ Γ e e' τ1 τ2 {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : τ1) :
-    Δ ∥ Γ ⊨ InjL e ≤log≤ InjL e' : (TSum τ1 τ2).
+  Lemma bin_log_related_injl Γ e e' τ1 τ2
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : τ1) :
+    Γ ⊨ InjL e ≤log≤ InjL e' : (TSum τ1 τ2).
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (InjLCtx) v v' "[Hv #Hiv]"
-      ('IHHtyped _ _ j (K ++ [InjLCtx])); cbn.
+      ('IHHtyped _ _ _ j (K ++ [InjLCtx])); cbn.
     value_case. iExists (InjLV v'); iFrame "Hv".
     iLeft; iExists (_,_); eauto 10.
   Qed.
 
-  Lemma bin_log_related_injr Δ Γ e e' τ1 τ2 {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : τ2) :
-    Δ ∥ Γ ⊨ InjR e ≤log≤ InjR e' : TSum τ1 τ2.
+  Lemma bin_log_related_injr Γ e e' τ1 τ2
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : τ2) :
+    Γ ⊨ InjR e ≤log≤ InjR e' : TSum τ1 τ2.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (InjRCtx) v v' "[Hv #Hiv]"
-      ('IHHtyped _ _ j (K ++ [InjRCtx])); cbn.
+      ('IHHtyped _ _ _ j (K ++ [InjRCtx])); cbn.
     value_case. iExists (InjRV v'); iFrame "Hv".
     iRight; iExists (_,_); eauto 10.
   Qed.
 
-  Lemma bin_log_related_case Δ Γ e0 e1 e2 e0' e1' e2' τ1 τ2 τ3 {HΔ : ✓ₚ Δ}
+  Lemma bin_log_related_case Γ e0 e1 e2 e0' e1' e2' τ1 τ2 τ3
       (Hclosed2 : ∀ f, e1.[iter (S (length Γ)) up f] = e1)
       (Hclosed3 : ∀ f, e2.[iter (S (length Γ)) up f] = e2)
       (Hclosed2' : ∀ f, e1'.[iter (S (length Γ)) up f] = e1')
       (Hclosed3' : ∀ f, e2'.[iter (S (length Γ)) up f] = e2')
-      (IHHtyped1 : Δ ∥ Γ ⊨ e0 ≤log≤ e0' : TSum τ1 τ2)
-      (IHHtyped2 : Δ ∥ τ1 :: Γ ⊨ e1 ≤log≤ e1' : τ3)
-      (IHHtyped3 : Δ ∥ τ2 :: Γ ⊨ e2 ≤log≤ e2' : τ3) :
-    Δ ∥ Γ ⊨ Case e0 e1 e2 ≤log≤ Case e0' e1' e2' : τ3.
+      (IHHtyped1 : Γ ⊨ e0 ≤log≤ e0' : TSum τ1 τ2)
+      (IHHtyped2 : τ1 :: Γ ⊨ e1 ≤log≤ e1' : τ3)
+      (IHHtyped3 : τ2 :: Γ ⊨ e2 ≤log≤ e2' : τ3) :
+    Γ ⊨ Case e0 e1 e2 ≤log≤ Case e0' e1' e2' : τ3.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     iDestruct (interp_env_length with "HΓ") as %?.
     smart_wp_bind (CaseCtx _ _) v v' "[Hv #Hiv]"
-      ('IHHtyped1 _ _ j (K ++ [CaseCtx _ _])); cbn.
+      ('IHHtyped1 _ _ _ j (K ++ [CaseCtx _ _])); cbn.
     iDestruct "Hiv" as "[Hiv|Hiv]".
     - iDestruct "Hiv" as { [w w'] } "[% Hw]"; simplify_eq.
       iPvs (step_case_inl _ _ j K (# w') w' with "* [-]") as "Hz"; eauto.
       iApply wp_case_inl; auto 1 using to_of_val. iNext.
       asimpl. erewrite !n_closed_subst_head_simpl by (rewrite ?fmap_length; eauto).
-      iApply ('IHHtyped2 ((w,w') :: vvs)); repeat iSplit; eauto.
+      iApply ('IHHtyped2 _ ((w,w') :: vvs)); repeat iSplit; eauto.
       iApply interp_env_cons; auto.
     - iDestruct "Hiv" as { [w w'] } "[% Hw]"; simplify_eq.
       iPvs (step_case_inr _ _ j K (# w') w' with "* [-]") as "Hz"; eauto.
       iApply wp_case_inr; auto 1 using to_of_val. iNext.
       asimpl. erewrite !n_closed_subst_head_simpl by (rewrite ?fmap_length; eauto).
-      iApply ('IHHtyped3 ((w,w') :: vvs)); repeat iSplit; eauto.
+      iApply ('IHHtyped3 _ ((w,w') :: vvs)); repeat iSplit; eauto.
       iApply interp_env_cons; auto.
   Qed.
 
-  Lemma bin_log_related_if Δ Γ e0 e1 e2 e0' e1' e2' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped1 : Δ ∥ Γ ⊨ e0 ≤log≤ e0' : TBool)
-      (IHHtyped2 : Δ ∥ Γ ⊨ e1 ≤log≤ e1' : τ)
-      (IHHtyped3 : Δ ∥ Γ ⊨ e2 ≤log≤ e2' : τ) :
-    Δ ∥ Γ ⊨ If e0 e1 e2 ≤log≤ If e0' e1' e2' : τ.
+  Lemma bin_log_related_if Γ e0 e1 e2 e0' e1' e2' τ
+      (IHHtyped1 : Γ ⊨ e0 ≤log≤ e0' : TBool)
+      (IHHtyped2 : Γ ⊨ e1 ≤log≤ e1' : τ)
+      (IHHtyped3 : Γ ⊨ e2 ≤log≤ e2' : τ) :
+    Γ ⊨ If e0 e1 e2 ≤log≤ If e0' e1' e2' : τ.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (IfCtx _ _) v v' "[Hv #Hiv]"
-      ('IHHtyped1 _ _ j (K ++ [IfCtx _ _])); cbn.
+      ('IHHtyped1 _ _ _ j (K ++ [IfCtx _ _])); cbn.
     iDestruct "Hiv" as { [] } "[% %]"; simplify_eq/=.
     - iPvs (step_if_true _ _ j K with "* [-]") as "Hz"; eauto.
       iApply wp_if_true. iNext. iApply 'IHHtyped2; eauto.
@@ -177,16 +176,16 @@ Section fundamental.
       iApply wp_if_false. iNext. iApply 'IHHtyped3; eauto.
   Qed.
 
-  Lemma bin_log_related_nat_binop Δ Γ op e1 e2 e1' e2' {HΔ : ✓ₚ Δ}
-      (IHHtyped1 : Δ ∥ Γ ⊨ e1 ≤log≤ e1' : TNat)
-      (IHHtyped2 : Δ ∥ Γ ⊨ e2 ≤log≤ e2' : TNat) :
-    Δ ∥ Γ ⊨ BinOp op e1 e2 ≤log≤ BinOp op e1' e2' : binop_res_type op.
+  Lemma bin_log_related_nat_binop Γ op e1 e2 e1' e2'
+      (IHHtyped1 : Γ ⊨ e1 ≤log≤ e1' : TNat)
+      (IHHtyped2 : Γ ⊨ e2 ≤log≤ e2' : TNat) :
+    Γ ⊨ BinOp op e1 e2 ≤log≤ BinOp op e1' e2' : binop_res_type op.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (BinOpLCtx _ _) v v' "[Hv #Hiv]"
-                  ('IHHtyped1 _ _ j (K ++ [BinOpLCtx _ _])); cbn.
+                  ('IHHtyped1 _ _ _ j (K ++ [BinOpLCtx _ _])); cbn.
     smart_wp_bind (BinOpRCtx _ _) w w' "[Hw #Hiw]"
-                  ('IHHtyped2 _ _ j (K ++ [BinOpRCtx _ _])); cbn.
+                  ('IHHtyped2 _ _ _ j (K ++ [BinOpRCtx _ _])); cbn.
     iDestruct "Hiv" as {n} "[% %]"; simplify_eq/=.
     iDestruct "Hiw" as {n'} "[% %]"; simplify_eq/=.
     iPvs (step_nat_binop _ _ j K with "* [-]") as "Hz"; eauto.
@@ -195,13 +194,13 @@ Section fundamental.
       try destruct lt_dec; eauto.
   Qed.
 
-  Lemma bin_log_related_rec Δ Γ (e e' : expr) τ1 τ2 {HΔ : ✓ₚ Δ}
+  Lemma bin_log_related_rec Γ (e e' : expr) τ1 τ2
       (Hclosed : ∀ f, e.[iter (S (S (length Γ))) up f] = e)
       (Hclosed' : ∀ f, e'.[iter (S (S (length Γ))) up f] = e')
-      (IHHtyped : Δ ∥ TArrow τ1 τ2 :: τ1 :: Γ ⊨ e ≤log≤ e' : τ2) :
-    Δ ∥ Γ ⊨ Rec e ≤log≤ Rec e' : TArrow τ1 τ2.
+      (IHHtyped : TArrow τ1 τ2 :: τ1 :: Γ ⊨ e ≤log≤ e' : τ2) :
+    Γ ⊨ Rec e ≤log≤ Rec e' : TArrow τ1 τ2.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists (RecV _). iIntros "{$Hj} !".
     iLöb as "IH". iIntros {j' K' [v v'] } "[#Hiv Hv]".
     iDestruct (interp_env_length with "HΓ") as %?.
@@ -209,57 +208,56 @@ Section fundamental.
     iPvs (step_rec _ _ j' K' _ (# v') v' with "* [-]") as "Hz"; eauto.
     asimpl. change (Rec ?e) with (# (RecV e)).
     erewrite !n_closed_subst_head_simpl_2 by (rewrite ?fmap_length; eauto).
-    iApply ('IHHtyped ((_,_) :: (v,v') :: vvs)); repeat iSplit; eauto.
+    iApply ('IHHtyped _ ((_,_) :: (v,v') :: vvs)); repeat iSplit; eauto.
     iApply interp_env_cons; iSplit; [|iApply interp_env_cons]; auto.
   Qed.
 
-  Lemma bin_log_related_app Δ Γ e1 e2 e1' e2' τ1 τ2 {HΔ : ✓ₚ Δ}
-      (IHHtyped1 : Δ ∥ Γ ⊨ e1 ≤log≤ e1' : TArrow τ1 τ2)
-      (IHHtyped2 : Δ ∥ Γ ⊨ e2 ≤log≤ e2' : τ1) :
-    Δ ∥ Γ ⊨ App e1 e2 ≤log≤ App e1' e2' :  τ2.
+  Lemma bin_log_related_app Γ e1 e2 e1' e2' τ1 τ2
+      (IHHtyped1 : Γ ⊨ e1 ≤log≤ e1' : TArrow τ1 τ2)
+      (IHHtyped2 : Γ ⊨ e2 ≤log≤ e2' : τ1) :
+    Γ ⊨ App e1 e2 ≤log≤ App e1' e2' :  τ2.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (AppLCtx (e2.[env_subst (vvs.*1)])) v v' "[Hv #Hiv]"
-      ('IHHtyped1 _ _ j (K ++ [(AppLCtx (e2'.[env_subst (vvs.*2)]))])); cbn.
+      ('IHHtyped1 _ _ _ j (K ++ [(AppLCtx (e2'.[env_subst (vvs.*2)]))])); cbn.
     smart_wp_bind (AppRCtx v) w w' "[Hw #Hiw]"
-      ('IHHtyped2 _ _ j (K ++ [AppRCtx v'])); cbn.
+      ('IHHtyped2 _ _ _ j (K ++ [AppRCtx v'])); cbn.
     iApply ("Hiv" $! j K (w, w')); simpl; eauto.
   Qed.
 
-  Lemma bin_log_related_tlam Δ Γ e e' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped : ∀ (τi : D), (∀ vw, PersistentP (τi vw)) →
-      (τi :: Δ) ∥ (subst (ren (+1)) <$> Γ) ⊨ e ≤log≤ e' : τ) :
-    Δ ∥ Γ ⊨ TLam e ≤log≤ TLam e' : TForall τ.
+  Lemma bin_log_related_tlam Γ e e' τ
+      (IHHtyped : (subst (ren (+1)) <$> Γ) ⊨ e ≤log≤ e' : τ) :
+    Γ ⊨ TLam e ≤log≤ TLam e' : TForall τ.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists (TLamV _).
     iIntros "{$Hj} /= !"; iIntros {τi j' K'} "% Hv /=".
     iApply wp_tlam; iNext.
     iPvs (step_tlam _ _ j' K' (e'.[env_subst (vvs.*2)]) with "* [-]") as "Hz"; eauto.
-    iApply '(IHHtyped _ _); repeat iSplit; eauto. by iApply interp_env_ren.
+    iApply 'IHHtyped; repeat iSplit; eauto. by iApply interp_env_ren.
   Qed.
 
-  Lemma bin_log_related_tapp Δ Γ e e' τ τ' {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : TForall τ) :
-    Δ ∥ Γ ⊨ TApp e ≤log≤ TApp e' : τ.[τ'/].
+  Lemma bin_log_related_tapp Γ e e' τ τ'
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : TForall τ) :
+    Γ ⊨ TApp e ≤log≤ TApp e' : τ.[τ'/].
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (TAppCtx) v v' "[Hj #Hv]"
-      ('IHHtyped _ _ j (K ++ [TAppCtx])); cbn.
+      ('IHHtyped _ _ _ j (K ++ [TAppCtx])); cbn.
     iApply wp_wand_r; iSplitL.
     { iApply ("Hv" $! (interp τ' Δ) with "[#] Hj"); iPureIntro; apply _. }
     iIntros {w} "Hw". iDestruct "Hw" as {w'} "[Hw #Hiw]".
     iExists _; rewrite -interp_subst; eauto.
   Qed.
 
-  Lemma bin_log_related_fold Δ Γ e e' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : τ.[(TRec τ)/]) :
-    Δ ∥ Γ ⊨ Fold e ≤log≤ Fold e' : TRec τ.
+  Lemma bin_log_related_fold Γ e e' τ
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : τ.[(TRec τ)/]) :
+    Γ ⊨ Fold e ≤log≤ Fold e' : TRec τ.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     iApply (@wp_bind _ _ _ [FoldCtx]);
       iApply wp_wand_l; iSplitR;
-        [|iApply ('IHHtyped _ _ j (K ++ [FoldCtx]));
+        [|iApply ('IHHtyped _ _ _ j (K ++ [FoldCtx]));
           rewrite ?fill_app; simpl; repeat iSplitR; trivial].
     iIntros {v}; iDestruct 1 as {w} "[Hv #Hiv]"; rewrite fill_app.
     value_case. iExists (FoldV w); iFrame "Hv".
@@ -267,14 +265,14 @@ Section fundamental.
     iAlways; iExists (_, _); eauto.
   Qed.
 
-  Lemma bin_log_related_unfold Δ Γ e e' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : TRec τ) :
-    Δ ∥ Γ ⊨ Unfold e ≤log≤ Unfold e' : τ.[(TRec τ)/].
+  Lemma bin_log_related_unfold Γ e e' τ
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : TRec τ) :
+    Γ ⊨ Unfold e ≤log≤ Unfold e' : τ.[(TRec τ)/].
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     iApply (@wp_bind _ _ _ [UnfoldCtx]);
       iApply wp_wand_l; iSplitR;
-        [|iApply ('IHHtyped _ _ j (K ++ [UnfoldCtx]));
+        [|iApply ('IHHtyped _ _ _ j (K ++ [UnfoldCtx]));
           rewrite ?fill_app; simpl; repeat iSplitR; trivial].
     iIntros {v}. iDestruct 1 as {v'} "[Hw #Hiw]"; rewrite fill_app.
     rewrite /= fixpoint_unfold /=.
@@ -285,23 +283,23 @@ Section fundamental.
     iNext; iPvsIntro; iExists _; iFrame "Hz". by rewrite -interp_subst.
   Qed.
 
-  Lemma bin_log_related_fork Δ Γ e e' {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : TUnit) :
-    Δ ∥ Γ ⊨ Fork e ≤log≤ Fork e' : TUnit.
+  Lemma bin_log_related_fork Γ e e'
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : TUnit) :
+    Γ ⊨ Fork e ≤log≤ Fork e' : TUnit.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     iPvs (step_fork _ _ j K with "* [-]") as {j'} "[Hj Hj']"; eauto.
     iApply wp_fork; iNext; iSplitL "Hj".
     - iExists UnitV; eauto.
-    - iApply wp_wand_l; iSplitR; [|iApply ('IHHtyped _ _ _ [])]; eauto.
+    - iApply wp_wand_l; iSplitR; [|iApply ('IHHtyped _ _ _ _ [])]; eauto.
   Qed.
 
-  Lemma bin_log_related_alloc Δ Γ e e' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : τ) :
-    Δ ∥ Γ ⊨ Alloc e ≤log≤ Alloc e' : Tref τ.
+  Lemma bin_log_related_alloc Γ e e' τ
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : τ) :
+    Γ ⊨ Alloc e ≤log≤ Alloc e' : Tref τ.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
-    smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ j (K ++ [AllocCtx])).
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [AllocCtx])).
     iPvs (step_alloc _ _ j K (# v') v' with "* [-]") as {l'} "[Hj Hl]"; eauto.
     iApply wp_alloc; auto.
     iIntros "{$Hh} >"; iIntros {l} "Hl'".
@@ -311,12 +309,12 @@ Section fundamental.
     iPvsIntro; iExists (LocV l'). iFrame "Hj". iExists (l, l'); eauto.
   Qed.
 
-  Lemma bin_log_related_load Δ Γ e e' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped : Δ ∥ Γ ⊨ e ≤log≤ e' : (Tref τ)) :
-    Δ ∥ Γ ⊨ Load e ≤log≤ Load e' : τ.
+  Lemma bin_log_related_load Γ e e' τ
+      (IHHtyped : Γ ⊨ e ≤log≤ e' : (Tref τ)) :
+    Γ ⊨ Load e ≤log≤ Load e' : τ.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
-    smart_wp_bind (LoadCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ j (K ++ [LoadCtx])).
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    smart_wp_bind (LoadCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [LoadCtx])).
     iDestruct "Hiv" as { [l l'] } "[% Hinv]"; simplify_eq/=.
     iInv (logN .@ (l,l')) as { [w w'] } "[Hw1 [Hw2 #Hw]]"; simpl.
     iTimeless "Hw2".
@@ -328,16 +326,16 @@ Section fundamental.
     - iExists w'; by iFrame.
   Qed.
 
-  Lemma bin_log_related_store Δ Γ e1 e2 e1' e2' τ {HΔ : ✓ₚ Δ}
-      (IHHtyped1 : Δ ∥ Γ ⊨ e1 ≤log≤ e1' : (Tref τ))
-      (IHHtyped2 : Δ ∥ Γ ⊨ e2 ≤log≤ e2' : τ) :
-    Δ ∥ Γ ⊨ Store e1 e2 ≤log≤ Store e1' e2' : TUnit.
+  Lemma bin_log_related_store Γ e1 e2 e1' e2' τ
+      (IHHtyped1 : Γ ⊨ e1 ≤log≤ e1' : (Tref τ))
+      (IHHtyped2 : Γ ⊨ e2 ≤log≤ e2' : τ) :
+    Γ ⊨ Store e1 e2 ≤log≤ Store e1' e2' : TUnit.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (StoreLCtx _) v v' "[Hv #Hiv]"
-      ('IHHtyped1 _ _ j (K ++ [StoreLCtx _])).
+      ('IHHtyped1 _ _ _ j (K ++ [StoreLCtx _])).
     smart_wp_bind (StoreRCtx _) w w' "[Hw #Hiw]"
-      ('IHHtyped2 _ _ j (K ++ [StoreRCtx _])).
+      ('IHHtyped2 _ _ _ j (K ++ [StoreRCtx _])).
     iDestruct "Hiv" as { [l l'] } "[% Hinv]"; simplify_eq/=.
     iInv (logN .@ (l,l')) as { [v v'] } "[Hv1 [Hv2 #Hv]]".
     { eapply bool_decide_spec; eauto using to_of_val. }
@@ -350,20 +348,20 @@ Section fundamental.
     - iExists UnitV; iFrame; auto.
   Qed.
 
-  Lemma bin_log_related_CAS Δ Γ e1 e2 e3 e1' e2' e3' τ {HΔ : ✓ₚ Δ}
+  Lemma bin_log_related_CAS Γ e1 e2 e3 e1' e2' e3' τ
       (HEqτ : EqType τ)
-      (IHHtyped1 : Δ ∥ Γ ⊨ e1 ≤log≤ e1' : Tref τ)
-      (IHHtyped2 : Δ ∥ Γ ⊨ e2 ≤log≤ e2' : τ)
-      (IHHtyped3 : Δ ∥ Γ ⊨ e3 ≤log≤ e3' : τ) :
-    Δ ∥ Γ ⊨ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' : TBool.
+      (IHHtyped1 : Γ ⊨ e1 ≤log≤ e1' : Tref τ)
+      (IHHtyped2 : Γ ⊨ e2 ≤log≤ e2' : τ)
+      (IHHtyped3 : Γ ⊨ e3 ≤log≤ e3' : τ) :
+    Γ ⊨ CAS e1 e2 e3 ≤log≤ CAS e1' e2' e3' : TBool.
   Proof.
-    iIntros {vvs ρ} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
+    iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (CasLCtx _ _) v v' "[Hv #Hiv]"
-      ('IHHtyped1 _ _ j (K ++ [CasLCtx _ _])).
+      ('IHHtyped1 _ _ _ j (K ++ [CasLCtx _ _])).
     smart_wp_bind (CasMCtx _ _) w w' "[Hw #Hiw]"
-      ('IHHtyped2 _ _ j (K ++ [CasMCtx _ _])).
+      ('IHHtyped2 _ _ _  j (K ++ [CasMCtx _ _])).
     smart_wp_bind (CasRCtx _ _) u u' "[Hu #Hiu]"
-      ('IHHtyped3 _ _ j (K ++ [CasRCtx _ _])).
+      ('IHHtyped3 _ _ _  j (K ++ [CasRCtx _ _])).
     iDestruct "Hiv" as { [l l'] } "[% Hinv]"; simplify_eq/=.
     iInv (logN .@ (l,l')) as { [v v'] } "[Hv1 [Hv2 #Hv]]".
     { eapply bool_decide_spec; eauto 10 using to_of_val. }
@@ -387,10 +385,10 @@ Section fundamental.
       + iExists (♭v false); eauto.
   Qed.
 
-  Theorem binary_fundamental Δ Γ e τ {HΔ : ✓ₚ Δ} :
-    Γ ⊢ₜ e : τ → Δ ∥ Γ ⊨ e ≤log≤ e : τ.
+  Theorem binary_fundamental Γ e τ :
+    Γ ⊢ₜ e : τ → Γ ⊨ e ≤log≤ e : τ.
   Proof.
-    intros Htyped; revert Δ HΔ; induction Htyped; intros Δ HΔ.
+    induction 1.
     - by apply bin_log_related_var.
     - by apply bin_log_related_unit.
     - by apply bin_log_related_nat.

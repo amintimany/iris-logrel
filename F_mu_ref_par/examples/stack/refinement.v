@@ -12,14 +12,14 @@ Section Stack_refinement.
   Notation D := (prodC valC valC -n> iPropG lang Σ).
   Implicit Types Δ : listC D.
 
-  Lemma FG_CG_counter_refinement Δ {HΔ : env_PersistentP Δ} :
-    Δ ∥ [] ⊨ FG_stack ≤log≤ CG_stack : TForall (TProd (TProd
-        (TArrow (TVar 0) TUnit)
-        (TArrow TUnit (TSum TUnit (TVar 0))))
-        (TArrow (TArrow (TVar 0) TUnit) TUnit)).
+  Lemma FG_CG_counter_refinement :
+    [] ⊨ FG_stack ≤log≤ CG_stack : TForall (TProd (TProd
+           (TArrow (TVar 0) TUnit)
+           (TArrow TUnit (TSum TUnit (TVar 0))))
+           (TArrow (TArrow (TVar 0) TUnit) TUnit)).
   Proof.
     (* executing the preambles *)
-    iIntros { [|??] ρ} "#(Hheap & Hspec & HΓ)"; iIntros {j K} "Hj"; last first.
+    iIntros { Δ [|??] ρ ? } "#(Hheap & Hspec & HΓ)"; iIntros {j K} "Hj"; last first.
     { iDestruct (interp_env_length with "HΓ") as %[=]. } 
     iClear "HΓ". cbn -[FG_stack CG_stack].
     rewrite ?empty_env_subst /CG_stack /FG_stack.
@@ -378,5 +378,5 @@ Proof.
   eapply (@binary_soundness Σ);
     eauto using FG_stack_closed, CG_stack_closed.
   all: try typeclasses eauto.
-  intros. apply FG_CG_counter_refinement, _.
+  intros. apply FG_CG_counter_refinement.
 Qed.

@@ -194,16 +194,12 @@ Notation "Γ ⊨ e '≤ctx≤' e' : τ" :=
 
 Section bin_log_related_under_typed_ctx.
   Context `{heapIG Σ, cfgSG Σ}.
-  Notation D := (prodC valC valC -n> iPropG lang Σ).
-  Implicit Types Δ : listC D.
 
   Lemma bin_log_related_under_typed_ctx Γ e e' τ Γ' τ' K :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
     typed_ctx K Γ τ Γ' τ' →
-    (∀ Δ (HΔ : env_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
-    ∀ Δ (HΔ : env_PersistentP Δ),
-      Δ ∥ Γ' ⊨ fill_ctx K e ≤log≤ fill_ctx K e' : τ'.
+    Γ ⊨ e ≤log≤ e' : τ → Γ' ⊨ fill_ctx K e ≤log≤ fill_ctx K e' : τ'.
   Proof.
     revert Γ τ Γ' τ' e e'.
     induction K as [|k K]=> Γ τ Γ' τ' e e' H1 H2; simpl.

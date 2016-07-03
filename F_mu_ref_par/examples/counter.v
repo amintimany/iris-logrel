@@ -253,10 +253,10 @@ Section CG_Counter.
 
   Definition counterN : namespace := nroot .@ "counter".
 
-  Lemma FG_CG_counter_refinement Δ {HΔ : env_PersistentP Δ} :
-    Δ ∥ [] ⊨ FG_counter ≤log≤ CG_counter : TProd (TArrow TUnit TUnit) (TArrow TUnit TNat).
+  Lemma FG_CG_counter_refinement :
+    [] ⊨ FG_counter ≤log≤ CG_counter : TProd (TArrow TUnit TUnit) (TArrow TUnit TNat).
   Proof.
-    iIntros { [|??] ρ} "#(Hheap & Hspec & HΓ)"; iIntros {j K} "Hj"; last first.
+    iIntros { Δ [|??] ρ ? } "#(Hheap & Hspec & HΓ)"; iIntros {j K} "Hj"; last first.
     { iDestruct (interp_env_length with "HΓ") as %[=]. }
     iClear "HΓ". cbn -[FG_counter CG_counter].
     rewrite ?empty_env_subst /CG_counter /FG_counter.

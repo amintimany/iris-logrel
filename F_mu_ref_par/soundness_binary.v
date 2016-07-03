@@ -12,7 +12,7 @@ Section soundness.
   Local Opaque to_heap.
 
   Lemma wp_basic_soundness e e' τ :
-    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : env_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
+    (∀ `{heapIG Σ, cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
     ownP (Σ:=globalF Σ) ∅
     ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h) }}.
   Proof.
@@ -30,7 +30,8 @@ Section soundness.
       iPureIntro. rewrite from_to_cfg; constructor. }
     iPvs (inv_alloc specN with "[Hinv]") as "#Hcfg"; trivial.
     { iNext. iExact "Hinv". }
-    iPoseProof (bin_log_related_alt (H1 h (@CFGSG _ _ γ) [] _) [] _ 0 [] with "[Hcfg2]") as "HBR".
+    iPoseProof (bin_log_related_alt (H1 h (@CFGSG _ _ γ)) [] [] _ 0 [] with "[Hcfg2]") as "HBR".
+    { apply _. }
     { rewrite /spec_ctx /auth_ctx /tpool_mapsto /auth_own empty_env_subst /=.
       iFrame "Hheap Hcfg Hcfg2". by rewrite -interp_env_nil. }
     rewrite /= empty_env_subst.
@@ -60,29 +61,21 @@ Section soundness.
   Qed.
 
   Lemma basic_soundness e e' τ v thp hp :
-    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : env_PersistentP Δ), Δ ∥ [] ⊨ e ≤log≤ e' : τ) →
+    (∀ `{heapIG Σ, cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
     rtc step ([e], ∅) (# v :: thp, hp) →
     (∃ thp' hp' v', rtc step ([e'], ∅) (# v' :: thp', hp')).
   Proof.
-    intros H1 H2.
-    match goal with
-      |- ?A =>
-      eapply (@wp_adequacy_result lang _ ⊤ (λ _, A) e v thp ∅ ∅ hp); eauto
-    end.
-    - apply ucmra_unit_valid.
-    - iIntros "[Hp Hg]".
-      iApply wp_wand_l; iSplitR; [| iApply wp_basic_soundness]; auto.
-      by iIntros {w} "H".
+    intros. eapply wp_adequacy_result; eauto using ucmra_unit_valid.
+    iIntros "[??]". by iApply wp_basic_soundness.
   Qed.
 
   Lemma binary_soundness Γ e e' τ :
     (∀ f, e.[base.iter (length Γ) up f] = e) →
     (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    (∀ `{heapIG Σ, cfgSG Σ} Δ (HΔ : env_PersistentP Δ), Δ ∥ Γ ⊨ e ≤log≤ e' : τ) →
+    (∀ `{heapIG Σ, cfgSG Σ}, Γ ⊨ e ≤log≤ e' : τ) →
     Γ ⊨ e ≤ctx≤ e' : τ.
   Proof.
-    intros H1 K HK htp hp v Hstp Hc Hc'.
-    eapply basic_soundness; eauto.
+    intros H1 K HK htp hp v Hstp Hc Hc'; eapply basic_soundness; eauto.
     intros H' H'' N Δ HΔ.
     eapply (bin_log_related_under_typed_ctx _ _ _ _ []); eauto.
   Qed.
