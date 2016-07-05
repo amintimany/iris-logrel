@@ -31,6 +31,9 @@ Section logrel.
       (ee : expr * expr) : iPropG lang Σ := (∀ j K,
     j ⤇ fill K (ee.2) →
     WP ee.1 {{ v, ∃ v', j ⤇ fill K (# v') ★ τi Δ (v, v') }})%I.
+  Global Instance interp_expr_ne n :
+    Proper (dist n ==> dist n ==> (=) ==> dist n) interp_expr.
+  Proof. solve_proper. Qed.
 
   Program Definition ctx_lookup (x : var) : listC D -n> D := λne Δ,
     from_option id (cconst True)%I (Δ !! x).
@@ -65,11 +68,6 @@ Section logrel.
              interp_expr
                interp2 Δ (App (# ww.1) (# vv.1), App (# ww.2) (# vv.2)))%I.
   Solve Obligations with solve_proper.
-  Next Obligation.
-  Proof.
-    intros d d' n x x' Hx z. eapply always_ne.
-    apply forall_ne => z'. apply impl_ne. by rewrite Hx. solve_proper.
-  Qed.
 
   Program Definition interp_forall
       (interp : listC D -n> D) : listC D -n> D := λne Δ ww,
@@ -78,11 +76,6 @@ Section logrel.
           interp_expr
             interp (τi :: Δ) (TApp (# ww.1), TApp (# ww.2)))%I.
   Solve Obligations with solve_proper.
-  Next Obligation.
-  Proof.
-    intros d n x x' Hx z. eapply always_ne.
-    apply forall_ne => z'. apply impl_ne; trivial. solve_proper.
-  Qed.
 
   Program Definition interp_rec1
       (interp : listC D -n> D) (Δ : listC D) (τi : D) : D := λne ww,
