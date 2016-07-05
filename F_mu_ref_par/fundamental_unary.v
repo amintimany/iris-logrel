@@ -115,14 +115,16 @@ Section typed_interp.
       smart_wp_bind LoadCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
       iDestruct "Hv" as {l} "[% #Hv]"; subst; simpl.
       iInv (logN .@ l) as {w} "[Hw1 #Hw2]".
-      iApply (wp_load _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
+      iApply (wp_load _ _ 1); [|iFrame "Hheap"]; trivial.
+      unfold logN, heapN; solve_ndisj.
       iIntros "{$Hw1} > Hw1". iPvsIntro; iSplitL; eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHtyped2; cbn. iClear "HΓ".
       iDestruct "Hv" as {l} "[% #Hv]"; subst.
       iInv (logN .@ l) as {z} "[Hz1 #Hz2]"; [cbn; eauto 10 using to_of_val|].
-      iApply wp_store; auto using to_of_val. solve_ndisj.
+      iApply wp_store; auto using to_of_val.
+      unfold logN, heapN; solve_ndisj.
       iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro. iSplitL; eauto 10.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHtyped1; cbn.
@@ -131,9 +133,11 @@ Section typed_interp.
       iDestruct "Hv1" as {l} "[% Hinv]"; subst.
       iInv (logN .@ l) as {w} "[Hw1 #Hw2]"; [cbn; eauto 10 using to_of_val|].
       destruct (decide (v2 = w)) as [|Hneq]; subst.
-      + iApply wp_cas_suc; eauto using to_of_val. solve_ndisj.
+      + iApply wp_cas_suc; eauto using to_of_val.
+        unfold logN, heapN; solve_ndisj.
         iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro; iSplitL; eauto.
-      + iApply wp_cas_fail; eauto using to_of_val. solve_ndisj.
+      + iApply wp_cas_fail; eauto using to_of_val.
+        unfold logN, heapN; solve_ndisj.
         iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro; iSplitL; eauto.
   Qed.
 End typed_interp.

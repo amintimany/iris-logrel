@@ -319,8 +319,9 @@ Section fundamental.
     iInv (logN .@ (l,l')) as { [w w'] } "[Hw1 [Hw2 #Hw]]"; simpl.
     iTimeless "Hw2".
     iPvs (step_load _ _ j K l' 1 w' with "[Hv Hw2]") as "[Hv Hw2]";
-      [solve_ndisj|by iFrame|].
-    iApply (wp_load _ _ 1); [|iFrame "Hh"]; trivial; try solve_ndisj.
+      [unfold logN, specN; solve_ndisj|by iFrame|].
+    iApply (wp_load _ _ 1); [|iFrame "Hh"]; trivial;
+      try unfold logN, heapN; solve_ndisj.
     iIntros "{$Hw1} > Hw1". iPvsIntro. iSplitL "Hw1 Hw2".
     - iNext; iExists (w,w'); by iFrame.
     - iExists w'; by iFrame.
@@ -341,8 +342,8 @@ Section fundamental.
     { eapply bool_decide_spec; eauto using to_of_val. }
     iTimeless "Hv2".
     iPvs (step_store _ _ j K l' v' (# w') w' with "[Hw Hv2]")
-      as "[Hw Hv2]"; [eauto|solve_ndisj|by iFrame|].
-    iApply wp_store; auto using to_of_val. solve_ndisj.
+      as "[Hw Hv2]"; [eauto|unfold logN, specN; solve_ndisj|by iFrame|].
+    iApply wp_store; auto using to_of_val. unfold logN, heapN; solve_ndisj.
     iIntros "{$Hh $Hv1} > Hv1". iPvsIntro. iSplitL "Hv1 Hv2".
     - iNext; iExists (w, w'); by iFrame.
     - iExists UnitV; iFrame; auto.
@@ -368,18 +369,22 @@ Section fundamental.
     iTimeless "Hv2".
     destruct (decide (v = w)) as [|Hneq]; subst.
     - iPvs (step_cas_suc _ _ j K l' (# w') w' v' (# u') u'
-            with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
+            with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto;
+        first unfold logN, specN; solve_ndisj.
       { iIntros "{$Hs $Hu $Hv2} >".
         rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
-      iApply wp_cas_suc; eauto using to_of_val; first solve_ndisj.
+      iApply wp_cas_suc; eauto using to_of_val;
+        first unfold logN, heapN; solve_ndisj.
       iIntros "{$Hh $Hv1} > Hv1". iPvsIntro. iSplitL "Hv1 Hv2".
       + iNext; iExists (_, _); by iFrame.
       + iExists (♭v true); iFrame; eauto.
     - iPvs (step_cas_fail _ _ j K l' 1 v' (# w') w' (# u') u'
-            with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
+            with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto;
+        first unfold logN, specN; solve_ndisj.
       { iIntros "{$Hs $Hu $Hv2} >".
         rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
-      iApply wp_cas_fail; eauto using to_of_val; first solve_ndisj.
+      iApply wp_cas_fail; eauto using to_of_val;
+        first unfold logN, heapN; solve_ndisj.
       iIntros "{$Hh $Hv1} > Hv1". iPvsIntro. iSplitL "Hv1 Hv2".
       + iNext; iExists (_, _); by iFrame.
       + iExists (♭v false); eauto.

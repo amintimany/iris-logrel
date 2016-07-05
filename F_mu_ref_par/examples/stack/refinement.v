@@ -364,7 +364,7 @@ Section Stack_refinement.
                  end.
         all: trivial.
         all: try match goal with |- _ ≠ _ => congruence end.
-        all: solve_ndisj.
+        all: unfold heapN, specN, stackN, specN; solve_ndisj.
   Qed.
 End Stack_refinement.
 

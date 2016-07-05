@@ -306,7 +306,7 @@ Section CG_Counter.
       iApply (@wp_bind _ _ _ [AppRCtx (RecV _)]);
         iApply wp_wand_l; iSplitR; [iIntros {v} "Hv"; iExact "Hv"|].
       iInv> counterN as {n} "[Hl [Hcnt Hcnt']]".
-      iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
+      iApply wp_load; [|iFrame "Hheap"]. unfold heapN, counterN; solve_ndisj.
       iIntros "> {$Hcnt} Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iApply wp_rec; trivial. asimpl. iNext.
@@ -325,7 +325,8 @@ Section CG_Counter.
         iPvs (steps_CG_locked_increment
                 _ _ _ _ _ _ _ _ with "[Hj Hl Hcnt']") as "[Hj [Hcnt' Hl]]".
         { iFrame "Hspec Hcnt' Hl Hj"; trivial. }
-        iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"]. solve_ndisj.
+        iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"].
+        unfold heapN, counterN; solve_ndisj.
         iIntros "{$Hcnt} > Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_true. iNext. iApply wp_value; trivial.
@@ -333,7 +334,8 @@ Section CG_Counter.
       + (* CAS fails *)
         (* In this case, we perform a recursive call *)
         iApply (wp_cas_fail _ _ _ (♯v n')); simpl; trivial;
-        [inversion 1; subst; auto | | iFrame "Hheap"]. solve_ndisj.
+          [inversion 1; subst; auto | | iFrame "Hheap"].
+        unfold heapN, counterN; solve_ndisj.
         iIntros "{$Hcnt} > Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
         iApply wp_if_false. iNext. by iApply "Hlat".
@@ -346,13 +348,13 @@ Section CG_Counter.
       iApply wp_rec; trivial. simpl.
       iNext. iInv> counterN as {n} "[Hl [Hcnt Hcnt']]".
       iPvs (steps_counter_read with "[Hj Hcnt']") as "[Hj Hcnt']".
-      { solve_ndisj. }
+      { unfold specN, counterN; solve_ndisj. }
       { by iFrame "Hspec Hcnt' Hj". }
-      iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
+      iApply wp_load; [|iFrame "Hheap"]. unfold heapN, counterN; solve_ndisj.
       iIntros "{$Hcnt} > Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
       iExists (♯v _); eauto.
-      Unshelve. solve_ndisj.
+      Unshelve. unfold specN, counterN; solve_ndisj.
   Qed.
 End CG_Counter.
 
