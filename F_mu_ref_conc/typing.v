@@ -1,4 +1,4 @@
-From iris_logrel.F_mu_ref_par Require Export lang.
+From iris_logrel.F_mu_ref_conc Require Export lang.
 
 Inductive type :=
   | TUnit : type

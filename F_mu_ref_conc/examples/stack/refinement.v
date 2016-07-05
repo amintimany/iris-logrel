@@ -1,7 +1,7 @@
 From iris.program_logic Require Import auth.
-From iris_logrel.F_mu_ref_par Require Import soundness_binary.
-From iris_logrel.F_mu_ref_par.examples Require Import lock.
-From iris_logrel.F_mu_ref_par.examples.stack Require Import
+From iris_logrel.F_mu_ref_conc Require Import soundness_binary.
+From iris_logrel.F_mu_ref_conc.examples Require Import lock.
+From iris_logrel.F_mu_ref_conc.examples.stack Require Import
   CG_stack FG_stack stack_rules.
 From iris.proofmode Require Import invariants ghost_ownership tactics.
 

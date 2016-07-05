@@ -1,4 +1,4 @@
-From iris_logrel.F_mu_ref_par Require Export fundamental_unary.
+From iris_logrel.F_mu_ref_conc Require Export fundamental_unary.
 From iris.proofmode Require Import tactics pviewshifts.
 From iris.program_logic Require Import ownership adequacy auth.
 

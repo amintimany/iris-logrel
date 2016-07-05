@@ -1,6 +1,6 @@
-From iris_logrel.F_mu_ref_par Require Export logrel_binary.
+From iris_logrel.F_mu_ref_conc Require Export logrel_binary.
 From iris.proofmode Require Import tactics pviewshifts invariants.
-From iris_logrel.F_mu_ref_par Require Import rules_binary.
+From iris_logrel.F_mu_ref_conc Require Import rules_binary.
 From iris.algebra Require Export upred_big_op.
 
 Section bin_log_def.

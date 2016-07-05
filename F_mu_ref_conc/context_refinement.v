@@ -1,4 +1,4 @@
-From iris_logrel.F_mu_ref_par Require Export fundamental_binary.
+From iris_logrel.F_mu_ref_conc Require Export fundamental_binary.
 
 Inductive ctx_item :=
   | CTX_Rec

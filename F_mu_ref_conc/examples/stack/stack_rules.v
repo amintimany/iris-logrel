@@ -1,5 +1,5 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris_logrel.F_mu_ref_par Require Import logrel_binary.
+From iris_logrel.F_mu_ref_conc Require Import logrel_binary.
 From iris.algebra Require Import gmap dec_agree.
 From iris.program_logic Require Import auth.
 Import uPred.

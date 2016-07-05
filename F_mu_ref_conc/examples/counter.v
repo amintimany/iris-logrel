@@ -1,6 +1,6 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris_logrel.F_mu_ref_par Require Export examples.lock.
-From iris_logrel.F_mu_ref_par Require Import soundness_binary.
+From iris_logrel.F_mu_ref_conc Require Export examples.lock.
+From iris_logrel.F_mu_ref_conc Require Import soundness_binary.
 
 Definition CG_increment (x : expr) : expr :=
   Rec (Store x.[ren (+ 2)] (BinOp Add (♯ 1) (Load x.[ren (+ 2)]))).

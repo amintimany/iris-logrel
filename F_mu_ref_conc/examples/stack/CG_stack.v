@@ -1,5 +1,5 @@
 From iris.proofmode Require Import invariants ghost_ownership tactics.
-From iris_logrel.F_mu_ref_par Require Import examples.lock.
+From iris_logrel.F_mu_ref_conc Require Import examples.lock.
 Import uPred.
 
 Definition CG_StackType τ :=

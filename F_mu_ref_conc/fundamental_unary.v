@@ -1,5 +1,5 @@
-From iris_logrel.F_mu_ref_par Require Export logrel_unary.
-From iris_logrel.F_mu_ref_par Require Import rules.
+From iris_logrel.F_mu_ref_conc Require Export logrel_unary.
+From iris_logrel.F_mu_ref_conc Require Import rules.
 From iris.algebra Require Export upred_big_op.
 From iris.proofmode Require Import tactics pviewshifts invariants.
 
