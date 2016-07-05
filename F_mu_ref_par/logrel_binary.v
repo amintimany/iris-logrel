@@ -27,6 +27,11 @@ Section logrel.
   Implicit Types Δ : listC D.
   Implicit Types interp : listC D → D.
 
+  Definition interp_expr (τi : listC D -n> D) (Δ : listC D)
+      (ee : expr * expr) : iPropG lang Σ := (∀ j K,
+    j ⤇ fill K (ee.2) →
+    WP ee.1 {{ v, ∃ v', j ⤇ fill K (# v') ★ τi Δ (v, v') }})%I.
+
   Program Definition ctx_lookup (x : var) : listC D -n> D := λne Δ,
     from_option id (cconst True)%I (Δ !! x).
   Solve Obligations with solve_proper_alt.
@@ -54,19 +59,30 @@ Section logrel.
   Solve Obligations with solve_proper.
 
   Program Definition interp_arrow
-      (interp1 interp2 : listC D -n> D) : listC D -n> D := λne Δ ww,
-    (□ ∀ j K vv,
-      interp1 Δ vv ★ j ⤇ fill K (App (# ww.2) (# vv.2)) →
-      WP App (# ww.1) (# vv.1) {{ v, ∃ v', j ⤇ fill K (# v') ★ interp2 Δ (v, v') }})%I.
+          (interp1 interp2 : listC D -n> D) : listC D -n> D :=
+    λne Δ ww,
+    (□ ∀ vv, interp1 Δ vv →
+             interp_expr
+               interp2 Δ (App (# ww.1) (# vv.1), App (# ww.2) (# vv.2)))%I.
   Solve Obligations with solve_proper.
+  Next Obligation.
+  Proof.
+    intros d d' n x x' Hx z. eapply always_ne.
+    apply forall_ne => z'. apply impl_ne. by rewrite Hx. solve_proper.
+  Qed.
 
   Program Definition interp_forall
       (interp : listC D -n> D) : listC D -n> D := λne Δ ww,
-    (□ ∀ τi j K,
-       (■ ∀ ww, PersistentP (τi ww)) →
-       j ⤇ fill K (TApp (# ww.2)) →
-       WP TApp (# ww.1) {{ v, ∃ v', j ⤇ fill K (# v') ★ interp (τi :: Δ) (v, v')}})%I.
+    (□ ∀ τi,
+          (■ ∀ ww, PersistentP (τi ww)) →
+          interp_expr
+            interp (τi :: Δ) (TApp (# ww.1), TApp (# ww.2)))%I.
   Solve Obligations with solve_proper.
+  Next Obligation.
+  Proof.
+    intros d n x x' Hx z. eapply always_ne.
+    apply forall_ne => z'. apply impl_ne; trivial. solve_proper.
+  Qed.
 
   Program Definition interp_rec1
       (interp : listC D -n> D) (Δ : listC D) (τi : D) : D := λne ww,
@@ -117,11 +133,6 @@ Section logrel.
     (length Γ = length vvs ∧ [∧] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vvs)%I.
   Notation "⟦ Γ ⟧*" := (interp_env Γ).
 
-  Definition interp_expr (τ : type) (Δ : listC D)
-      (ee : expr * expr) : iPropG lang Σ := (∀ j K,
-    j ⤇ fill K (ee.2) →
-    WP ee.1 {{ v, ∃ v', j ⤇ fill K (# v') ★ ⟦ τ ⟧ Δ (v, v') }})%I.
-
   Class env_PersistentP Δ :=
     ctx_persistentP : Forall (λ τi, ∀ vv, PersistentP (τi vv)) Δ.
   Global Instance ctx_persistent_nil : env_PersistentP [].
@@ -152,14 +163,16 @@ Section logrel.
     - intros ww; simpl; properness; auto.
     - intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
     - intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
-    - intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
+    - unfold interp_expr.
+      intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
     - apply fixpoint_proper=> τi ww /=.
       properness; auto. apply (IHτ (_ :: _)).
     - rewrite iter_up; destruct lt_dec as [Hl | Hl]; simpl.
       { by rewrite !lookup_app_l. }
       change (uPredC (iResUR lang _)) with (iPropG lang Σ).
       rewrite !lookup_app_r; [|lia ..]. do 2 f_equiv. lia. done.
-    - intros ww; simpl; properness; auto. by apply (IHτ (_ :: _)).
+    - unfold interp_expr.
+      intros ww; simpl; properness; auto. by apply (IHτ (_ :: _)).
     - intros ww; simpl; properness; auto. by apply IHτ.
   Qed.
 
@@ -173,7 +186,8 @@ Section logrel.
     - intros ww; simpl; properness; auto.
     - intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
     - intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
-    - intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
+    - unfold interp_expr.
+      intros ww; simpl; properness; auto. by apply IHτ1. by apply IHτ2.
     - apply fixpoint_proper=> τi ww /=.
       properness; auto. apply (IHτ (_ :: _)).
     - rewrite iter_up; destruct lt_dec as [Hl | Hl]; simpl.
@@ -184,7 +198,8 @@ Section logrel.
       { symmetry. asimpl. apply (interp_weaken [] Δ1 Δ2 τ'). }
       change (uPredC (iResUR lang _)) with (iPropG lang Σ).
       rewrite !lookup_app_r; [|lia ..]. do 2 f_equiv. lia. done.
-    - intros ww; simpl; properness; auto. apply (IHτ (_ :: _)).
+    - unfold interp_expr.
+      intros ww; simpl; properness; auto. apply (IHτ (_ :: _)).
     - intros ww; simpl; properness; auto. by apply IHτ.
   Qed.
 
@@ -242,5 +257,5 @@ End logrel.
 
 Typeclasses Opaque interp_env.
 Notation "⟦ τ ⟧" := (interp τ).
-Notation "⟦ τ ⟧ₑ" := (interp_expr τ).
+Notation "⟦ τ ⟧ₑ" := (interp_expr (interp τ)).
 Notation "⟦ Γ ⟧*" := (interp_env Γ).

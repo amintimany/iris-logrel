@@ -202,7 +202,7 @@ Section fundamental.
   Proof.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists (RecV _). iIntros "{$Hj} !".
-    iLöb as "IH". iIntros {j' K' [v v'] } "[#Hiv Hv]".
+    iLöb as "IH". iIntros { [v v'] } "#Hiv". iIntros {j' K'} "Hj".
     iDestruct (interp_env_length with "HΓ") as %?.
     iApply wp_rec; auto 1 using to_of_val. iNext.
     iPvs (step_rec _ _ j' K' _ (# v') v' with "* [-]") as "Hz"; eauto.
@@ -221,8 +221,8 @@ Section fundamental.
     smart_wp_bind (AppLCtx (e2.[env_subst (vvs.*1)])) v v' "[Hv #Hiv]"
       ('IHHtyped1 _ _ _ j (K ++ [(AppLCtx (e2'.[env_subst (vvs.*2)]))])); cbn.
     smart_wp_bind (AppRCtx v) w w' "[Hw #Hiw]"
-      ('IHHtyped2 _ _ _ j (K ++ [AppRCtx v'])); cbn.
-    iApply ("Hiv" $! j K (w, w')); simpl; eauto.
+                  ('IHHtyped2 _ _ _ j (K ++ [AppRCtx v'])); cbn.
+    iApply ("Hiv" $! (w, w') with "Hiw *"); simpl; eauto.
   Qed.
 
   Lemma bin_log_related_tlam Γ e e' τ
@@ -231,7 +231,7 @@ Section fundamental.
   Proof.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     value_case. iExists (TLamV _).
-    iIntros "{$Hj} /= !"; iIntros {τi j' K'} "% Hv /=".
+    iIntros "{$Hj} /= !"; iIntros {τi} "%". iIntros {j' K'} "Hv /=".
     iApply wp_tlam; iNext.
     iPvs (step_tlam _ _ j' K' (e'.[env_subst (vvs.*2)]) with "* [-]") as "Hz"; eauto.
     iApply 'IHHtyped; repeat iSplit; eauto. by iApply interp_env_ren.
@@ -245,7 +245,8 @@ Section fundamental.
     smart_wp_bind (TAppCtx) v v' "[Hj #Hv]"
       ('IHHtyped _ _ _ j (K ++ [TAppCtx])); cbn.
     iApply wp_wand_r; iSplitL.
-    { iApply ("Hv" $! (interp τ' Δ) with "[#] Hj"); iPureIntro; apply _. }
+    { iSpecialize ("Hv" $! (interp τ' Δ) with "[#]"); [iPureIntro; apply _|].
+      iApply "Hv"; eauto. }
     iIntros {w} "Hw". iDestruct "Hw" as {w'} "[Hw #Hiw]".
     iExists _; rewrite -interp_subst; eauto.
   Qed.

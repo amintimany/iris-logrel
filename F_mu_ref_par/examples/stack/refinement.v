@@ -25,7 +25,7 @@ Section Stack_refinement.
     rewrite ?empty_env_subst /CG_stack /FG_stack.
     iApply wp_value; eauto.
     iExists (TLamV _); iFrame "Hj".
-    clear j K. iAlways. iIntros {τi j K} "% Hj /=".
+    clear j K. iAlways. iIntros {τi} "%". iIntros {j K} "Hj /=".
     iPvs (step_tlam _ _ j K with "[Hj]") as "Hj"; eauto.
     iApply wp_tlam; iNext.
     iPvs (steps_newlock _ _ j (K ++ [AppRCtx (RecV _)]) _ with "[Hj]")
@@ -92,7 +92,7 @@ Section Stack_refinement.
     (* refinement of push and pop *)
     - iExists (_, _), (_, _); iSplit; eauto. iSplit.
       + (* refinement of push *)
-        iAlways. clear j K. iIntros {j K [v1 v2] } "[#Hrel Hj] /=".
+        iAlways. clear j K. iIntros { [v1 v2] } "#Hrel". iIntros {j K} "Hj /=".
         rewrite -(FG_push_folding (Loc stk)).
         iLöb as "Hlat".
         rewrite {2}(FG_push_folding (Loc stk)).
@@ -145,7 +145,8 @@ Section Stack_refinement.
           { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl". }
           iApply wp_if_false. iNext. by iApply "Hlat".
       + (* refinement of pop *)
-        iAlways. clear j K. iIntros {j K [v1 v2] } "[[% %] Hj] /="; simplify_eq/=.
+        iAlways. clear j K. iIntros { [v1 v2] } "[% %]".
+        iIntros {j K} "Hj /="; simplify_eq/=.
         rewrite -(FG_pop_folding (Loc stk)).
         iLöb as "Hlat".
         rewrite {2}(FG_pop_folding (Loc stk)).
@@ -266,7 +267,7 @@ Section Stack_refinement.
             { iNext. iExists _, _, _. by iFrame "Hoe Hstk' Hstk HLK Hl". }
             iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of iter *)
-      iAlways. clear j K. iIntros {j K [f1 f2] } "/= [#Hfs Hj]".
+      iAlways. clear j K. iIntros { [f1 f2] } "/= #Hfs". iIntros {j K} "Hj".
       iApply wp_rec; auto using to_of_val. iNext.
       iPvs (step_rec _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
       { by iFrame "Hspec Hj". }
@@ -335,9 +336,10 @@ Section Stack_refinement.
           iApply wp_wand_l; iSplitR; [iIntros {w'} "Hw"; iExact "Hw"|].
         rewrite StackLink_unfold.
         iDestruct "HLK''" as {istk6 w'} "[% HLK]"; simplify_eq/=.
-        iSpecialize ("Hfs" $! _ (K ++ [AppRCtx (RecV _)]) (yn1, zn1)).
+        iSpecialize ("Hfs" $! (yn1, zn1) with "Hrel").
+        iSpecialize ("Hfs" $! _ (K ++ [AppRCtx (RecV _)])).
         rewrite fill_app; simpl.
-        iApply wp_wand_l; iSplitR "Hj"; [|iApply "Hfs"; by iFrame "Hrel Hj"].
+        iApply wp_wand_l; iSplitR "Hj"; [|iApply "Hfs"; by iFrame "Hj"].
         iIntros {u} "/="; iDestruct 1 as {z} "[Hj [% %]]".
         rewrite fill_app; simpl. subst. asimpl.
         iPvs (step_rec _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".

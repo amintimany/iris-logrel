@@ -192,6 +192,37 @@ Definition ctx_refines (Γ : list type)
 Notation "Γ ⊨ e '≤ctx≤' e' : τ" :=
   (ctx_refines Γ e e' τ) (at level 74, e, e', τ at next level).
 
+Ltac fold_interp :=
+  match goal with
+  | |- context [ interp_expr (interp_arrow (interp ?A) (interp ?A'))
+                            ?B (?C, ?D) ] =>
+    change (interp_expr (interp_arrow (interp A) (interp A')) B (C, D)) with
+    (interp_expr (interp (TArrow A A')) B (C, D))
+  | |- context [ interp_expr (interp_prod (interp ?A) (interp ?A'))
+                            ?B (?C, ?D) ] =>
+    change (interp_expr (interp_prod (interp A) (interp A')) B (C, D)) with
+    (interp_expr (interp (TProd A A')) B (C, D))
+  | |- context [ interp_expr (interp_prod (interp ?A) (interp ?A'))
+                            ?B (?C, ?D) ] =>
+    change (interp_expr (interp_prod (interp A) (interp A')) B (C, D)) with
+    (interp_expr (interp (TProd A A')) B (C, D))
+  | |- context [ interp_expr (interp_sum (interp ?A) (interp ?A'))
+                            ?B (?C, ?D) ] =>
+    change (interp_expr (interp_sum (interp A) (interp A')) B (C, D)) with
+    (interp_expr (interp (TSum A A')) B (C, D))
+  | |- context [ interp_expr (interp_rec (interp ?A)) ?B (?C, ?D) ] =>
+    change (interp_expr (interp_rec (interp A)) B (C, D)) with
+    (interp_expr (interp (TRec A)) B (C, D))
+  | |- context [ interp_expr (interp_forall (interp ?A))
+                            ?B (?C, ?D) ] =>
+    change (interp_expr (interp_forall (interp A)) B (C, D)) with
+    (interp_expr (interp (TForall A)) B (C, D))
+  | |- context [ interp_expr (interp_ref (interp ?A))
+                            ?B (?C, ?D) ] =>
+    change (interp_expr (interp_ref (interp A)) B (C, D)) with
+    (interp_expr (interp (Tref A)) B (C, D))
+  end.
+
 Section bin_log_related_under_typed_ctx.
   Context `{heapIG Σ, cfgSG Σ}.
 
@@ -206,7 +237,7 @@ Section bin_log_related_under_typed_ctx.
     - inversion_clear 1; trivial.
     - inversion_clear 1 as [|? ? ? ? ? ? ? ? Hx1 Hx2]. intros H3 Δ HΔ.
       specialize (IHK _ _ _ _ e e' H1 H2 Hx2 H3).
-      inversion Hx1; subst; simpl.
+      inversion Hx1; subst; simpl; try fold_interp.
       + eapply bin_log_related_rec; eauto;
           match goal with
             H : _ |- _ => eapply (typed_ctx_n_closed _ _ _ _ _ _ _ H)
