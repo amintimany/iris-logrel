@@ -265,9 +265,4 @@ Section Rules.
     iFrame "Hl". iIntros "Hl".
     iApply stack_owns_close. by iFrame.
   Qed.
-
-  Lemma stack_owns_later_open_close h l v :
-    ▷ stack_owns h ★ l ↦ˢᵗᵏ v
-      ⊢ ▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))).
-  Proof. iIntros "H >". by iApply stack_owns_open_close. Qed.
 End Rules.
