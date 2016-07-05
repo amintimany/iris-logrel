@@ -1,6 +1,6 @@
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export weakestpre.
-From iris_logrel.F_mu_ref_par Require Export rules_binary typing.
+From iris_logrel.F_mu_ref_conc Require Export rules_binary typing.
 Import uPred.
 
 (* HACK: move somewhere else *)

@@ -1,7 +1,7 @@
 From iris.program_logic Require Import lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Import ownership auth.
-From iris_logrel.F_mu_ref_par Require Export rules.
+From iris_logrel.F_mu_ref_conc Require Export rules.
 From iris.proofmode Require Import tactics weakestpre invariants.
 Import uPred.
 

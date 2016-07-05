@@ -1,6 +1,6 @@
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export weakestpre.
-From iris_logrel.F_mu_ref_par Require Export rules typing.
+From iris_logrel.F_mu_ref_conc Require Export rules typing.
 Import uPred.
 
 Definition logN : namespace := nroot .@ "logN".

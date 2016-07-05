@@ -1,4 +1,4 @@
-From iris_logrel.F_mu_ref_par Require Export context_refinement.
+From iris_logrel.F_mu_ref_conc Require Export context_refinement.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Import ownership auth.
 From iris.proofmode Require Import tactics pviewshifts invariants.

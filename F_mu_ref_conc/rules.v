@@ -3,7 +3,7 @@ From iris.program_logic Require Export weakestpre global_functor invariants.
 From iris.program_logic Require Import lifting.
 From iris.algebra Require Import upred_big_op frac dec_agree.
 From iris.program_logic Require Import ownership auth.
-From iris_logrel.F_mu_ref_par Require Export lang.
+From iris_logrel.F_mu_ref_conc Require Export lang.
 Import uPred.
 
 Definition heapN : namespace := nroot .@ "heap".
