@@ -173,7 +173,7 @@ Section Rules.
   Context {iI : heapIG Σ}.
 
   Definition stack_owns (h : stackUR) :=
-    (ghost_ownership.own stack_name (● h)
+    (own stack_name (● h)
         ★ [★ map] l ↦ v ∈ h, match v with
                              | DecAgree v' => l ↦ᵢ v'
                              | _ => True
@@ -210,7 +210,7 @@ Section Rules.
 
   Lemma stack_owns_open h l v :
     stack_owns h ★ l ↦ˢᵗᵏ v
-      ⊢ ghost_ownership.own stack_name (● h)
+      ⊢ own stack_name (● h)
            ★ ([★ map] l ↦ v ∈ delete l h,
             match v with
             | DecAgree v' => l ↦ᵢ v'
@@ -230,7 +230,7 @@ Section Rules.
   Qed.
 
   Lemma stack_owns_close h l v :
-    ghost_ownership.own stack_name (● h)
+    own stack_name (● h)
        ★ ([★ map] l ↦ v ∈ delete l h,
         match v with
         | DecAgree v' => l ↦ᵢ v'
