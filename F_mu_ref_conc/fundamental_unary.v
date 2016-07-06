@@ -73,7 +73,7 @@ Section typed_interp.
       iDestruct (interp_env_length with "HΓ") as %?.
       iApply wp_rec; auto 1 using to_of_val. iNext.
       asimpl. change (Rec _) with (of_val (RecV e.[upn 2 (env_subst vs)])).
-      erewrite typed_subst_head_simpl_2 by naive_solver.
+      erewrite typed_subst_head_simpl_2 by naive_solver. simpl.
       iApply (IHtyped Δ (_ :: w :: vs)). iSplit; [done|].
       iApply interp_env_cons; iSplit; [|iApply interp_env_cons]; auto.
     - (* app *)
