@@ -19,6 +19,9 @@ Section typed_interp.
 
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
+  Local Notation "A –≻ B" := (TArrow A B) (at level 200).
+  Local Notation "e < n - vs" := (e.[upn n (env_subst vs)]) (at level 200).
+
   Theorem fundamental Γ e τ : Γ ⊢ₜ e : τ → Γ ⊨ e : τ.
   Proof.
     induction 1; iIntros {Δ vs HΔ} "#[Hheap HΓ] /=".
