@@ -72,7 +72,7 @@ Section typed_interp.
       value_case; iAlways. simpl. iLöb as "IH"; iIntros {w} "#Hw".
       iDestruct (interp_env_length with "HΓ") as %?.
       iApply wp_rec; auto 1 using to_of_val. iNext.
-      asimpl. change (Rec _) with (of_val (RecV e.[upn 2 (env_subst vs)])).
+      asimpl. change (Rec _) with (of_val (RecV e.[upn 2 (env_subst vs)])) at 2.
       erewrite typed_subst_head_simpl_2 by naive_solver.
       iApply (IHtyped Δ (_ :: w :: vs)). iSplit; [done|].
       iApply interp_env_cons; iSplit; [|iApply interp_env_cons]; auto.
