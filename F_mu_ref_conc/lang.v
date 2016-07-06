@@ -53,8 +53,8 @@ Module lang.
   Instance SubstLemmas_expr : SubstLemmas expr. derive. Qed.
 
   (* Notation for bool and nat *)
-  Notation "♭ b" := (Bool b) (at level 20).
-  Notation "♯ n" := (Nat n) (at level 20).
+  Notation "#♭ b" := (Bool b) (at level 20).
+  Notation "#n n" := (Nat n) (at level 20).
 
   Instance expr_dec_eq (e e' : expr) : Decision (e = e').
   Proof. solve_decision. Defined.
@@ -72,16 +72,16 @@ Module lang.
   | LocV (l : loc).
 
   (* Notation for bool and nat *)
-  Notation "'♭v' b" := (BoolV b) (at level 20).
-  Notation "'♯v' n" := (NatV n) (at level 20).
+  Notation "'#♭v' b" := (BoolV b) (at level 20).
+  Notation "'#nv' n" := (NatV n) (at level 20).
 
   Fixpoint binop_eval (op : binop) : nat → nat → val :=
     match op with
-    | Add => λ a b, ♯v(a + b)
-    | Sub => λ a b, ♯v(a - b)
-    | Eq => λ a b, if (eq_nat_dec a b) then ♭v true else ♭v false
-    | Le => λ a b, if (le_dec a b) then ♭v true else ♭v false
-    | Lt => λ a b, if (lt_dec a b) then ♭v true else ♭v false
+    | Add => λ a b, #nv(a + b)
+    | Sub => λ a b, #nv(a - b)
+    | Eq => λ a b, if (eq_nat_dec a b) then #♭v true else #♭v false
+    | Le => λ a b, if (le_dec a b) then #♭v true else #♭v false
+    | Lt => λ a b, if (lt_dec a b) then #♭v true else #♭v false
     end.
 
   Instance val_dec_eq (v v' : val) : Decision (v = v').
@@ -102,7 +102,6 @@ Module lang.
     | FoldV v => Fold (of_val v)
     | LocV l => Loc l
     end.
-  Notation "# v" := (of_val v) (at level 20).
 
   Fixpoint to_val (e : expr) : option val :=
     match e with
@@ -197,12 +196,12 @@ Module lang.
       head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None
     (* nat bin op *)
   | BinOpS op a b σ :
-      head_step (BinOp op (♯ a) (♯b)) σ (of_val (binop_eval op a b)) σ None
+      head_step (BinOp op (#n a) (#n b)) σ (of_val (binop_eval op a b)) σ None
   (* If then else *)
   | IfFalse e1 e2 σ :
-      head_step (If (♭ false) e1 e2) σ e2 σ None
+      head_step (If (#♭ false) e1 e2) σ e2 σ None
   | IfTrue e1 e2 σ :
-      head_step (If (♭ true) e1 e2) σ e1 σ None
+      head_step (If (#♭ true) e1 e2) σ e1 σ None
   (* Recursive Types *)
   | Unfold_Fold e v σ :
       to_val e = Some v →
@@ -227,11 +226,11 @@ Module lang.
   | CasFailS l e1 v1 e2 v2 vl σ :
      to_val e1 = Some v1 → to_val e2 = Some v2 →
      σ !! l = Some vl → vl ≠ v1 →
-     head_step (CAS (Loc l) e1 e2) σ (♭ false) σ None
+     head_step (CAS (Loc l) e1 e2) σ (#♭ false) σ None
   | CasSucS l e1 v1 e2 v2 σ :
      to_val e1 = Some v1 → to_val e2 = Some v2 →
      σ !! l = Some v1 →
-     head_step (CAS (Loc l) e1 e2) σ (♭ true) (<[l:=v2]>σ) None.
+     head_step (CAS (Loc l) e1 e2) σ (#♭ true) (<[l:=v2]>σ) None.
 
   (** Atomic expressions: we don't consider any atomic operations. *)
   Definition atomic (e: expr) :=

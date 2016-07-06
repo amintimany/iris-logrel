@@ -187,8 +187,8 @@ Qed.
 Definition ctx_refines (Γ : list type)
     (e e' : expr) (τ : type) := ∀ K thp σ v,
   typed_ctx K Γ τ [] TUnit →
-  rtc step ([fill_ctx K e], ∅) (# v :: thp, σ) →
-  ∃ thp' σ' v', rtc step ([fill_ctx K e'], ∅) (# v' :: thp', σ').
+  rtc step ([fill_ctx K e], ∅) (of_val v :: thp, σ) →
+  ∃ thp' σ' v', rtc step ([fill_ctx K e'], ∅) (of_val v' :: thp', σ').
 Notation "Γ ⊨ e '≤ctx≤' e' : τ" :=
   (ctx_refines Γ e e' τ) (at level 74, e, e', τ at next level).
 

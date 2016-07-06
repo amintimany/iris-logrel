@@ -18,8 +18,8 @@ Section logrel.
   Solve Obligations with solve_proper_alt.
 
   Definition interp_unit : listC D -n> D := λne Δ w, (w = UnitV)%I.
-  Definition interp_nat : listC D -n> D := λne Δ w, (∃ n, w = ♯v n)%I.
-  Definition interp_bool : listC D -n> D := λne Δ w, (∃ n, w = ♭v n)%I.
+  Definition interp_nat : listC D -n> D := λne Δ w, (∃ n, w = #nv n)%I.
+  Definition interp_bool : listC D -n> D := λne Δ w, (∃ n, w = #♭v n)%I.
 
   Program Definition interp_prod
       (interp1 interp2 : listC D -n> D) : listC D -n> D := λne Δ w,
@@ -33,13 +33,13 @@ Section logrel.
 
   Program Definition interp_arrow
       (interp1 interp2 : listC D -n> D) : listC D -n> D := λne Δ w,
-    (□ ∀ v, interp1 Δ v → WP App (# w) (# v) {{ interp2 Δ }})%I.
+    (□ ∀ v, interp1 Δ v → WP App (of_val w) (of_val v) {{ interp2 Δ }})%I.
   Solve Obligations with solve_proper.
 
   Program Definition interp_forall
       (interp : listC D -n> D) : listC D -n> D := λne Δ w,
     (□ ∀ τi : D,
-      ■ (∀ v, PersistentP (τi v)) → WP TApp (# w) {{ interp (τi :: Δ) }})%I.
+      ■ (∀ v, PersistentP (τi v)) → WP TApp (of_val w) {{ interp (τi :: Δ) }})%I.
   Solve Obligations with solve_proper.
 
   Definition interp_rec1

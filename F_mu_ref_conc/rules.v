@@ -260,20 +260,20 @@ Section lang_rules.
 
   Lemma wp_cas_fail_pst E σ l e1 v1 e2 v2 v' Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → σ !! l = Some v' → v' ≠ v1 →
-    ▷ ownP σ ★ ▷ (ownP σ ={E}=★ Φ (♭v false)) ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
+    ▷ ownP σ ★ ▷ (ownP σ ={E}=★ Φ (#♭v false)) ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
-    intros. rewrite -(wp_lift_atomic_det_step σ (♭v false) σ None)
+    intros. rewrite -(wp_lift_atomic_det_step σ (#♭v false) σ None)
                        ?right_id //; last (by intros; inv_step; eauto);
               simpl; by eauto 10.
   Qed.
 
   Lemma wp_cas_suc_pst E σ l e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → σ !! l = Some v1 →
-    ▷ ownP σ ★ ▷ (ownP (<[l:=v2]>σ) ={E}=★ Φ (♭v true))
+    ▷ ownP σ ★ ▷ (ownP (<[l:=v2]>σ) ={E}=★ Φ (#♭v true))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     intros. rewrite -(wp_lift_atomic_det_step
-                        σ (♭v true)  (<[l:=v2]>σ) None)
+                        σ (#♭v true)  (<[l:=v2]>σ) None)
                        ?right_id //; last (by intros; inv_step; eauto);
               simpl; by eauto 10.
   Qed.
@@ -325,7 +325,7 @@ Section lang_rules.
 
   Lemma wp_cas_fail E l q v' e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose heapN ⊆ E →
-    heapI_ctx ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' ={E}=★ Φ (♭v false))
+    heapI_ctx ★ ▷ l ↦ᵢ{q} v' ★ ▷ (l ↦ᵢ{q} v' ={E}=★ Φ (#♭v false))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     iIntros {????} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
@@ -339,7 +339,7 @@ Section lang_rules.
 
   Lemma wp_cas_suc E l e1 v1 e2 v2 Φ :
     to_val e1 = Some v1 → to_val e2 = Some v2 → nclose heapN ⊆ E →
-    heapI_ctx ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 ={E}=★ Φ (♭v true))
+    heapI_ctx ★ ▷ l ↦ᵢ v1 ★ ▷ (l ↦ᵢ v2 ={E}=★ Φ (#♭v true))
       ⊢ WP CAS (Loc l) e1 e2 @ E {{ Φ }}.
   Proof.
     iIntros {???} "[#Hh [Hl HΦ]]". rewrite /heapI_ctx /heapI_mapsto.
@@ -436,23 +436,23 @@ Section lang_rules.
   Qed.
 
   Lemma wp_if_false E e1 e2 Φ :
-    ▷ WP e2 @ E {{ Φ }} ⊢ WP If (♭ false) e1 e2 @ E {{ Φ }}.
+    ▷ WP e2 @ E {{ Φ }} ⊢ WP If (#♭ false) e1 e2 @ E {{ Φ }}.
   Proof.
-    rewrite -(wp_lift_pure_det_step (If (♭ false) _ _) (e2) None) //=.
+    rewrite -(wp_lift_pure_det_step (If (#♭ false) _ _) (e2) None) //=.
     - rewrite right_id; auto using uPred.later_mono, wp_value_pvs'.
     - intros. inv_step; auto.
   Qed.
 
   Lemma wp_if_true E e1 e2 Φ :
-    ▷ WP e1 @ E {{ Φ }} ⊢ WP If (♭ true) e1 e2 @ E {{ Φ }}.
+    ▷ WP e1 @ E {{ Φ }} ⊢ WP If (#♭ true) e1 e2 @ E {{ Φ }}.
   Proof.
-    rewrite -(wp_lift_pure_det_step (If (♭ true) _ _) (e1) None) //=.
+    rewrite -(wp_lift_pure_det_step (If (#♭ true) _ _) (e1) None) //=.
     - rewrite right_id; auto using uPred.later_mono, wp_value'.
     - intros. inv_step; auto.
   Qed.
 
   Lemma wp_nat_binop E op a b Φ :
-    ▷ (|={E}=> Φ (binop_eval op a b)) ⊢ WP BinOp op (♯ a) (♯ b) @ E {{ Φ }}.
+    ▷ (|={E}=> Φ (binop_eval op a b)) ⊢ WP BinOp op (#n a) (#n b) @ E {{ Φ }}.
   Proof.
     rewrite -(wp_lift_pure_det_step
                 (BinOp _ _ _) (of_val (binop_eval op a b)) None) //=.

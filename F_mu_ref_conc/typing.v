@@ -35,8 +35,8 @@ Reserved Notation "Γ ⊢ₜ e : τ" (at level 74, e, τ at next level).
 Inductive typed (Γ : list type) : expr → type → Prop :=
   | Var_typed x τ : Γ !! x = Some τ → Γ ⊢ₜ Var x : τ
   | Unit_typed : Γ ⊢ₜ Unit : TUnit
-  | Nat_typed n : Γ ⊢ₜ ♯ n : TNat
-  | Bool_typed b : Γ ⊢ₜ ♭ b : TBool
+  | Nat_typed n : Γ ⊢ₜ #n n : TNat
+  | Bool_typed b : Γ ⊢ₜ #♭ b : TBool
   | BinOp_typed op e1 e2 :
      Γ ⊢ₜ e1 : TNat → Γ ⊢ₜ e2 : TNat → Γ ⊢ₜ BinOp op e1 e2 : binop_res_type op
   | Pair_typed e1 e2 τ1 τ2 : Γ ⊢ₜ e1 : τ1 → Γ ⊢ₜ e2 : τ2 → Γ ⊢ₜ Pair e1 e2 : TProd τ1 τ2
@@ -126,7 +126,7 @@ Qed.
 Lemma n_closed_subst_head_simpl n e w ws :
   (∀ f, e.[iter n up f] = e) →
   S (length ws) = n →
-  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
+  e.[of_val w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
   intros H1 H2.
   rewrite /env_subst. eapply n_closed_invariant; eauto=> /= -[|x] ? //=.
@@ -136,12 +136,12 @@ Qed.
 
 Lemma typed_subst_head_simpl Δ τ e w ws :
   Δ ⊢ₜ e : τ → length Δ = S (length ws) →
-  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
+  e.[of_val w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof. eauto using n_closed_subst_head_simpl, typed_n_closed. Qed.
 
 Lemma n_closed_subst_head_simpl_2 n e w w' ws :
   (∀ f, e.[iter n up f] = e) → (S (S (length ws))) = n →
-  e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
+  e.[of_val w .: of_val w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
   intros H1 H2.
   rewrite /env_subst. eapply n_closed_invariant; eauto => /= -[|[|x]] H3 //=.
@@ -151,7 +151,7 @@ Qed.
 
 Lemma typed_subst_head_simpl_2 Δ τ e w w' ws :
   Δ ⊢ₜ e : τ → length Δ = 2 + length ws →
-  e.[# w .: # w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
+  e.[of_val w .: of_val w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof. eauto using n_closed_subst_head_simpl_2, typed_n_closed. Qed.
 
 Lemma empty_env_subst e : e.[env_subst []] = e.

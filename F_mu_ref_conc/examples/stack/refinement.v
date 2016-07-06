@@ -76,7 +76,7 @@ Section Stack_refinement.
                          ★ stk' ↦ₛ v
                          ★ stk ↦ᵢ (FoldV (LocV istk))
                          ★ StackLink τi (LocV istk, v)
-                         ★ l ↦ₛ (♭v false)
+                         ★ l ↦ₛ (#♭v false)
              )%I) with "[Hoe Hstk Hstk' HLK Hl]" as "Hinv".
     { iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl HLK". }
     iPvs (inv_alloc stackN with "[Hinv]") as "#Hinv"; trivial.
@@ -272,9 +272,9 @@ Section Stack_refinement.
       iPvs (step_rec _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
       { by iFrame "Hspec Hj". }
       asimpl. rewrite FG_iter_subst CG_snap_subst CG_iter_subst. asimpl.
-      replace (FG_iter (# f1)) with (# (FG_iterV (# f1)))
+      replace (FG_iter (of_val f1)) with (of_val (FG_iterV (of_val f1)))
         by (by rewrite FG_iter_of_val).
-      replace (CG_iter (# f2)) with (# (CG_iterV (# f2)))
+      replace (CG_iter (of_val f2)) with (of_val (CG_iterV (of_val f2)))
         by (by rewrite CG_iter_of_val).
       iApply (@wp_bind _ _ _ [AppRCtx _]); iApply wp_wand_l;
         iSplitR; [iIntros {w} "Hw"; iExact "Hw"|].
@@ -344,7 +344,7 @@ Section Stack_refinement.
         rewrite fill_app; simpl. subst. asimpl.
         iPvs (step_rec _ _ _ _ _ _ _ _ _ with "[Hj]") as "Hj".
         { by iFrame "Hspec Hj". } asimpl. rewrite CG_iter_subst. asimpl.
-        replace (CG_iter (# f2)) with (# (CG_iterV (# f2)))
+        replace (CG_iter (of_val f2)) with (of_val (CG_iterV (of_val f2)))
           by (by rewrite CG_iter_of_val).
         iPvs (step_snd _ _ _ (K ++ [AppRCtx _]) _ _ _ _ _ _ _ with "[Hj]")
           as "Hj".
@@ -352,7 +352,7 @@ Section Stack_refinement.
         rewrite fill_app; simpl.
         iApply wp_rec; simpl; trivial.
         iNext. rewrite FG_iter_subst. asimpl.
-        replace (FG_iter (# f1)) with (# (FG_iterV (# f1)))
+        replace (FG_iter (of_val f1)) with (of_val (FG_iterV (of_val f1)))
           by (by rewrite FG_iter_of_val).
         iApply (@wp_bind _ _ _ [AppRCtx _]);
           iApply wp_wand_l; iSplitR; [iIntros {w''} "Hw"; iExact "Hw"|].

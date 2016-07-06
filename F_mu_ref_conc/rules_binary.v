@@ -442,7 +442,7 @@ Section cfg.
     step
       (of_cfg (({[j := Excl' (fill K (CAS (Loc l) e1 e2))]},
                 {[l := (q, DecAgree v')]}) ⋅ ρ))
-      (of_cfg (({[j := Excl' (fill K (♭ false))]},
+      (of_cfg (({[j := Excl' (fill K (#♭ false))]},
                 {[l := (q, DecAgree v')]}) ⋅ ρ)).
   Proof.
     destruct ρ as [tp th]; unfold of_cfg; simpl.
@@ -458,7 +458,7 @@ Section cfg.
   Lemma step_cas_fail E ρ j K l q v' e1 v1 e2 v2:
     to_val e1 = Some v1 → to_val e2 = Some v2 → nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v' ≠ v1) ★ l ↦ₛ{q} v'
-      ={E}=> j ⤇ fill K (♭ false) ★ l ↦ₛ{q} v'.
+      ={E}=> j ⤇ fill K (#♭ false) ★ l ↦ₛ{q} v'.
   Proof.
     iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hl]]]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
@@ -473,7 +473,7 @@ Section cfg.
     iPvs (own_update with "Hown") as "[H1 H2]".
     { rewrite assoc -auth_frag_op.
       rewrite -pair_split comm.
-      by apply (thread_update _ _ (fill K (♭ false))). }
+      by apply (thread_update _ _ (fill K (#♭ false))). }
     iSplitR "H2".
     - iExists _; iSplitL; trivial.
       iPvsIntro; iPureIntro; eauto.
@@ -488,7 +488,7 @@ Section cfg.
     step
       (of_cfg (({[j := Excl' (fill K (CAS (Loc l) e1 e2))]},
                 {[l := (1%Qp, DecAgree v1)]}) ⋅ ρ))
-      (of_cfg (({[j := Excl' (fill K (♭ true))]},
+      (of_cfg (({[j := Excl' (fill K (#♭ true))]},
                 {[l := (1%Qp, DecAgree v2)]}) ⋅ ρ)).
   Proof.
     destruct ρ as [tp th]; unfold of_cfg; simpl.
@@ -506,7 +506,7 @@ Section cfg.
   Lemma step_cas_suc E ρ j K l e1 v1 v1' e2 v2:
     to_val e1 = Some v1 → to_val e2 = Some v2 → nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v1 = v1') ★ l ↦ₛ v1'
-      ={E}=> j ⤇ fill K (♭ true) ★ l ↦ₛ v2.
+      ={E}=> j ⤇ fill K (#♭ true) ★ l ↦ₛ v2.
   Proof.
     iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hl]]]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
@@ -521,7 +521,7 @@ Section cfg.
     iPvs (own_update with "Hown") as "Hown".
     { rewrite assoc -auth_frag_op.
       rewrite -pair_split comm.
-      by apply (thread_update _ _ (fill K (♭ true))). }
+      by apply (thread_update _ _ (fill K (#♭ true))). }
     iPvs (own_update with "Hown") as "[H1 H2]".
     { apply (cfg_heap_update _ _ v2). by eapply cfg_valid_tpool_update. }
     iSplitR "H2".
@@ -571,17 +571,17 @@ Section cfg.
 
   Lemma step_if_false E ρ j K e1 e2 :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ j ⤇ fill K (If (♭ false) e1 e2) ={E}=> j ⤇ fill K e2.
+    spec_ctx ρ ★ j ⤇ fill K (If (#♭ false) e1 e2) ={E}=> j ⤇ fill K e2.
   Proof. apply step_pure => σ; econstructor. Qed.
 
   Lemma step_if_true E ρ j K e1 e2 :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ j ⤇ fill K (If (♭ true) e1 e2) ={E}=> j ⤇ fill K e1.
+    spec_ctx ρ ★ j ⤇ fill K (If (#♭ true) e1 e2) ={E}=> j ⤇ fill K e1.
   Proof. apply step_pure => σ; econstructor. Qed.
 
   Lemma step_nat_binop E ρ j K op a b :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ j ⤇ fill K (BinOp op (♯ a) (♯ b))
+    spec_ctx ρ ★ j ⤇ fill K (BinOp op (#n a) (#n b))
       ={E}=> j ⤇ fill K (of_val (binop_eval op a b)).
   Proof. apply step_pure => σ; econstructor. Qed.
 

@@ -3,7 +3,7 @@ From iris_logrel.F_mu_ref_conc Require Export examples.lock.
 From iris_logrel.F_mu_ref_conc Require Import soundness_binary.
 
 Definition CG_increment (x : expr) : expr :=
-  Rec (Store x.[ren (+ 2)] (BinOp Add (♯ 1) (Load x.[ren (+ 2)]))).
+  Rec (Store x.[ren (+ 2)] (BinOp Add (#n 1) (Load x.[ren (+ 2)]))).
 
 Definition CG_locked_increment (x l : expr) : expr :=
   with_lock (CG_increment x) l.
@@ -18,21 +18,21 @@ Definition CG_counter_body (x l : expr) : expr :=
 Definition CG_counter : expr :=
   App
     (Rec $ App (Rec (CG_counter_body (Var 1) (Var 3)))
-               (Alloc (♯ 0)))
+               (Alloc (#n 0)))
     newlock.
 
 Definition FG_increment (x : expr) : expr :=
   Rec $ App
     (Rec $
       (* try increment *)
-      If (CAS x.[ren (+4)] (Var 1) (BinOp Add (♯ 1) (Var 1)))
+      If (CAS x.[ren (+4)] (Var 1) (BinOp Add (#n 1) (Var 1)))
           Unit (* increment succeeds we return unit *)
           (App (Var 2) (Var 3)) (* increment fails, we try again *))
     (Load x.[ren (+2)]) (* read the counter *).
 Definition FG_counter_body (x : expr) : expr :=
   Pair (FG_increment x) (counter_read x).
 Definition FG_counter : expr :=
-  App (Rec (FG_counter_body (Var 1))) (Alloc (♯ 0)).
+  App (Rec (FG_counter_body (Var 1))) (Alloc (#n 0)).
 
 Section CG_Counter.
   Context `{cfgSG Σ, heapIG Σ}.
@@ -59,12 +59,12 @@ Section CG_Counter.
 
   Lemma steps_CG_increment E ρ j K x n:
     nclose specN ⊆ E →
-    spec_ctx ρ ★ x ↦ₛ (♯v n) ★ j ⤇ fill K (App (CG_increment (Loc x)) Unit)
-      ={E}=> j ⤇ fill K (Unit) ★ x ↦ₛ (♯v (S n)).
+    spec_ctx ρ ★ x ↦ₛ (#nv n) ★ j ⤇ fill K (App (CG_increment (Loc x)) Unit)
+      ={E}=> j ⤇ fill K (Unit) ★ x ↦ₛ (#nv (S n)).
   Proof.
     iIntros {HNE} "[#Hspec [Hx Hj]]". unfold CG_increment.
     iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iPvs (step_load _ _ j (K ++ [StoreRCtx (LocV _); BinOpRCtx _ (♯v _)])
+    iPvs (step_load _ _ j (K ++ [StoreRCtx (LocV _); BinOpRCtx _ (#nv _)])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
@@ -119,9 +119,9 @@ Section CG_Counter.
 
   Lemma steps_CG_locked_increment E ρ j K x n l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ x ↦ₛ (♯v n) ★ l ↦ₛ (♭v false)
+    spec_ctx ρ ★ x ↦ₛ (#nv n) ★ l ↦ₛ (#♭v false)
       ★ j ⤇ fill K (App (CG_locked_increment (Loc x) (Loc l)) Unit)
-    ={E}=> j ⤇ fill K Unit ★ x ↦ₛ (♯v S n) ★ l ↦ₛ (♭v false).
+    ={E}=> j ⤇ fill K Unit ★ x ↦ₛ (#nv S n) ★ l ↦ₛ (#♭v false).
   Proof.
     iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]".
     iPvs (steps_with_lock
@@ -159,9 +159,9 @@ Section CG_Counter.
 
   Lemma steps_counter_read E ρ j K x n :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ x ↦ₛ (♯v n)
+    spec_ctx ρ ★ x ↦ₛ (#nv n)
                ★ j ⤇ fill K (App (counter_read (Loc x)) Unit)
-    ={E}=> j ⤇ fill K (♯ n) ★ x ↦ₛ (♯v n).
+    ={E}=> j ⤇ fill K (#n n) ★ x ↦ₛ (#nv n).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold counter_read.
     iPvs (step_rec _ _ j K _ Unit with "[Hj]") as "Hj"; eauto.
@@ -282,7 +282,7 @@ Section CG_Counter.
     iApply wp_alloc; trivial; iFrame "Hheap"; iNext; iIntros {cnt} "Hcnt /=".
     iPvsIntro.
     (* establishing the invariant *)
-    iAssert ((∃ n, l ↦ₛ (♭v false) ★ cnt ↦ᵢ (♯v n) ★ cnt' ↦ₛ (♯v n) )%I)
+    iAssert ((∃ n, l ↦ₛ (#♭v false) ★ cnt ↦ᵢ (#nv n) ★ cnt' ↦ₛ (#nv n) )%I)
       with "[Hl Hcnt Hcnt']" as "Hinv".
     { iExists _. by iFrame. }
     iPvs (inv_alloc counterN with "[Hinv]") as "#Hinv"; trivial.
@@ -332,7 +332,7 @@ Section CG_Counter.
         iExists UnitV; iFrame; auto.
       + (* CAS fails *)
         (* In this case, we perform a recursive call *)
-        iApply (wp_cas_fail _ _ _ (♯v n')); simpl; trivial;
+        iApply (wp_cas_fail _ _ _ (#nv n')); simpl; trivial;
         [inversion 1; subst; auto | | iFrame "Hheap"]. solve_ndisj.
         iIntros "{$Hcnt} > Hcnt". iPvsIntro.
         iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
@@ -351,7 +351,7 @@ Section CG_Counter.
       iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
       iIntros "{$Hcnt} > Hcnt". iPvsIntro.
       iSplitL "Hl Hcnt Hcnt'"; [iExists _; iFrame "Hl Hcnt Hcnt'"; trivial|].
-      iExists (♯v _); eauto.
+      iExists (#nv _); eauto.
       Unshelve. solve_ndisj.
   Qed.
 End CG_Counter.

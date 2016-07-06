@@ -39,7 +39,7 @@ Section fundamental.
     env_PersistentP Δ →
     heapI_ctx ★ spec_ctx ρ ★ ⟦ Γ ⟧* Δ vvs ★ j ⤇ fill K (e'.[env_subst (vvs.*2)])
     ⊢ WP e.[env_subst (vvs.*1)] {{ v, ∃ v',
-        j ⤇ fill K (# v') ★ interp τ Δ (v, v') }}.
+        j ⤇ fill K (of_val v') ★ interp τ Δ (v, v') }}.
   Proof.
     iIntros {Hlog Δ vvs ρ j K ?} "(#Hh & #Hs & HΓ & Hj)".
     iApply (Hlog with "[HΓ] *"); iFrame; eauto.
@@ -61,16 +61,16 @@ Section fundamental.
     value_case. iExists UnitV; eauto.
   Qed.
 
-  Lemma bin_log_related_nat Γ n : Γ ⊨ ♯ n ≤log≤ ♯ n : TNat.
+  Lemma bin_log_related_nat Γ n : Γ ⊨ #n n ≤log≤ #n n : TNat.
   Proof.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
-    value_case. iExists (♯v _); eauto.
+    value_case. iExists (#nv _); eauto.
   Qed.
 
-  Lemma bin_log_related_bool Γ b : Γ ⊨ ♭ b ≤log≤ ♭ b : TBool.
+  Lemma bin_log_related_bool Γ b : Γ ⊨ #♭ b ≤log≤ #♭ b : TBool.
   Proof.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
-    value_case. iExists (♭v _); eauto.
+    value_case. iExists (#♭v _); eauto.
   Qed.
 
   Lemma bin_log_related_pair Γ e1 e2 e1' e2' τ1 τ2
@@ -94,7 +94,7 @@ Section fundamental.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (FstCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [FstCtx])); cbn.
     iDestruct "Hiv" as { [w1 w1'] [w2 w2'] } "#[% [Hw1 Hw2]]"; simplify_eq.
-    iPvs (step_fst _ _ j K (# w1') w1' (# w2') w2' with "* [-]") as "Hw"; eauto.
+    iPvs (step_fst _ _ j K (of_val w1') w1' (of_val w2') w2' with "* [-]") as "Hw"; eauto.
     iApply wp_fst; eauto.
   Qed.
 
@@ -105,7 +105,7 @@ Section fundamental.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (SndCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [SndCtx])); cbn.
     iDestruct "Hiv" as { [w1 w1'] [w2 w2'] } "#[% [Hw1 Hw2]]"; simplify_eq.
-    iPvs (step_snd _ _ j K (# w1') w1' (# w2') w2' with "* [-]") as "Hw"; eauto.
+    iPvs (step_snd _ _ j K (of_val w1') w1' (of_val w2') w2' with "* [-]") as "Hw"; eauto.
     iApply wp_snd; eauto.
   Qed.
 
@@ -147,13 +147,13 @@ Section fundamental.
       ('IHHtyped1 _ _ _ j (K ++ [CaseCtx _ _])); cbn.
     iDestruct "Hiv" as "[Hiv|Hiv]".
     - iDestruct "Hiv" as { [w w'] } "[% Hw]"; simplify_eq.
-      iPvs (step_case_inl _ _ j K (# w') w' with "* [-]") as "Hz"; eauto.
+      iPvs (step_case_inl _ _ j K (of_val w') w' with "* [-]") as "Hz"; eauto.
       iApply wp_case_inl; auto 1 using to_of_val. iNext.
       asimpl. erewrite !n_closed_subst_head_simpl by (rewrite ?fmap_length; eauto).
       iApply ('IHHtyped2 _ ((w,w') :: vvs)); repeat iSplit; eauto.
       iApply interp_env_cons; auto.
     - iDestruct "Hiv" as { [w w'] } "[% Hw]"; simplify_eq.
-      iPvs (step_case_inr _ _ j K (# w') w' with "* [-]") as "Hz"; eauto.
+      iPvs (step_case_inr _ _ j K (of_val w') w' with "* [-]") as "Hz"; eauto.
       iApply wp_case_inr; auto 1 using to_of_val. iNext.
       asimpl. erewrite !n_closed_subst_head_simpl by (rewrite ?fmap_length; eauto).
       iApply ('IHHtyped3 _ ((w,w') :: vvs)); repeat iSplit; eauto.
@@ -205,8 +205,8 @@ Section fundamental.
     iLöb as "IH". iIntros { [v v'] } "#Hiv". iIntros {j' K'} "Hj".
     iDestruct (interp_env_length with "HΓ") as %?.
     iApply wp_rec; auto 1 using to_of_val. iNext.
-    iPvs (step_rec _ _ j' K' _ (# v') v' with "* [-]") as "Hz"; eauto.
-    asimpl. change (Rec ?e) with (# (RecV e)).
+    iPvs (step_rec _ _ j' K' _ (of_val v') v' with "* [-]") as "Hz"; eauto.
+    asimpl. change (Rec ?e) with (of_val (RecV e)).
     erewrite !n_closed_subst_head_simpl_2 by (rewrite ?fmap_length; eauto).
     iApply ('IHHtyped _ ((_,_) :: (v,v') :: vvs)); repeat iSplit; eauto.
     iApply interp_env_cons; iSplit; [|iApply interp_env_cons]; auto.
@@ -279,7 +279,7 @@ Section fundamental.
     rewrite /= fixpoint_unfold /=.
     change (fixpoint _) with (interp (TRec τ) Δ).
     iDestruct "Hiw" as { [w w'] } "#[% Hiz]"; simplify_eq/=.
-    iPvs (step_Fold _ _ j K (# w') w' with "* [-]") as "Hz"; eauto.
+    iPvs (step_Fold _ _ j K (of_val w') w' with "* [-]") as "Hz"; eauto.
     iApply wp_fold; cbn; auto.
     iNext; iPvsIntro; iExists _; iFrame "Hz". by rewrite -interp_subst.
   Qed.
@@ -301,7 +301,7 @@ Section fundamental.
   Proof.
     iIntros {Δ vvs ρ ?} "#(Hh & Hs & HΓ)"; iIntros {j K} "Hj /=".
     smart_wp_bind (AllocCtx) v v' "[Hv #Hiv]" ('IHHtyped _ _ _ j (K ++ [AllocCtx])).
-    iPvs (step_alloc _ _ j K (# v') v' with "* [-]") as {l'} "[Hj Hl]"; eauto.
+    iPvs (step_alloc _ _ j K (of_val v') v' with "* [-]") as {l'} "[Hj Hl]"; eauto.
     iApply wp_alloc; auto.
     iIntros "{$Hh} >"; iIntros {l} "Hl'".
     iPvs (inv_alloc (logN .@ (l,l')) _ (∃ w : val * val,
@@ -341,7 +341,7 @@ Section fundamental.
     iInv (logN .@ (l,l')) as { [v v'] } "[Hv1 [Hv2 #Hv]]".
     { eapply bool_decide_spec; eauto using to_of_val. }
     iTimeless "Hv2".
-    iPvs (step_store _ _ j K l' v' (# w') w' with "[Hw Hv2]")
+    iPvs (step_store _ _ j K l' v' (of_val w') w' with "[Hw Hv2]")
       as "[Hw Hv2]"; [eauto|solve_ndisj|by iFrame|].
     iApply wp_store; auto using to_of_val. solve_ndisj.
     iIntros "{$Hh $Hv1} > Hv1". iPvsIntro. iSplitL "Hv1 Hv2".
@@ -368,22 +368,22 @@ Section fundamental.
     { eapply bool_decide_spec; eauto 10 using to_of_val. }
     iTimeless "Hv2".
     destruct (decide (v = w)) as [|Hneq]; subst.
-    - iPvs (step_cas_suc _ _ j K l' (# w') w' v' (# u') u'
+    - iPvs (step_cas_suc _ _ j K l' (of_val w') w' v' (of_val u') u'
             with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
       { iIntros "{$Hs $Hu $Hv2} >".
         rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
       iApply wp_cas_suc; eauto using to_of_val; first solve_ndisj.
       iIntros "{$Hh $Hv1} > Hv1". iPvsIntro. iSplitL "Hv1 Hv2".
       + iNext; iExists (_, _); by iFrame.
-      + iExists (♭v true); iFrame; eauto.
-    - iPvs (step_cas_fail _ _ j K l' 1 v' (# w') w' (# u') u'
+      + iExists (#♭v true); iFrame; eauto.
+    - iPvs (step_cas_fail _ _ j K l' 1 v' (of_val w') w' (of_val u') u'
             with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
       { iIntros "{$Hs $Hu $Hv2} >".
         rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
       iApply wp_cas_fail; eauto using to_of_val; first solve_ndisj.
       iIntros "{$Hh $Hv1} > Hv1". iPvsIntro. iSplitL "Hv1 Hv2".
       + iNext; iExists (_, _); by iFrame.
-      + iExists (♭v false); eauto.
+      + iExists (#♭v false); eauto.
   Qed.
 
   Theorem binary_fundamental Γ e τ :

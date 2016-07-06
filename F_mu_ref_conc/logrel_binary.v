@@ -30,7 +30,7 @@ Section logrel.
   Definition interp_expr (τi : listC D -n> D) (Δ : listC D)
       (ee : expr * expr) : iPropG lang Σ := (∀ j K,
     j ⤇ fill K (ee.2) →
-    WP ee.1 {{ v, ∃ v', j ⤇ fill K (# v') ★ τi Δ (v, v') }})%I.
+    WP ee.1 {{ v, ∃ v', j ⤇ fill K (of_val v') ★ τi Δ (v, v') }})%I.
   Global Instance interp_expr_ne n :
     Proper (dist n ==> dist n ==> (=) ==> dist n) interp_expr.
   Proof. solve_proper. Qed.
@@ -43,10 +43,10 @@ Section logrel.
     (ww.1 = UnitV ∧ ww.2 = UnitV)%I.
   Solve Obligations with solve_proper_alt.
   Program Definition interp_nat : listC D -n> D := λne Δ ww,
-    (∃ n : nat, ww.1 = ♯v n ∧ ww.2 = ♯v n)%I.
+    (∃ n : nat, ww.1 = #nv n ∧ ww.2 = #nv n)%I.
   Solve Obligations with solve_proper.
   Program Definition interp_bool : listC D -n> D := λne Δ ww,
-    (∃ b : bool, ww.1 = ♭v b ∧ ww.2 = ♭v b)%I.
+    (∃ b : bool, ww.1 = #♭v b ∧ ww.2 = #♭v b)%I.
   Solve Obligations with solve_proper.
 
   Program Definition interp_prod
@@ -66,7 +66,8 @@ Section logrel.
     λne Δ ww,
     (□ ∀ vv, interp1 Δ vv →
              interp_expr
-               interp2 Δ (App (# ww.1) (# vv.1), App (# ww.2) (# vv.2)))%I.
+               interp2 Δ (App (of_val (ww.1)) (of_val (vv.1)),
+                          App (of_val (ww.2)) (of_val (vv.2))))%I.
   Solve Obligations with solve_proper.
 
   Program Definition interp_forall
@@ -74,7 +75,7 @@ Section logrel.
     (□ ∀ τi,
           (■ ∀ ww, PersistentP (τi ww)) →
           interp_expr
-            interp (τi :: Δ) (TApp (# ww.1), TApp (# ww.2)))%I.
+            interp (τi :: Δ) (TApp (of_val (ww.1)), TApp (of_val (ww.2))))%I.
   Solve Obligations with solve_proper.
 
   Program Definition interp_rec1

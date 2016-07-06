@@ -14,7 +14,7 @@ Section soundness.
   Lemma wp_basic_soundness e e' τ :
     (∀ `{heapIG Σ, cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
     ownP (Σ:=globalF Σ) ∅
-    ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (# v :: thp', h) }}.
+    ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (of_val v :: thp', h) }}.
   Proof.
     iIntros {H1} "Hemp".
     iPvs (heap_alloc with "Hemp") as {h} "[#Hheap _]"; first solve_ndisj.
@@ -62,8 +62,8 @@ Section soundness.
 
   Lemma basic_soundness e e' τ v thp hp :
     (∀ `{heapIG Σ, cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
-    rtc step ([e], ∅) (# v :: thp, hp) →
-    (∃ thp' hp' v', rtc step ([e'], ∅) (# v' :: thp', hp')).
+    rtc step ([e], ∅) (of_val v :: thp, hp) →
+    (∃ thp' hp' v', rtc step ([e'], ∅) (of_val v' :: thp', hp')).
   Proof.
     intros. eapply wp_adequacy_result; eauto using ucmra_unit_valid.
     iIntros "[??]". by iApply wp_basic_soundness.
