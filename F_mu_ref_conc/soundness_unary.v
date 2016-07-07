@@ -16,7 +16,7 @@ Proof.
   repeat iSplit; eauto. by iApply interp_env_nil.
 Qed.
 
-Lemma type_soundness e τ e' thp σ σ' :
+Corollary type_soundness e τ e' thp σ σ' :
   [] ⊢ₜ e : τ →
   rtc step ([e], σ) (e' :: thp, σ') →
   is_Some (to_val e') ∨ reducible e' σ'.
