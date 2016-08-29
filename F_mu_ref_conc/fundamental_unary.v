@@ -10,20 +10,20 @@ Notation "Γ ⊨ e : τ" := (log_typed Γ e τ) (at level 74, e, τ at next leve
 
 Section typed_interp.
   Context `{heapIG Σ}.
-  Notation D := (valC -n> iPropG lang Σ).
+  Notation D := (valC -n> iProp Σ).
 
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) uconstr(Hp) :=
-    iApply (@wp_bind _ _ _ [ctx]);
+    iApply (wp_bind [ctx]);
     iApply wp_wand_l;
-    iSplitL; [| iApply Hp; trivial]; [iIntros {v} Hv|iSplit; trivial]; cbn.
+    iSplitL; [| iApply Hp; trivial]; [iIntros (v) Hv|iSplit; trivial]; cbn.
 
   Local Ltac value_case := iApply wp_value; [cbn; rewrite ?to_of_val; trivial|].
 
   Theorem fundamental Γ e τ : Γ ⊢ₜ e : τ → Γ ⊨ e : τ.
   Proof.
-    induction 1; iIntros {Δ vs HΔ} "#[Hheap HΓ] /=".
+    induction 1; iIntros (Δ vs HΔ) "#[Hheap HΓ] /=".
     - (* var *)
-      iDestruct (interp_env_Some_l with "HΓ") as {v} "[% ?]"; first done.
+      iDestruct (interp_env_Some_l with "HΓ") as (v) "[% ?]"; first done.
       rewrite /env_subst. simplify_option_eq. by value_case.
     - (* unit *) value_case; trivial.
     - (* nat *) value_case; simpl; eauto.
@@ -31,8 +31,8 @@ Section typed_interp.
     - (* nat bin op *)
       smart_wp_bind (BinOpLCtx _ e2.[env_subst vs]) v "#Hv" IHtyped1.
       smart_wp_bind (BinOpRCtx _ v) v' "# Hv'" IHtyped2.
-      iDestruct "Hv" as {n} "%"; iDestruct "Hv'" as {n'} "%"; simplify_eq/=.
-      iApply wp_nat_binop. iNext; iPvsIntro. iClear "Hheap HΓ".
+      iDestruct "Hv" as (n) "%"; iDestruct "Hv'" as (n') "%"; simplify_eq/=.
+      iApply wp_nat_binop. iIntros "!> !==> {Hheap HΓ}".
       destruct op; simpl; try destruct eq_nat_dec;
         try destruct le_dec; try destruct lt_dec; eauto 10.
     - (* pair *)
@@ -41,11 +41,11 @@ Section typed_interp.
       value_case; eauto.
     - (* fst *)
       smart_wp_bind (FstCtx) v "# Hv" IHtyped; cbn.
-      iDestruct "Hv" as {w1 w2} "#[% [H2 H3]]"; subst.
+      iDestruct "Hv" as (w1 w2) "#[% [H2 H3]]"; subst.
       iApply wp_fst; eauto using to_of_val.
     - (* snd *)
       smart_wp_bind (SndCtx) v "# Hv" IHtyped; cbn.
-      iDestruct "Hv" as {w1 w2} "#[% [H2 H3]]"; subst.
+      iDestruct "Hv" as (w1 w2) "#[% [H2 H3]]"; subst.
       iApply wp_snd; eauto using to_of_val.
     - (* injl *)
       smart_wp_bind (InjLCtx) v "# Hv" IHtyped; cbn.
@@ -56,7 +56,7 @@ Section typed_interp.
     - (* case *)
       smart_wp_bind (CaseCtx _ _) v "#Hv" IHtyped1; cbn.
       iDestruct (interp_env_length with "HΓ") as %?.
-      iDestruct "Hv" as "[Hv|Hv]"; iDestruct "Hv" as {w} "[% Hw]"; simplify_eq/=.
+      iDestruct "Hv" as "[Hv|Hv]"; iDestruct "Hv" as (w) "[% Hw]"; simplify_eq/=.
       + iApply wp_case_inl; auto 1 using to_of_val; asimpl. iNext.
         erewrite typed_subst_head_simpl by naive_solver.
         iApply (IHtyped2 Δ (w :: vs)). iSplit; [|iApply interp_env_cons]; auto.
@@ -65,11 +65,11 @@ Section typed_interp.
         iApply (IHtyped3 Δ (w :: vs)). iSplit; [|iApply interp_env_cons]; auto.
     - (* If *)
       smart_wp_bind (IfCtx _ _) v "#Hv" IHtyped1; cbn.
-      iDestruct "Hv" as { [] } "%"; subst; simpl;
+      iDestruct "Hv" as ([]) "%"; subst; simpl;
         [iApply wp_if_true| iApply wp_if_false]; iNext;
       [iApply IHtyped2| iApply IHtyped3]; auto.
     - (* Rec *)
-      value_case; iAlways. simpl. iLöb as "IH"; iIntros {w} "#Hw".
+      value_case; iAlways. simpl. iLöb as "IH"; iIntros (w) "#Hw".
       iDestruct (interp_env_length with "HΓ") as %?.
       iApply wp_rec; auto 1 using to_of_val. iNext.
       asimpl. change (Rec _) with (of_val (RecV e.[upn 2 (env_subst vs)])) at 2.
@@ -82,58 +82,58 @@ Section typed_interp.
       iApply wp_mono; [|iApply "Hv"]; auto.
     - (* TLam *)
       value_case.
-      iAlways; iIntros { τi } "%". iApply wp_tlam; iNext.
+      iAlways; iIntros (τi) "%". iApply wp_tlam; iNext.
       iApply IHtyped. iFrame "Hheap". by iApply interp_env_ren.
     - (* TApp *)
       smart_wp_bind TAppCtx v "#Hv" IHtyped; cbn.
       iApply wp_wand_r; iSplitL; [iApply ("Hv" $! (⟦ τ' ⟧ Δ)); iPureIntro; apply _|]; cbn.
-      iIntros {w} "?". by iApply interp_subst.
+      iIntros (w) "?". by iApply interp_subst.
     - (* Fold *)
-      iApply (@wp_bind _ _ _ [FoldCtx]);
+      iApply (wp_bind [FoldCtx]);
         iApply wp_wand_l; iSplitL; [|iApply (IHtyped Δ vs); auto].
-      iIntros {v} "#Hv". value_case.
+      iIntros (v) "#Hv". value_case.
       rewrite /= -interp_subst fixpoint_unfold /=.
       iAlways; eauto.
     - (* Unfold *)
-      iApply (@wp_bind _ _ _ [UnfoldCtx]);
+      iApply (wp_bind [UnfoldCtx]);
         iApply wp_wand_l; iSplitL; [|iApply IHtyped; auto].
-      iIntros {v} "#Hv". rewrite /= fixpoint_unfold.
+      iIntros (v) "#Hv". rewrite /= fixpoint_unfold.
       change (fixpoint _) with (⟦ TRec τ ⟧ Δ); simpl.
-      iDestruct "Hv" as {w} "#[% Hw]"; subst.
+      iDestruct "Hv" as (w) "#[% Hw]"; subst.
       iApply wp_fold; cbn; auto using to_of_val.
-      iNext; iPvsIntro. by iApply interp_subst.
+      iNext; iVsIntro. by iApply interp_subst.
     - (* Fork *)
       iApply wp_fork. iNext; iSplitL; trivial.
       iApply wp_wand_l. iSplitL; [|iApply IHtyped; auto]; auto.
     - (* Alloc *)
       smart_wp_bind AllocCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
       iApply wp_alloc; auto 1 using to_of_val.
-      iIntros "{$Hheap} >"; iIntros {l} "Hl".
-      iPvs (inv_alloc _ with "[Hl]") as "HN";
-        [| | iPvsIntro; iExists _; iSplit; trivial]; eauto.
+      iIntros "{$Hheap} !>"; iIntros (l) "Hl".
+      iVs (inv_alloc _ with "[Hl]") as "HN";
+        [|iVsIntro; iExists _; iSplit; trivial]; eauto.
     - (* Load *)
       smart_wp_bind LoadCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
-      iDestruct "Hv" as {l} "[% #Hv]"; subst; simpl.
-      iInv (logN .@ l) as {w} "[Hw1 #Hw2]".
+      iDestruct "Hv" as (l) "[% #Hv]"; subst; simpl.
+      iInv (logN .@ l) as (w) "[Hw1 #Hw2]" "Hclose".
       iApply (wp_load _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
-      iIntros "{$Hw1} > Hw1". iPvsIntro; iSplitL; eauto.
+      iIntros "{$Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHtyped2; cbn. iClear "HΓ".
-      iDestruct "Hv" as {l} "[% #Hv]"; subst.
-      iInv (logN .@ l) as {z} "[Hz1 #Hz2]"; [cbn; eauto 10 using to_of_val|].
+      iDestruct "Hv" as (l) "[% #Hv]"; subst.
+      iInv (logN .@ l) as (z) "[Hz1 #Hz2]" "Hclose".
       iApply wp_store; auto using to_of_val. solve_ndisj.
-      iIntros "{$Hheap $Hz1} > Hz1". iPvsIntro. iSplitL; eauto 10.
+      iIntros "{$Hheap $Hz1} !> Hz1 !==>". iVs ("Hclose" with "[-]"); eauto.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHtyped1; cbn.
       smart_wp_bind (CasMCtx _ _) v2 "#Hv2" IHtyped2; cbn.
       smart_wp_bind (CasRCtx _ _) v3 "#Hv3" IHtyped3; cbn. iClear "HΓ".
-      iDestruct "Hv1" as {l} "[% Hinv]"; subst.
-      iInv (logN .@ l) as {w} "[Hw1 #Hw2]"; [cbn; eauto 10 using to_of_val|].
+      iDestruct "Hv1" as (l) "[% Hinv]"; subst.
+      iInv (logN .@ l) as (w) "[Hw1 #Hw2]" "Hclose".
       destruct (decide (v2 = w)) as [|Hneq]; subst.
       + iApply wp_cas_suc; eauto using to_of_val. solve_ndisj.
-        iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro; iSplitL; eauto.
+        iIntros "{$Hheap $Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
       + iApply wp_cas_fail; eauto using to_of_val. solve_ndisj.
-        iIntros "{$Hheap $Hw1} > Hw1"; iPvsIntro; iSplitL; eauto.
+        iIntros "{$Hheap $Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
   Qed.
 End typed_interp.

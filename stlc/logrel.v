@@ -3,9 +3,9 @@ From iris_logrel.stlc Require Export lang typing.
 
 (** interp : is a unary logical relation. *)
 Section logrel.
-Context {Σ : iFunctor}.
+Context `{irisG lang Σ}.
 
-Fixpoint interp (τ : type) (w : val) : iProp lang Σ :=
+Fixpoint interp (τ : type) (w : val) : iProp Σ :=
   match τ with
   | TUnit => w = UnitV
   | TProd τ1 τ2 => ∃ w1 w2, w = PairV w1 w2 ∧ ⟦ τ1 ⟧ w1 ∧ ⟦ τ2 ⟧ w2
@@ -15,7 +15,7 @@ Fixpoint interp (τ : type) (w : val) : iProp lang Σ :=
   end%I
 where "⟦ τ ⟧" := (interp τ).
 
-Definition interp_expr (τ : type) (e : expr) : iProp lang Σ :=
+Definition interp_expr (τ : type) (e : expr) : iProp Σ :=
   WP e {{ ⟦ τ ⟧ }}%I.
 
 Global Instance interp_persistent τ v : PersistentP (⟦ τ ⟧ v).

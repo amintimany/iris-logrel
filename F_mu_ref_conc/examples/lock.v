@@ -81,8 +81,8 @@ Section proof.
     spec_ctx ρ ★ j ⤇ fill K newlock
       ={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ (#♭v false).
   Proof.
-    iIntros {HNE} "[#Hspec Hj]".
-    by iPvs (step_alloc _ _ j K with "[Hj]") as "Hj"; eauto.
+    iIntros (HNE) "[#Hspec Hj]".
+    by iVs (step_alloc _ _ j K with "[Hj]") as "Hj"; eauto.
   Qed.
 
   Global Opaque newlock.
@@ -92,17 +92,15 @@ Section proof.
     spec_ctx ρ ★ l ↦ₛ (#♭v false) ★ j ⤇ fill K (App acquire (Loc l))
       ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v true).
   Proof.
-    iIntros {HNE} "[#Hspec [Hl Hj]]". unfold acquire.
-    iPvs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto. done.
-    iPvs (step_cas_suc _ _ j (K ++ [IfCtx _ _])
+    iIntros (HNE) "[#Hspec [Hl Hj]]". unfold acquire.
+    iVs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto. done.
+    iVs (step_cas_suc _ _ j (K ++ [IfCtx _ _])
                        _ _ _ _ _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; trivial.
-    rewrite ?fill_app. simpl.
-    iFrame "Hspec Hj Hl"; trivial.
-    iNext; trivial.
-    rewrite ?fill_app. simpl.
-    iPvs (step_if_true _ _ j K _ _ _ with "[Hj]") as "Hj"; trivial.
-    iFrame "Hspec Hj"; trivial.
-    iPvsIntro. iFrame "Hj Hl"; trivial.
+    { rewrite fill_app /=. iFrame "Hspec Hj Hl"; eauto. }
+    rewrite fill_app /=.
+    iVs (step_if_true _ _ j K _ _ _ with "[Hj]") as "Hj"; trivial.
+    { by iFrame. }
+    by iIntros "!==> {$Hj $Hl}".
     Unshelve. all:trivial.
   Qed.
 
@@ -113,11 +111,11 @@ Section proof.
     spec_ctx ρ ★ l ↦ₛ (#♭v b) ★ j ⤇ fill K (App release (Loc l))
       ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v false).
   Proof.
-    iIntros {HNE} "[#Hspec [Hl Hj]]". unfold release.
-    iPvs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto; try done.
-    iPvs (step_store _ _ j K _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    iPvsIntro. iFrame "Hj Hl"; trivial.
+    iIntros (HNE) "[#Hspec [Hl Hj]]". unfold release.
+    iVs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto; try done.
+    iVs (step_store _ _ j K _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
+    { by iFrame. }
+    by iIntros "!==> {$Hj $Hl}".
     Unshelve. all: trivial.
   Qed.
 
@@ -132,28 +130,26 @@ Section proof.
                 ★ j ⤇ fill K (App (with_lock e (Loc l)) (of_val w))
       ={E}=> j ⤇ fill K (of_val v) ★ Q ★ l ↦ₛ (#♭v false).
   Proof.
-    iIntros {HNE H1 H2} "[#Hspec [HP [Hl Hj]]]".
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iIntros (HNE H1 H2) "[#Hspec [HP [Hl Hj]]]".
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite H1.
-    iPvs (steps_acquire _ _ j (K ++ [AppRCtx (RecV _)])
+    iVs (steps_acquire _ _ j (K ++ [AppRCtx (RecV _)])
                    _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
+    { rewrite fill_app /=. iFrame "Hspec Hj Hl"; eauto. }
     rewrite fill_app; simpl.
-    iFrame "Hspec Hj"; trivial.
-    rewrite fill_app; simpl.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite H1.
-    iPvs (H2 (K ++ [AppRCtx (RecV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
+    iVs (H2 (K ++ [AppRCtx (RecV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
+    { rewrite fill_app /=. iFrame "Hspec Hj HP"; eauto. }
     rewrite ?fill_app /=.
-    iFrame "Hspec HP"; trivial.
-    rewrite ?fill_app /=.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (steps_release _ _ j (K ++ [AppRCtx (RecV _)]) _ _ with "[Hj Hl]")
+    iVs (steps_release _ _ j (K ++ [AppRCtx (RecV _)]) _ _ with "[Hj Hl]")
       as "[Hj Hl]"; eauto.
-    rewrite ?fill_app /=. by iFrame.
+    { rewrite fill_app /=. by iFrame. }
     rewrite ?fill_app /=.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    asimpl. iPvsIntro; by iFrame.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    asimpl. iVsIntro; by iFrame.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
     trivial.

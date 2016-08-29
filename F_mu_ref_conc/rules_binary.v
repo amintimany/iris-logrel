@@ -1,5 +1,5 @@
 From iris.program_logic Require Import lifting.
-From iris.algebra Require Import upred_big_op frac dec_agree.
+From iris.algebra Require Import upred_big_op frac dec_agree gmap.
 From iris.program_logic Require Import ownership auth.
 From iris_logrel.F_mu_ref_conc Require Export rules.
 From iris.proofmode Require Import tactics weakestpre invariants.
@@ -20,28 +20,28 @@ Definition to_cfg (ρ : cfg lang) : cfgUR := (to_tpool (ρ.1), to_heap (ρ.2)).
 
 (** The CMRA for the thread pool. *)
 Class cfgSG Σ :=
-  CFGSG { cfg_inG :> authG lang Σ cfgUR; cfg_name : gname }.
+  CFGSG { ctg_heapG :> heapIG Σ; cfg_inG :> authG Σ cfgUR; cfg_name : gname }.
 
 Notation "cfg →⋆ cfg'" := (rtc step cfg cfg') (at level 20).
 
 Section definitionsS.
   Context `{cfgSG Σ}.
 
-  Definition heapS_mapsto (l : loc) (q : Qp) (v: val) : iPropG lang Σ :=
+  Definition heapS_mapsto (l : loc) (q : Qp) (v: val) : iProp Σ :=
     auth_own cfg_name (∅ : tpoolUR, {[ l := (q, DecAgree v) ]}).
 
-  Definition tpool_mapsto (j : nat) (e: expr) : iPropG lang Σ :=
+  Definition tpool_mapsto (j : nat) (e: expr) : iProp Σ :=
     auth_own cfg_name ({[ j := Excl' e ]}, ∅ : heapUR).
 
-  Definition spec_inv (ρ : cfg lang) (ρ' : cfgUR) : iPropG lang Σ :=
+  Definition spec_inv (ρ : cfg lang) (ρ' : cfgUR) : iProp Σ :=
     (■ ρ →⋆ of_cfg ρ')%I.
 
-  Definition spec_ctx (ρ : cfg lang) : iPropG lang Σ :=
+  Definition spec_ctx (ρ : cfg lang) : iProp Σ :=
     auth_ctx cfg_name specN (spec_inv ρ).
 
   Global Instance heapS_mapsto_timeless l q v : TimelessP (heapS_mapsto l q v).
   Proof. apply _. Qed.
-  Global Instance spec_inv_Proper : Proper ((≡) ==> (≡) ==> (≡)) spec_inv.
+  Global Instance spec_inv_proper : Proper ((≡) ==> (≡) ==> (≡)) spec_inv.
   Proof. solve_proper. Qed.
   Global Instance spec_ctx_persistent ρ : PersistentP (spec_ctx ρ).
   Proof. apply _. Qed.
@@ -55,8 +55,8 @@ Notation "j ⤇ e" := (tpool_mapsto j e) (at level 20) : uPred_scope.
 
 Section cfg.
   Context `{cfgSG Σ}.
-  Implicit Types P Q : iPropG lang Σ.
-  Implicit Types Φ : val → iPropG lang Σ.
+  Implicit Types P Q : iProp Σ.
+  Implicit Types Φ : val → iProp Σ.
   Implicit Types σ : state.
   Implicit Types g : heapUR.
   Implicit Types e : expr.
@@ -243,7 +243,7 @@ Section cfg.
 
   Lemma step_pure_base j K e e' h ρ :
     ✓ (({[j := Excl' (fill K e)]}, h) ⋅ ρ : cfgUR) →
-    (∀ σ, head_step e σ e' σ None) →
+    (∀ σ, head_step e σ e' σ []) →
     step (of_cfg (({[j := Excl' (fill K e)]}, h) ⋅ ρ))
          (of_cfg (({[j := Excl' (fill K e')]}, h) ⋅ ρ)).
   Proof.
@@ -251,33 +251,32 @@ Section cfg.
     rewrite !pair_op.
     destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H3 _]]].
     unfold of_cfg; rewrite !H3.
-    eapply (step_atomic _ _ _ _ _ _ None _ _); simpl.
+    eapply (step_atomic _ _ _ _ _ _ [] _ _); simpl.
     - trivial.
     - simpl; rewrite app_nil_r; trivial.
-    - econstructor; eauto.
+    - apply: Ectx_step'. apply H2.
   Qed.
 
   Lemma step_pure E ρ j K e e' :
-    (∀ σ, head_step e σ e' σ None) →
+    (∀ σ, head_step e σ e' σ []) →
     nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K e ={E}=> j ⤇ fill K e'.
   Proof.
-    iIntros {H1 H2} "[#Hspec Hj]".
+    iIntros (H1 H2) "[#Hspec Hj]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
       simpl; iClear "Hvalid".
-    iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+    iDestruct "Ha'" as (ρ'') "Ha'"; iDestruct "Ha'" as %Ha'.
     rewrite ->(right_id _ _) in Ha'; setoid_subst.
     iDestruct "Hstep" as %Hstep.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     rewrite comm; apply thread_update; trivial.
     rewrite own_op; iDestruct "Hown" as "[H1 $]".
-    iExists _; iSplitL; trivial.
-    iPvsIntro; iPureIntro.
-    eapply rtc_r; [exact Hstep|].
+    iApply "Hclose". iNext. iExists _; iSplitL; trivial.
+    iPureIntro. eapply rtc_r; [exact Hstep|].
     eapply step_pure_base; trivial.
   Qed.
 
@@ -297,7 +296,7 @@ Section cfg.
       unfold of_cfg; simpl. destruct H1 as [H11 H12]; simpl in *.
       destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H4 _]]]. repeat rewrite H4.
       rewrite of_heap_singleton_op.
-      { eapply (step_atomic _ _ _ _ _ _ None _ _).
+      { eapply (step_atomic _ _ _ _ _ _ [] _ _).
         - trivial.
         - simpl; rewrite app_nil_r; trivial.
         - econstructor; eauto. apply alloc_fresh; trivial. }
@@ -311,29 +310,28 @@ Section cfg.
     to_val e = Some v → nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K (Alloc e) ={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ v.
   Proof.
-    iIntros {H1 H2} "[#Hinv HΦ]".
+    iIntros (H1 H2) "[#Hinv HΦ]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "HΦ" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as "Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' %]";
       simpl; iClear "Hvalid".
-    iDestruct "Ha'" as {ρ''} "Ha'"; iDestruct "Ha'" as %Ha'.
+    iDestruct "Ha'" as (ρ'') "Ha'"; iDestruct "Ha'" as %Ha'.
     rewrite ->(right_id _ _) in Ha'; setoid_subst.
     iDestruct "Hstep" as %Hstep.
     edestruct step_alloc_base as [l [Hs Ho]]; eauto.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     rewrite comm; apply (thread_update _ _ (fill K (Loc l))); trivial.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     eapply (heap_alloc_update l v); trivial.
     eapply cfg_valid_tpool_update; eauto.
     rewrite pair_split.
     rewrite own_op; iDestruct "Hown" as "[H1 H2]".
-    iSplitR "H2".
-    - iExists _; iSplitL; trivial.
-      iPvsIntro; iPureIntro.
-      eapply rtc_r; [exact Hstep|]; trivial.
-    - iPvsIntro. iExists _. rewrite -own_op; trivial.
+    iVs ("Hclose" with "[H1]").
+    - iNext. iExists _; iSplitL; trivial.
+      iPureIntro. eapply rtc_r; [exact Hstep|]; trivial.
+    - iVsIntro. iExists _. rewrite -own_op; trivial.
   Qed.
 
   Lemma cfg_heap_update l v v' th ρ :
@@ -357,7 +355,7 @@ Section cfg.
     intros [H11 H12]; simpl in *.
     destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H2 _]]]. repeat rewrite H2.
     rewrite of_heap_singleton_op; trivial.
-    eapply (step_atomic _ _ _ _ _ _ None _ _).
+    eapply (step_atomic _ _ _ _ _ _ [] _ _).
     - trivial.
     - simpl; rewrite app_nil_r; trivial.
     - econstructor; eauto. apply LoadS. apply lookup_insert.
@@ -368,24 +366,23 @@ Section cfg.
     spec_ctx ρ ★ j ⤇ fill K (Load (Loc l)) ★ l ↦ₛ{q} v
       ={E}=> j ⤇ fill K (of_val v) ★ l ↦ₛ{q} v.
   Proof.
-    iIntros {H1} "[#Hinv [Hj Hl]]".
+    iIntros (H1) "[#Hinv [Hj Hl]]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
     revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
-    iPvs (own_update with "Hown") as "[H1 H2]".
+    iVs (own_update with "Hown") as "[H1 H2]".
     { rewrite assoc -auth_frag_op.
       rewrite -pair_split.
       rewrite comm; apply (thread_update _ _ (fill K (of_val v))); trivial. }
-    iSplitR "H2".
-    - iExists _; iSplitL; trivial.
-      iPvsIntro. iPureIntro.
-      eapply rtc_r; [exact Hstep|]. by apply step_load_base.
-    - iPvsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
+    iVs ("Hclose" with "[H1]").
+    - iNext; iExists _; iSplitL; trivial.
+      iPureIntro. eapply rtc_r; [exact Hstep|]. by apply step_load_base.
+    - iVsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
   Qed.
 
   Lemma step_store_base ρ j K l e v v' :
@@ -399,7 +396,7 @@ Section cfg.
     intros H1 [H21 H22]; simpl in *.
     destruct (tpool_conv _ _ _ H21) as [l1 [l2 [H3 _]]]. repeat rewrite H3.
     rewrite !of_heap_singleton_op; eauto using heap_store_valid.
-    eapply (step_atomic _ _ _ _ _ _ None _ _).
+    eapply (step_atomic _ _ _ _ _ _ [] _ _).
     - trivial.
     - simpl; rewrite app_nil_r; trivial.
     - replace (<[l:=v']> (of_heap th)) with
@@ -413,26 +410,25 @@ Section cfg.
     spec_ctx ρ ★ j ⤇ fill K (Store (Loc l) e) ★ l ↦ₛ v'
       ={E}=> j ⤇ fill K Unit ★ l ↦ₛ v.
   Proof.
-    iIntros {H1 H2} "[#Hinv [Hj Hl]]".
+    iIntros (H1 H2) "[#Hinv [Hj Hl]]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
     revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     { rewrite assoc -auth_frag_op.
       rewrite -pair_split comm.
       by apply (thread_update _ _ (fill K Unit)). }
-    iPvs (own_update with "Hown") as "[H1 H2]".
+    iVs (own_update with "Hown") as "[H1 H2]".
     { apply (cfg_heap_update _ _ v). eapply cfg_valid_tpool_update; eauto. }
-    iSplitR "H2".
-    - iExists _; iSplitL; trivial.
-      iPvsIntro; iPureIntro.
-      eapply rtc_r; [exact Hstep|]. by apply step_store_base.
-    - iPvsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
+    iVs ("Hclose" with "[H1]").
+    - iNext. iExists _; iSplitL; trivial.
+      iPureIntro. eapply rtc_r; [exact Hstep|]. by apply step_store_base.
+    - iVsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
   Qed.
 
   Lemma step_cas_fail_base ρ j K l q v' e1 v1 e2 v2 :
@@ -449,7 +445,7 @@ Section cfg.
     intros H1 H2 H3 [H41 H42]; simpl in *.
     destruct (tpool_conv _ _ _ H41) as [l1 [l2 [H5 _]]]. repeat rewrite H5.
     rewrite !of_heap_singleton_op; trivial.
-    eapply (step_atomic _ _ _ _ _ _ None _ _).
+    eapply (step_atomic _ _ _ _ _ _ [] _ _).
     - trivial.
     - simpl; rewrite app_nil_r; trivial.
     - econstructor; eauto. eapply CasFailS; eauto. apply lookup_insert.
@@ -460,25 +456,23 @@ Section cfg.
     spec_ctx ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v' ≠ v1) ★ l ↦ₛ{q} v'
       ={E}=> j ⤇ fill K (#♭ false) ★ l ↦ₛ{q} v'.
   Proof.
-    iIntros {H1 H2 H3} "[#Hinv [Hj [#Hneq Hl]]]".
+    iIntros (H1 H2 H3) "[#Hinv [Hj [>#Hneq Hl]]]"; iDestruct "Hneq" as %Hneq.
     unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
-    iTimeless "Hneq". iDestruct "Hneq" as %Hneq.
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
     revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
-    iPvs (own_update with "Hown") as "[H1 H2]".
+    iVs (own_update with "Hown") as "[H1 H2]".
     { rewrite assoc -auth_frag_op.
       rewrite -pair_split comm.
       by apply (thread_update _ _ (fill K (#♭ false))). }
-    iSplitR "H2".
-    - iExists _; iSplitL; trivial.
-      iPvsIntro; iPureIntro; eauto.
-      eapply rtc_r; [exact Hstep|]. by eapply step_cas_fail_base.
-    - iPvsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
+    iVs ("Hclose" with "[H1]").
+    - iNext. iExists _; iSplitL; trivial.
+      iPureIntro. eapply rtc_r; [exact Hstep|]. by eapply step_cas_fail_base.
+    - iVsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
   Qed.
 
   Lemma step_cas_suc_base ρ j K l e1 v1 e2 v2 :
@@ -495,7 +489,7 @@ Section cfg.
     intros H1 H2 [H31 H32]; simpl in *.
     destruct (tpool_conv _ _ _ H31) as [l1 [l2 [H4 _]]]. repeat rewrite H4.
     rewrite !of_heap_singleton_op; eauto using heap_store_valid.
-    eapply (step_atomic _ _ _ _ _ _ None _ _).
+    eapply (step_atomic _ _ _ _ _ _ [] _ _).
     - trivial.
     - simpl; rewrite app_nil_r; trivial.
     - replace (<[l:=v2]> (of_heap th)) with
@@ -508,27 +502,25 @@ Section cfg.
     spec_ctx ρ ★ j ⤇ fill K (CAS (Loc l) e1 e2) ★ ▷ ■ (v1 = v1') ★ l ↦ₛ v1'
       ={E}=> j ⤇ fill K (#♭ true) ★ l ↦ₛ v2.
   Proof.
-    iIntros {H1 H2 H3} "[#Hinv [Hj [#Heq Hl]]]".
+    iIntros (H1 H2 H3) "[#Hinv [Hj [>#Heq Hl]]]". iDestruct "Heq" as %Heq; subst.
     unfold spec_ctx, auth_ctx, tpool_mapsto, heapS_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
-    iTimeless "Heq". iDestruct "Heq" as %Heq; subst.
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "Hl" "Hown" as "Hown".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
     revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     { rewrite assoc -auth_frag_op.
       rewrite -pair_split comm.
       by apply (thread_update _ _ (fill K (#♭ true))). }
-    iPvs (own_update with "Hown") as "[H1 H2]".
+    iVs (own_update with "Hown") as "[H1 H2]".
     { apply (cfg_heap_update _ _ v2). by eapply cfg_valid_tpool_update. }
-    iSplitR "H2".
-    - iExists _; iSplitL; trivial.
-      iPvsIntro; iPureIntro.
-      eapply rtc_r; [exact Hstep|]. apply step_cas_suc_base; trivial.
-    - iPvsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
+    iVs ("Hclose" with "[H1]").
+    - iNext; iExists _; iSplitL; trivial.
+      iPureIntro. eapply rtc_r; [exact Hstep|]. apply step_cas_suc_base; trivial.
+    - iVsIntro. rewrite -own_op -auth_frag_op pair_op right_id left_id; trivial.
   Qed.
 
   Lemma step_rec E ρ j K e1 e2 v :
@@ -595,7 +587,7 @@ Section cfg.
     rewrite !pair_op /of_cfg /=.
     destruct (tpool_conv _ _ _ H11) as [l1 [l2 [H31 H32]]].
     rewrite H31 H32; trivial.
-    eapply (step_atomic _ _ _ _ _ _ (Some _) _ _); simpl; trivial.
+    eapply (step_atomic _ _ _ _ _ _ [_] _ _); simpl; trivial.
     econstructor; eauto. constructor.
   Qed.
 
@@ -603,27 +595,27 @@ Section cfg.
     nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K (Fork e) ={E}=> ∃ j', j ⤇ fill K Unit ★ j' ⤇ e.
   Proof.
-    iIntros {H1} "[#Hspec Hj]".
+    iIntros (H1) "[#Hspec Hj]".
     unfold spec_ctx, auth_ctx, tpool_mapsto, auth_own.
-    iInv> specN as {ρ'} "[Hown #Hstep]".
+    iInv specN as (ρ') ">[Hown #Hstep]" "Hclose".
     iCombine "Hj" "Hown" as "Hown".
     iDestruct (own_valid _ with "#Hown") as %Hv%auth_valid_discrete.
     revert Hv; rewrite /= pair_op /= !left_id !right_id.
     intros [[ρ'' ->] ?].
     iDestruct "Hstep" as %Hstep.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     rewrite comm; apply (thread_update _ _ (fill K Unit)); trivial.
     set (k := S (max (length (ρ''.1)) j)).
     assert (Hx1 : k > j) by (unfold k; lia).
     assert (Hx2 : k > length (ρ''.1)) by (unfold k; lia).
     clearbody k.
-    iPvs (own_update with "Hown") as "Hown".
+    iVs (own_update with "Hown") as "Hown".
     eapply (thread_alloc_update k _ _ e); trivial.
     - eapply cfg_valid_tpool_update; eauto.
     - rewrite own_op; iDestruct "Hown" as "[H1 H2]".
-      iSplitR "H2"; trivial.
-      + iExists _; iSplitL; trivial. iPvsIntro. iPureIntro.
-        eapply rtc_r; [exact Hstep|]; eapply step_fork_base; trivial.
-      + iPvsIntro. iExists _. by rewrite -own_op -auth_frag_op pair_op left_id.
+      iVs ("Hclose" with "[H1]").
+      + iNext. iExists _; iSplitL; trivial.
+        iPureIntro. eapply rtc_r; [exact Hstep|]; eapply step_fork_base; trivial.
+      + iVsIntro. iExists _. by rewrite -own_op -auth_frag_op pair_op left_id.
   Qed.
 End cfg.

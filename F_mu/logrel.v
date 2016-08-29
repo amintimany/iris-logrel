@@ -1,12 +1,13 @@
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export weakestpre.
 From iris_logrel.F_mu Require Export lang typing.
+From iris.algebra Require Import list upred_big_op.
 Import uPred.
 
 (** interp : is a unary logical relation. *)
 Section logrel.
-  Context {Σ : iFunctor}.
-  Notation D := (valC -n> iProp lang Σ).
+  Context `{irisG lang Σ}.
+  Notation D := (valC -n> iProp Σ).
   Implicit Types τi : D.
   Implicit Types Δ : listC D.
   Implicit Types interp : listC D → D.
@@ -45,15 +46,15 @@ Section logrel.
   Global Instance interp_rec1_contractive
     (interp : listC D -n> D) (Δ : listC D) : Contractive (interp_rec1 interp Δ).
   Proof.
-    intros n τi1 τi2 H w; cbn.
+    intros n τi1 τi2 Hτi w; cbn.
     apply always_ne, exist_ne; intros v; apply and_ne; trivial.
-    apply later_contractive =>i Hi. by rewrite H.
+    apply later_contractive =>i Hi. by rewrite Hτi.
   Qed.
 
   Program Definition interp_rec (interp : listC D -n> D) : listC D -n> D := λne Δ,
     fixpoint (interp_rec1 interp Δ).
   Next Obligation.
-    intros interp n Δ1 Δ2 H; apply fixpoint_ne => τi w. solve_proper.
+    intros interp n Δ1 Δ2 HΔ; apply fixpoint_ne => τi w. solve_proper.
   Qed.
 
   Fixpoint interp (τ : type) : listC D -n> D :=
@@ -69,11 +70,11 @@ Section logrel.
   Notation "⟦ τ ⟧" := (interp τ).
 
   Definition interp_env (Γ : list type)
-      (Δ : listC D) (vs : list val) : iProp lang Σ :=
+      (Δ : listC D) (vs : list val) : iProp Σ :=
     (length Γ = length vs ∧ [∧] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vs)%I.
   Notation "⟦ Γ ⟧*" := (interp_env Γ).
 
-  Definition interp_expr (τ : type) (Δ : listC D) (e : expr) : iProp lang Σ :=
+  Definition interp_expr (τ : type) (Δ : listC D) (e : expr) : iProp Σ :=
     WP e {{ ⟦ τ ⟧ Δ }}%I.
 
   Class env_PersistentP Δ :=
@@ -97,7 +98,7 @@ Section logrel.
     env_PersistentP Δ → PersistentP (⟦ Γ ⟧* Δ vs) := _.
 
   Lemma interp_weaken Δ1 Π Δ2 τ :
-    ⟦ τ.[iter (length Δ1) up (ren (+ length Π))] ⟧ (Δ1 ++ Π ++ Δ2)
+    ⟦ τ.[upn (length Δ1) (ren (+ length Π))] ⟧ (Δ1 ++ Π ++ Δ2)
     ≡ ⟦ τ ⟧ (Δ1 ++ Δ2).
   Proof.
     revert Δ1 Π Δ2. induction τ=> Δ1 Π Δ2; simpl; auto.
@@ -108,14 +109,13 @@ Section logrel.
       properness; auto. apply (IHτ (_ :: _)).
     - rewrite iter_up; destruct lt_dec as [Hl | Hl]; simpl.
       { by rewrite !lookup_app_l. }
-      change (uPredC (iResUR lang Σ)) with (iProp lang Σ).
       rewrite !lookup_app_r; [|lia ..]. do 2 f_equiv. lia. done.
     - intros w; simpl; properness; auto. apply (IHτ (_ :: _)).
   Qed.
 
   Lemma interp_subst_up Δ1 Δ2 τ τ' :
     ⟦ τ ⟧ (Δ1 ++ interp τ' Δ2 :: Δ2)
-    ≡ ⟦ τ.[iter (length Δ1) up (τ' .: ids)] ⟧ (Δ1 ++ Δ2).
+    ≡ ⟦ τ.[upn (length Δ1) (τ' .: ids)] ⟧ (Δ1 ++ Δ2).
   Proof.
     revert Δ1 Δ2; induction τ=> Δ1 Δ2; simpl.
     - done.
@@ -126,11 +126,9 @@ Section logrel.
       properness; auto. apply (IHτ (_ :: _)).
     - rewrite iter_up; destruct lt_dec as [Hl | Hl]; simpl.
       { by rewrite !lookup_app_l. }
-      change (uPredC (iResUR lang Σ)) with (iProp lang Σ).
       rewrite !lookup_app_r; [|lia ..].
       destruct (x - length Δ1) as [|n] eqn:?; simpl.
       { symmetry. asimpl. apply (interp_weaken [] Δ1 Δ2 τ'). }
-      change (uPredC (iResUR lang Σ)) with (iProp lang Σ).
       rewrite !lookup_app_r; [|lia ..]. do 2 f_equiv. lia. done.
     - intros w; simpl; properness; auto. apply (IHτ (_ :: _)).
   Qed.
@@ -144,7 +142,7 @@ Section logrel.
   Lemma interp_env_Some_l Δ Γ vs x τ :
     Γ !! x = Some τ → ⟦ Γ ⟧* Δ vs ⊢ ∃ v, vs !! x = Some v ∧ ⟦ τ ⟧ Δ v.
   Proof.
-    iIntros {?} "[Hlen HΓ]"; iDestruct "Hlen" as %Hlen.
+    iIntros (?) "[Hlen HΓ]"; iDestruct "Hlen" as %Hlen.
     destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
     { by rewrite -Hlen; apply lookup_lt_Some with τ. }
     iExists v; iSplit. done. iApply (big_and_elem_of with "HΓ").

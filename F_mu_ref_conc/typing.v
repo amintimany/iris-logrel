@@ -78,9 +78,8 @@ Proof.
   { intros A H1 H2. rewrite /up=> s1 s2 [|x] //=; auto with f_equal omega. }
   induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega.
 Qed.
-
 Lemma n_closed_invariant n (e : expr) s1 s2 :
-  (∀ f, e.[iter n up f] = e) → (∀ x, x < n → s1 x = s2 x) → e.[s1] = e.[s2].
+  (∀ f, e.[upn n f] = e) → (∀ x, x < n → s1 x = s2 x) → e.[s1] = e.[s2].
 Proof.
   intros Hnc. specialize (Hnc (ren (+1))).
   revert n Hnc s1 s2.
@@ -92,20 +91,20 @@ Proof.
     asimpl in *. cbv in x. replace (m + (x - m)) with x in Hmc by omega.
     inversion Hmc; omega.
   - unfold upn in *.
-    change (e.[up (up (iter m up (ren (+1))))]) with
+    change (e.[up (up (upn m (ren (+1))))]) with
     (e.[iter (S (S m)) up (ren (+1))]) in *.
     apply (IHe (S (S m))).
     + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
     + intros [|[|x]] H2; [by cbv|by cbv |].
       asimpl; rewrite H1; auto with omega.
-  - change (e1.[up (iter m up (ren (+1)))]) with
+  - change (e1.[up (upn m (ren (+1)))]) with
     (e1.[iter (S m) up (ren (+1))]) in *.
     apply (IHe0 (S m)).
     + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
     + intros [|x] H2; [by cbv |].
       asimpl; rewrite H1; auto with omega.
-  - change (e2.[up (iter m up (ren (+1)))]) with
-    (e2.[iter (S m) up (ren (+1))]) in *.
+  - change (e2.[up (upn m (ren (+1)))]) with
+    (e2.[upn (S m) (ren (+1))]) in *.
     apply (IHe1 (S m)).
     + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
     + intros [|x] H2; [by cbv |].
@@ -115,16 +114,16 @@ Qed.
 Definition env_subst (vs : list val) (x : var) : expr :=
   from_option id (Var x) (of_val <$> vs !! x).
 
-Lemma typed_n_closed Γ τ e :
-  Γ ⊢ₜ e : τ → (∀ f, e.[iter (length Γ) up f] = e).
+Lemma typed_n_closed Γ τ e : Γ ⊢ₜ e : τ → (∀ f, e.[upn (length Γ) f] = e).
 Proof.
-  intros H. induction H => f; asimpl; unfold upn; simpl in *; auto with f_equal.
+  intros H. induction H => f; asimpl; simpl in *; auto with f_equal.
   - apply lookup_lt_Some in H. rewrite iter_up. destruct lt_dec; auto with omega.
+  - f_equal. apply IHtyped.
   - by f_equal; rewrite map_length in IHtyped.
 Qed.
 
 Lemma n_closed_subst_head_simpl n e w ws :
-  (∀ f, e.[iter n up f] = e) →
+  (∀ f, e.[upn n f] = e) →
   S (length ws) = n →
   e.[of_val w .: env_subst ws] = e.[env_subst (w :: ws)].
 Proof.
@@ -140,7 +139,7 @@ Lemma typed_subst_head_simpl Δ τ e w ws :
 Proof. eauto using n_closed_subst_head_simpl, typed_n_closed. Qed.
 
 Lemma n_closed_subst_head_simpl_2 n e w w' ws :
-  (∀ f, e.[iter n up f] = e) → (S (S (length ws))) = n →
+  (∀ f, e.[upn n f] = e) → (S (S (length ws))) = n →
   e.[of_val w .: of_val w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
   intros H1 H2.
@@ -160,7 +159,7 @@ Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.
 (** Weakening *)
 Lemma context_gen_weakening ξ Γ' Γ e τ :
   Γ' ++ Γ ⊢ₜ e : τ →
-  Γ' ++ ξ ++ Γ ⊢ₜ e.[iter (length Γ') up (ren (+ (length ξ)))] : τ.
+  Γ' ++ ξ ++ Γ ⊢ₜ e.[upn (length Γ') (ren (+ (length ξ)))] : τ.
 Proof.
   intros H1.
   remember (Γ' ++ Γ) as Ξ. revert Γ' Γ ξ HeqΞ.

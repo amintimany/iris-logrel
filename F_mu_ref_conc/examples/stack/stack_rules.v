@@ -17,13 +17,13 @@ Proof.
 Qed.
 
 Class stackG Σ :=
-  StackG { stack_inG :> authG lang Σ stackUR; stack_name : gname }.
+  StackG { stack_inG :> authG Σ stackUR; stack_name : gname }.
 
 Section Rules.
   Context `{stackG Σ}.
-  Notation D := (prodC valC valC -n> iPropG lang Σ).
+  Notation D := (prodC valC valC -n> iProp Σ).
 
-  Definition stack_mapsto (l : loc) (v: val) : iPropG lang Σ :=
+  Definition stack_mapsto (l : loc) (v: val) : iProp Σ :=
     auth_own stack_name {[ l := DecAgree v ]}.
 
   Notation "l ↦ˢᵗᵏ v" := (stack_mapsto l v) (at level 20) : uPred_scope.
@@ -77,14 +77,14 @@ Section Rules.
   Lemma StackLink_dup (Q : D) v `{∀ vw, PersistentP (Q vw)} :
     StackLink Q v ⊢ StackLink Q v ★ StackLink Q v.
   Proof.
-    iIntros "H". iLöb {v} as "Hlat". rewrite StackLink_unfold.
-    iDestruct "H" as {l w} "[% [Hl Hr]]"; subst.
+    iIntros "H". iLöb (v) as "Hlat". rewrite StackLink_unfold.
+    iDestruct "H" as (l w) "[% [Hl Hr]]"; subst.
     iDestruct (stack_mapsto_dup with "[Hl]") as "[Hl1 Hl2]"; eauto.
     iDestruct "Hr" as "[#Hr|Hr]".
     { iSplitL "Hl1".
       - iExists _, _; iFrame "Hl1"; eauto.
       - iExists _, _; iFrame "Hl2"; eauto. }
-    iDestruct "Hr" as {y1 z1 y2 z2} "[#H1 [#H2 [#HQ H']]]".
+    iDestruct "Hr" as (y1 z1 y2 z2) "[#H1 [#H2 [#HQ H']]]".
     rewrite later_forall; setoid_rewrite later_wand.
     iDestruct ("Hlat" $! (z1, z2) with "H'") as "[HS1 HS2]".
     iSplitL "Hl1 HS1".
@@ -113,7 +113,7 @@ Section Rules.
     destruct z as [[ze |] zo];
       unfold validN, cmra_validN in *; simpl in *; trivial.
     destruct H2 as [H21 H22]; split.
-    - revert H21; rewrite !left_id. apply cmra_preservingN_l.
+    - revert H21; rewrite !left_id. apply cmra_monoN_l.
     - intros j. rewrite lookup_op.
       destruct (decide (i = j)) as [|Hneq]; subst.
       + rewrite H1. rewrite lookup_singleton. constructor.
@@ -143,7 +143,7 @@ Section Rules.
     destruct H11 as [z H11].
     revert H11; rewrite ucmra_unit_left_id => H11.
     eapply cmra_extend in H11; [| by apply cmra_valid_validN].
-    destruct H11 as [[z1 z2] [H31 [H32 H33]]]; simpl in *.
+    destruct H11 as (z1 & z2 & H31 & H32 & H33); simpl in *.
     specialize (H32 i).
     assert (H4 : ✓ (z1 ⋅ z2))by (by rewrite -H31).
     apply leibniz_equiv.
@@ -188,7 +188,7 @@ Section Rules.
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' Hb]";
       simpl; iClear "Hvalid".
     iDestruct "Hb" as %H1.
-    iDestruct "Ha'" as {h'} "Ha'"; iDestruct "Ha'" as %Ha'.
+    iDestruct "Ha'" as (h') "Ha'"; iDestruct "Ha'" as %Ha'.
     rewrite ->(left_id _ _) in Ha'; setoid_subst.
     specialize (H1 l).
     match type of H1 with
@@ -199,10 +199,10 @@ Section Rules.
       rewrite big_sepM_insert; [|apply lookup_delete_None; auto].
       iDestruct "Hall" as "[Hl' Hall]".
       iExFalso. iApply heap_mapsto_dup_invalid; by iFrame "Hl Hl'".
-    - iPvs (own_update with "Hown") as "Hown".
+    - iVs (own_update with "Hown") as "Hown".
       by apply stackR_alloc.
       iDestruct "Hown" as "[Hown Hl']".
-      iPvsIntro. iSplitR "Hl'"; [|unfold stack_mapsto, auth_own; trivial].
+      iVsIntro. iSplitR "Hl'"; [|unfold stack_mapsto, auth_own; trivial].
       iCombine "Hl" "Hall" as "Hall".
       unfold stack_owns. iFrame "Hown".
       rewrite big_sepM_insert; trivial.
@@ -269,5 +269,5 @@ Section Rules.
   Lemma stack_owns_later_open_close h l v :
     ▷ stack_owns h ★ l ↦ˢᵗᵏ v
       ⊢ ▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))).
-  Proof. iIntros "H >". by iApply stack_owns_open_close. Qed.
+  Proof. iIntros "H !>". by iApply stack_owns_open_close. Qed.
 End Rules.

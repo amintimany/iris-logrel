@@ -173,8 +173,8 @@ Lemma typed_ctx_typed K Γ τ Γ' τ' e :
 Proof. induction 2; simpl; eauto using typed_ctx_item_typed. Qed.
 
 Lemma typed_ctx_n_closed K Γ τ Γ' τ' e :
-  (∀ f, e.[base.iter (length Γ) up f] = e) → typed_ctx K Γ τ Γ' τ' →
-  ∀ f, (fill_ctx K e).[base.iter (length Γ') up f] = (fill_ctx K e).
+  (∀ f, e.[upn (length Γ) f] = e) → typed_ctx K Γ τ Γ' τ' →
+  ∀ f, (fill_ctx K e).[upn (length Γ') f] = (fill_ctx K e).
 Proof.
   intros H1 H2; induction H2; simpl; auto.
   induction H => f; asimpl; simpl in *;
@@ -227,15 +227,15 @@ Section bin_log_related_under_typed_ctx.
   Context `{heapIG Σ, cfgSG Σ}.
 
   Lemma bin_log_related_under_typed_ctx Γ e e' τ Γ' τ' K :
-    (∀ f, e.[base.iter (length Γ) up f] = e) →
-    (∀ f, e'.[base.iter (length Γ) up f] = e') →
+    (∀ f, e.[upn (length Γ) f] = e) →
+    (∀ f, e'.[upn (length Γ) f] = e') →
     typed_ctx K Γ τ Γ' τ' →
     Γ ⊨ e ≤log≤ e' : τ → Γ' ⊨ fill_ctx K e ≤log≤ fill_ctx K e' : τ'.
   Proof.
     revert Γ τ Γ' τ' e e'.
     induction K as [|k K]=> Γ τ Γ' τ' e e' H1 H2; simpl.
     - inversion_clear 1; trivial.
-    - inversion_clear 1 as [|? ? ? ? ? ? ? ? Hx1 Hx2]. intros H3 Δ HΔ.
+    - inversion_clear 1 as [|? ? ? ? ? ? ? ? Hx1 Hx2]. intros H3.
       specialize (IHK _ _ _ _ e e' H1 H2 Hx2 H3).
       inversion Hx1; subst; simpl; try fold_interp.
       + eapply bin_log_related_rec; eauto;

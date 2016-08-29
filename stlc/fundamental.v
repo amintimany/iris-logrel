@@ -4,22 +4,22 @@ From iris_logrel.stlc Require Import rules.
 From iris.algebra Require Export upred_big_op.
 
 Section typed_interp.
-  Context {Σ : iFunctor}.
+  Context `{irisG lang Σ}.
 
   Local Tactic Notation "smart_wp_bind" uconstr(ctx) ident(v) constr(Hv) constr(Hp) :=
-    iApply (@wp_bind _ _ _ [ctx]);
+    iApply (wp_bind [ctx]);
     iApply wp_wand_l;
     iSplitL; [|iApply Hp; trivial]; cbn;
-    iIntros {v} Hv.
+    iIntros (v) Hv.
 
   Local Ltac value_case := iApply wp_value; cbn; rewrite ?to_of_val; trivial.
 
   Theorem fundamental Γ vs e τ :
     Γ ⊢ₜ e : τ → length Γ = length vs →
-    [∧] zip_with (@interp Σ) Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
+    [∧] zip_with interp Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
   Proof.
     intros Htyped; revert vs.
-    induction Htyped; iIntros {vs Hlen} "#Hctx /=".
+    induction Htyped; iIntros (vs Hlen) "#Hctx /=".
     - (* var *)
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
@@ -34,11 +34,11 @@ Section typed_interp.
       value_case; eauto 10.
     - (* fst *)
       smart_wp_bind (FstCtx) v "# Hv" IHHtyped; cbn.
-      iDestruct "Hv" as {w1 w2} "#[% [H2 H3]]"; subst.
+      iDestruct "Hv" as (w1 w2) "#[% [H2 H3]]"; subst.
       iApply wp_fst; eauto using to_of_val.
     - (* snd *)
       smart_wp_bind (SndCtx) v "# Hv" IHHtyped; cbn.
-      iDestruct "Hv" as {w1 w2} "#[% [H2 H3]]"; subst.
+      iDestruct "Hv" as (w1 w2) "#[% [H2 H3]]"; subst.
       iApply wp_snd; eauto using to_of_val.
     - (* injl *)
       smart_wp_bind (InjLCtx) v "# Hv" IHHtyped; value_case. eauto.
@@ -46,7 +46,7 @@ Section typed_interp.
       smart_wp_bind (InjRCtx) v "# Hv" IHHtyped; value_case. eauto.
     - (* case *)
       smart_wp_bind (CaseCtx _ _) v "#Hv" IHHtyped1; cbn.
-      iDestruct "Hv" as "[Hv|Hv]"; iDestruct "Hv" as {w} "[% Hw]"; subst.
+      iDestruct "Hv" as "[Hv|Hv]"; iDestruct "Hv" as (w) "[% Hw]"; subst.
       + iApply wp_case_inl; auto 1 using to_of_val; asimpl.
         specialize (IHHtyped2 (w::vs)).
         erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto).
@@ -56,7 +56,7 @@ Section typed_interp.
         erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto).
         iNext; iApply IHHtyped3; cbn; auto.
     - (* lam *)
-      value_case; iAlways; iIntros {w} "#Hw".
+      value_case; iAlways; iIntros (w) "#Hw".
       iApply wp_lam; auto 1 using to_of_val.
       asimpl; erewrite typed_subst_head_simpl; [|eauto|cbn]; eauto.
       iNext; iApply (IHHtyped (w :: vs)); cbn; auto.

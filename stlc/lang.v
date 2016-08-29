@@ -1,5 +1,5 @@
+From iris.program_logic Require Export ectx_language ectxi_language.
 From iris_logrel.prelude Require Export base.
-From iris.program_logic Require Import language.
 
 Module lang.
   Inductive expr :=
@@ -61,8 +61,6 @@ Module lang.
   | InjRCtx
   | CaseCtx (e1 : {bind expr}) (e2 : {bind expr}).
 
-  Notation ectx := (list ectx_item).
-
   Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
     match Ki with
     | AppLCtx e2 => App e e2
@@ -75,37 +73,25 @@ Module lang.
     | InjRCtx => InjR e
     | CaseCtx e1 e2 => Case e e1 e2
     end.
-  Definition fill (K : ectx) (e : expr) : expr := fold_right fill_item e K.
 
   Definition state : Type := ().
 
-  Inductive head_step : expr -> state -> expr -> state -> option expr -> Prop :=
+  Inductive head_step : expr → state → expr → state → list expr → Prop :=
   | BetaS e1 e2 v2 σ :
       to_val e2 = Some v2 →
-      head_step (App (Lam e1) e2) σ e1.[e2/] σ None
+      head_step (App (Lam e1) e2) σ e1.[e2/] σ []
   | FstS e1 v1 e2 v2 σ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      head_step (Fst (Pair e1 e2)) σ e1 σ None
+      head_step (Fst (Pair e1 e2)) σ e1 σ []
   | SndS e1 v1 e2 v2 σ :
       to_val e1 = Some v1 → to_val e2 = Some v2 →
-      head_step (Snd (Pair e1 e2)) σ e2 σ None
+      head_step (Snd (Pair e1 e2)) σ e2 σ []
   | CaseLS e0 v0 e1 e2 σ :
       to_val e0 = Some v0 →
-      head_step (Case (InjL e0) e1 e2) σ e1.[e0/] σ None
+      head_step (Case (InjL e0) e1 e2) σ e1.[e0/] σ []
   | CaseRS e0 v0 e1 e2 σ :
       to_val e0 = Some v0 →
-      head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ None.
-
-  (** Atomic expressions: we don't consider any atomic operations. *)
-  Definition atomic (e: expr) := false.
-
-  (** Close reduction under evaluation contexts.
-We could potentially make this a generic construction. *)
-  Inductive prim_step
-            (e1 : expr) (σ1 : state) (e2 : expr) (σ2: state) (ef: option expr) : Prop :=
-    Ectx_step K e1' e2' :
-      e1 = fill K e1' → e2 = fill K e2' →
-      head_step e1' σ1 e2' σ2 ef → prim_step e1 σ1 e2 σ2 ef.
+      head_step (Case (InjR e0) e1 e2) σ e2.[e0/] σ [].
 
   (** Basic properties about the language *)
   Lemma to_of_val v : to_val (of_val v) = Some v.
@@ -116,51 +102,19 @@ We could potentially make this a generic construction. *)
     revert v; induction e; intros; simplify_option_eq; auto with f_equal.
   Qed.
 
-  Instance: Inj (=) (=) of_val.
+  Instance of_val_inj : Inj (=) (=) of_val.
   Proof. by intros ?? Hv; apply (inj Some); rewrite -!to_of_val Hv. Qed.
+
+  Lemma fill_item_val Ki e :
+    is_Some (to_val (fill_item Ki e)) → is_Some (to_val e).
+  Proof. intros [v ?]. destruct Ki; simplify_option_eq; eauto. Qed.
 
   Instance fill_item_inj Ki : Inj (=) (=) (fill_item Ki).
   Proof. destruct Ki; intros ???; simplify_eq; auto with f_equal. Qed.
 
-  Instance ectx_fill_inj K : Inj (=) (=) (fill K).
-  Proof. red; induction K as [|Ki K IH]; naive_solver. Qed.
-
-  Lemma fill_app K1 K2 e : fill (K1 ++ K2) e = fill K1 (fill K2 e).
-  Proof. revert e; induction K1; simpl; auto with f_equal. Qed.
-
-  Lemma fill_val K e : is_Some (to_val (fill K e)) → is_Some (to_val e).
-  Proof.
-    intros [v' Hv']; revert v' Hv'.
-    induction K as [|[]]; intros; simplify_option_eq; eauto.
-  Qed.
-
-  Lemma fill_not_val K e : to_val e = None → to_val (fill K e) = None.
-  Proof. rewrite !eq_None_not_Some; eauto using fill_val. Qed.
-
-  Lemma values_head_stuck e1 σ1 e2 σ2 ef :
+  Lemma val_stuck e1 σ1 e2 σ2 ef :
     head_step e1 σ1 e2 σ2 ef → to_val e1 = None.
   Proof. destruct 1; naive_solver. Qed.
-
-  Lemma values_stuck e1 σ1 e2 σ2 ef : prim_step e1 σ1 e2 σ2 ef → to_val e1 = None.
-  Proof. intros [??? -> -> ?]; eauto using fill_not_val, values_head_stuck. Qed.
-
-  Lemma atomic_not_val e : atomic e → to_val e = None.
-  Proof. done. Qed.
-
-  Lemma atomic_fill K e : atomic (fill K e) → to_val e = None → K = [].
-  Proof. done. Qed.
-
-  Lemma atomic_head_step e1 σ1 e2 σ2 ef :
-    atomic e1 → head_step e1 σ1 e2 σ2 ef → is_Some (to_val e2).
-  Proof. done. Qed.
-
-  Lemma atomic_step e1 σ1 e2 σ2 ef :
-    atomic e1 → prim_step e1 σ1 e2 σ2 ef → is_Some (to_val e2).
-  Proof.
-    intros Hatomic [K e1' e2' -> -> Hstep].
-    assert (K = []) as -> by eauto 10 using atomic_fill, values_head_stuck.
-    naive_solver eauto using atomic_head_step.
-  Qed.
 
   Lemma head_ctx_step_val Ki e σ1 e2 σ2 ef :
     head_step (fill_item Ki e) σ1 e2 σ2 ef → is_Some (to_val e).
@@ -175,51 +129,19 @@ We could potentially make this a generic construction. *)
            | H : to_val (of_val _) = None |- _ => by rewrite to_of_val in H
            end; auto.
   Qed.
-
-  (* When something does a step, and another decomposition of the same expression
-has a non-val [e] in the hole, then [K] is a left sub-context of [K'] - in
-other words, [e] also contains the reducible expression *)
-  Lemma step_by_val K K' e1 e1' σ1 e2 σ2 ef :
-    fill K e1 = fill K' e1' → to_val e1 = None → head_step e1' σ1 e2 σ2 ef →
-    K `prefix_of` K'.
-  Proof.
-    intros Hfill Hred Hnval; revert K' Hfill.
-    induction K as [|Ki K IH]; simpl; intros K' Hfill; auto using prefix_of_nil.
-    destruct K' as [|Ki' K']; simplify_eq.
-    { exfalso; apply (eq_None_not_Some (to_val (fill K e1)));
-      [apply fill_not_val | eapply head_ctx_step_val; erewrite Hfill];
-      eauto using fill_not_val, head_ctx_step_val.
-    }
-    cut (Ki = Ki'); [naive_solver eauto using prefix_of_cons|].
-    eauto using fill_item_no_val_inj, values_head_stuck, fill_not_val.
-  Qed.
-
 End lang.
 
 (** Language *)
-Program Canonical Structure lang : language := {|
-  expr := lang.expr; val := lang.val; state := lang.state;
+Program Instance heap_ectxi_lang :
+  EctxiLanguage
+    (lang.expr) lang.val lang.ectx_item lang.state := {|
   of_val := lang.of_val; to_val := lang.to_val;
-  atomic := lang.atomic; prim_step := lang.prim_step;
+  fill_item := lang.fill_item; head_step := lang.head_step
 |}.
 Solve Obligations with eauto using lang.to_of_val, lang.of_to_val,
-  lang.values_stuck, lang.atomic_not_val, lang.atomic_step.
+  lang.val_stuck, lang.fill_item_val, lang.fill_item_no_val_inj,
+  lang.head_ctx_step_val.
 
-Instance lang_ctx K : LanguageCtx lang (lang.fill K).
-Proof.
-  split.
-  * eauto using lang.fill_not_val.
-  * intros ????? [K' e1' e2' Heq1 Heq2 Hstep].
-    by exists (K ++ K') e1' e2'; rewrite ?lang.fill_app ?Heq1 ?Heq2.
-  * intros e1 σ1 e2 σ2 ? Hnval [K'' e1'' e2'' Heq1 -> Hstep].
-    destruct (lang.step_by_val
-      K K'' e1 e1'' σ1 e2'' σ2 ef) as [K' ->]; eauto.
-    rewrite lang.fill_app in Heq1; apply (inj _) in Heq1.
-    exists (lang.fill K' e2''); rewrite lang.fill_app; split; auto.
-    econstructor; eauto.
-Qed.
-
-Instance lang_ctx_item Ki : LanguageCtx lang (lang.fill_item Ki).
-Proof. change (LanguageCtx lang (lang.fill [Ki])). by apply _. Qed.
+Canonical Structure lang := ectx_lang (lang.expr).
 
 Export lang.

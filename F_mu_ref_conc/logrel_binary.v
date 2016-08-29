@@ -1,5 +1,6 @@
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export weakestpre.
+From iris.algebra Require Export upred_big_op.
 From iris_logrel.F_mu_ref_conc Require Export rules_binary typing.
 Import uPred.
 
@@ -22,13 +23,13 @@ Definition logN : namespace := nroot .@ "logN".
 (** interp : is a unary logical relation. *)
 Section logrel.
   Context `{heapIG Σ, cfgSG Σ}.
-  Notation D := (prodC valC valC -n> iPropG lang Σ).
+  Notation D := (prodC valC valC -n> iProp Σ).
   Implicit Types τi : D.
   Implicit Types Δ : listC D.
   Implicit Types interp : listC D → D.
 
   Definition interp_expr (τi : listC D -n> D) (Δ : listC D)
-      (ee : expr * expr) : iPropG lang Σ := (∀ j K,
+      (ee : expr * expr) : iProp Σ := (∀ j K,
     j ⤇ fill K (ee.2) →
     WP ee.1 {{ v, ∃ v', j ⤇ fill K (of_val v') ★ τi Δ (v, v') }})%I.
   Global Instance interp_expr_ne n :
@@ -97,7 +98,7 @@ Section logrel.
     intros interp n Δ1 Δ2 HΔ; apply fixpoint_ne => τi ww. solve_proper.
   Qed.
 
-  Program Definition interp_ref_inv (ll : loc * loc) : D -n> iPropG lang Σ := λne τi,
+  Program Definition interp_ref_inv (ll : loc * loc) : D -n> iProp Σ := λne τi,
     (∃ vv, ll.1 ↦ᵢ vv.1 ★ ll.2 ↦ₛ vv.2 ★ τi vv)%I.
   Solve Obligations with solve_proper.
 
@@ -123,7 +124,7 @@ Section logrel.
   Notation "⟦ τ ⟧" := (interp τ).
 
   Definition interp_env (Γ : list type)
-      (Δ : listC D) (vvs : list (val * val)) : iPropG lang Σ :=
+      (Δ : listC D) (vvs : list (val * val)) : iProp Σ :=
     (length Γ = length vvs ∧ [∧] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vvs)%I.
   Notation "⟦ Γ ⟧*" := (interp_env Γ).
 
@@ -148,7 +149,7 @@ Section logrel.
     env_PersistentP Δ → PersistentP (⟦ Γ ⟧* Δ vvs) := _.
 
   Lemma interp_weaken Δ1 Π Δ2 τ :
-    ⟦ τ.[iter (length Δ1) up (ren (+ length Π))] ⟧ (Δ1 ++ Π ++ Δ2)
+    ⟦ τ.[upn (length Δ1) (ren (+ length Π))] ⟧ (Δ1 ++ Π ++ Δ2)
     ≡ ⟦ τ ⟧ (Δ1 ++ Δ2).
   Proof.
     revert Δ1 Π Δ2. induction τ=> Δ1 Π Δ2; simpl; auto.
@@ -163,7 +164,6 @@ Section logrel.
       properness; auto. apply (IHτ (_ :: _)).
     - rewrite iter_up; destruct lt_dec as [Hl | Hl]; simpl.
       { by rewrite !lookup_app_l. }
-      change (uPredC (iResUR lang _)) with (iPropG lang Σ).
       rewrite !lookup_app_r; [|lia ..]. do 2 f_equiv. lia. done.
     - unfold interp_expr.
       intros ww; simpl; properness; auto. by apply (IHτ (_ :: _)).
@@ -172,7 +172,7 @@ Section logrel.
 
   Lemma interp_subst_up Δ1 Δ2 τ τ' :
     ⟦ τ ⟧ (Δ1 ++ interp τ' Δ2 :: Δ2)
-    ≡ ⟦ τ.[iter (length Δ1) up (τ' .: ids)] ⟧ (Δ1 ++ Δ2).
+    ≡ ⟦ τ.[upn (length Δ1) (τ' .: ids)] ⟧ (Δ1 ++ Δ2).
   Proof.
     revert Δ1 Δ2; induction τ=> Δ1 Δ2; simpl; auto.
     - intros ww; simpl; properness; auto.
@@ -186,11 +186,9 @@ Section logrel.
       properness; auto. apply (IHτ (_ :: _)).
     - rewrite iter_up; destruct lt_dec as [Hl | Hl]; simpl.
       { by rewrite !lookup_app_l. }
-      change (uPredC (iResUR lang _)) with (iPropG lang Σ).
       rewrite !lookup_app_r; [|lia ..].
       destruct (x - length Δ1) as [|n] eqn:?; simpl.
       { symmetry. asimpl. apply (interp_weaken [] Δ1 Δ2 τ'). }
-      change (uPredC (iResUR lang _)) with (iPropG lang Σ).
       rewrite !lookup_app_r; [|lia ..]. do 2 f_equiv. lia. done.
     - unfold interp_expr.
       intros ww; simpl; properness; auto. apply (IHτ (_ :: _)).
@@ -206,7 +204,7 @@ Section logrel.
   Lemma interp_env_Some_l Δ Γ vvs x τ :
     Γ !! x = Some τ → ⟦ Γ ⟧* Δ vvs ⊢ ∃ vv, vvs !! x = Some vv ∧ ⟦ τ ⟧ Δ vv.
   Proof.
-    iIntros {?} "[Hlen HΓ]"; iDestruct "Hlen" as %Hlen.
+    iIntros (?) "[Hlen HΓ]"; iDestruct "Hlen" as %Hlen.
     destruct (lookup_lt_is_Some_2 vvs x) as [v Hv].
     { by rewrite -Hlen; apply lookup_lt_Some with τ. }
     iExists v; iSplit. done. iApply (big_and_elem_of with "HΓ").
@@ -234,17 +232,17 @@ Section logrel.
   Lemma interp_EqType_agree τ v v' Δ :
     env_PersistentP Δ → EqType τ → interp τ Δ (v, v') ⊢ ■ (v = v').
   Proof.
-    intros ? Hτ; revert v v'; induction Hτ; iIntros {v v'} "#H1 /=".
+    intros ? Hτ; revert v v'; induction Hτ; iIntros (v v') "#H1 /=".
     - by iDestruct "H1" as "[% %]"; subst.
-    - by iDestruct "H1" as {n} "[% %]"; subst.
-    - by iDestruct "H1" as {b} "[% %]"; subst.
-    - iDestruct "H1" as { [??] [??] } "[% [H1 H2]]"; simplify_eq/=.
+    - by iDestruct "H1" as (n) "[% %]"; subst.
+    - by iDestruct "H1" as (b) "[% %]"; subst.
+    - iDestruct "H1" as ([??] [??]) "[% [H1 H2]]"; simplify_eq/=.
       rewrite IHHτ1 IHHτ2.
       by iDestruct "H1" as "%"; iDestruct "H2" as "%"; subst.
     - iDestruct "H1" as "[H1|H1]".
-      + iDestruct "H1" as { [??] } "[% H1]"; simplify_eq/=.
+      + iDestruct "H1" as ([??]) "[% H1]"; simplify_eq/=.
         rewrite IHHτ1. by iDestruct "H1" as "%"; subst.
-      + iDestruct "H1" as { [??] } "[% H1]"; simplify_eq/=.
+      + iDestruct "H1" as ([??]) "[% H1]"; simplify_eq/=.
         rewrite IHHτ2. by iDestruct "H1" as "%"; subst.
   Qed.
 End logrel.

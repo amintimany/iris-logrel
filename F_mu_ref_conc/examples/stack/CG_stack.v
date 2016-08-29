@@ -82,17 +82,17 @@ Section CG_Stack.
     ={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_push.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_load _ _ j (K ++ [StoreRCtx (LocV _); FoldCtx;
+    iVs (step_load _ _ j (K ++ [StoreRCtx (LocV _); FoldCtx;
                                    InjRCtx; PairRCtx _])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_store _ _ j K _ _ _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
-    iFrame "Hspec Hj"; trivial.
-    iPvsIntro. by iFrame.
+    iVs (step_store _ _ j K _ _ _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
+    { by iFrame. }
+    iVsIntro. by iFrame.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
     simpl; by rewrite ?to_of_val.
@@ -138,9 +138,9 @@ Section CG_Stack.
     ={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★ l ↦ₛ (#♭v false).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_push.
-    iPvs (steps_with_lock
+    iVs (steps_with_lock
             _ _ j K _ _ _ _ UnitV _ _ _ with "[Hj Hx Hl]") as "Hj"; last done.
-    - iIntros {K'} "[#Hspec [Hx Hj]]".
+    - iIntros (K') "[#Hspec [Hx Hj]]".
       iApply steps_CG_push; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
@@ -179,37 +179,37 @@ Section CG_Stack.
       ={E}=> j ⤇ fill K (InjR (of_val w)) ★ st ↦ₛ v.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_load _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
+    iVs (step_load _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_Fold  _ _ j (K ++ [CaseCtx _ _])
+    iVs (step_Fold  _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_case_inr _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_case_inr _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_snd _ _ j (K ++ [AppRCtx (RecV _); StoreRCtx (LocV _)]) _ _ _ _
+    iVs (step_snd _ _ j (K ++ [AppRCtx (RecV _); StoreRCtx (LocV _)]) _ _ _ _
                    _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
-    iPvs (step_store _ _ j (K ++ [AppRCtx (RecV _)]) _ _ _ _ _ _
+    iVs (step_store _ _ j (K ++ [AppRCtx (RecV _)]) _ _ _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_fst _ _ j (K ++ [InjRCtx]) _ _ _ _ _ _
+    iVs (step_fst _ _ j (K ++ [InjRCtx]) _ _ _ _ _ _
           with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial. asimpl.
     rewrite ?fill_app. simpl.
-    iPvsIntro. iFrame "Hj Hx"; trivial.
+    iVsIntro. iFrame "Hj Hx"; trivial.
     Unshelve.
     all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
     all: trivial.
@@ -221,22 +221,22 @@ Section CG_Stack.
                j ⤇ fill K (App (CG_pop (Loc st)) Unit)
       ={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV).
   Proof.
-    iIntros {HNE} "[#Hspec [Hx Hj]]". unfold CG_pop.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iIntros (HNE) "[#Hspec [Hx Hj]]". unfold CG_pop.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_load _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
+    iVs (step_load _ _ j (K ++ [CaseCtx _ _; UnfoldCtx])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_Fold _ _ j (K ++ [CaseCtx _ _])
+    iVs (step_Fold _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iPvs (step_case_inl _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_case_inl _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvsIntro. iFrame "Hj Hx"; trivial.
+    iVsIntro. iFrame "Hj Hx"; trivial.
     Unshelve.
     all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
     all: trivial.
@@ -281,10 +281,10 @@ Section CG_Stack.
                ★ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
       ={E}=> j ⤇ fill K (InjR (of_val w)) ★ st ↦ₛ v ★ l ↦ₛ (#♭v false).
   Proof.
-    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
-    iPvs (steps_with_lock _ _ j K _ _ _ _ (InjRV w) UnitV _ _
+    iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
+    iVs (steps_with_lock _ _ j K _ _ _ _ (InjRV w) UnitV _ _
           with "[Hj Hx Hl]") as "Hj"; last done.
-    - iIntros {K'} "[#Hspec [Hx Hj]]".
+    - iIntros (K') "[#Hspec [Hx Hj]]".
       iApply steps_CG_pop_suc; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
@@ -296,10 +296,10 @@ Section CG_Stack.
                ★ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
       ={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV) ★ l ↦ₛ (#♭v false).
   Proof.
-    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
-    iPvs (steps_with_lock _ _ j K _ _ _ _ (InjLV UnitV) UnitV _ _
+    iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
+    iVs (steps_with_lock _ _ j K _ _ _ _ (InjLV UnitV) UnitV _ _
           with "[Hj Hx Hl]") as "Hj"; last done.
-    - iIntros {K'} "[#Hspec [Hx Hj]]". simpl.
+    - iIntros (K') "[#Hspec [Hx Hj]] /=".
       iApply steps_CG_pop_fail; first done. iFrame "Hspec Hj Hx"; trivial.
     - iFrame "Hspec Hj Hx"; trivial.
       Unshelve. all: trivial.
@@ -344,16 +344,16 @@ Section CG_Stack.
                ★ j ⤇ fill K (App (CG_snap (Loc st) (Loc l)) Unit)
       ={E}=> j ⤇ (fill K (of_val v)) ★ st ↦ₛ v ★ l ↦ₛ (#♭v false).
   Proof.
-    iIntros {HNE} "[#Hspec [Hx [Hl Hj]]]". unfold CG_snap.
-    iPvs (steps_with_lock _ _ j K _ _ _ _ v UnitV _ _
+    iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]". unfold CG_snap.
+    iVs (steps_with_lock _ _ j K _ _ _ _ v UnitV _ _
           with "[Hj Hx Hl]") as "Hj"; last done; [|by iFrame "Hspec Hx Hl Hj"].
-    iIntros {K'} "[#Hspec [Hx Hj]]".
-    iPvs (step_rec _ _ j K' _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iIntros (K') "[#Hspec [Hx Hj]]".
+    iVs (step_rec _ _ j K' _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_load _ _ j K' _ _ _ _
+    iVs (step_load _ _ j K' _ _ _ _
           with "[Hj Hx]") as "[Hj Hx]"; eauto.
     - by iFrame "Hspec Hj Hx".
-    - iPvsIntro. by iFrame "Hj Hx".
+    - iVsIntro. by iFrame "Hj Hx".
       Unshelve.
       all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
       all: trivial.
@@ -416,22 +416,22 @@ Section CG_Stack.
                      (Snd (Pair ((of_val w).[ren (+2)]) (of_val v).[ren (+2)]))))
              (App (of_val f) (of_val w))).
   Proof.
-    iIntros {HNE} "[#Hspec Hj]". unfold CG_iter.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iIntros (HNE) "[#Hspec Hj]". unfold CG_iter.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
-    iPvs (step_Fold _ _ j (K ++ [CaseCtx _ _])
+    iVs (step_Fold _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. asimpl.
-    iPvs (step_case_inr _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_case_inr _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iPvs (step_fst _ _ j (K ++ [AppRCtx (RecV _); AppRCtx f]) _ _ _ _
+    iVs (step_fst _ _ j (K ++ [AppRCtx (RecV _); AppRCtx f]) _ _ _ _
                    _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    by iPvsIntro.
+    by iVsIntro.
     Unshelve.
     all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
   Qed.
@@ -443,15 +443,15 @@ Section CG_Stack.
     spec_ctx ρ ★ j ⤇ fill K (App (CG_iter (of_val f)) (Fold (InjL Unit)))
       ={E}=> j ⤇ fill K Unit.
   Proof.
-    iIntros {HNE} "[#Hspec Hj]". unfold CG_iter.
-    iPvs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iIntros (HNE) "[#Hspec Hj]". unfold CG_iter.
+    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite -CG_iter_folding. Opaque CG_iter. asimpl.
-    iPvs (step_Fold _ _ j (K ++ [CaseCtx _ _])
+    iVs (step_Fold _ _ j (K ++ [CaseCtx _ _])
                     _ _ _ with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app /=.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. asimpl.
-    iPvs (step_case_inl _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iVs (step_case_inl _ _ j K _ _ _ _ _ with "[Hj]") as "Hj"; eauto.
     Unshelve.
     all: try match goal with |- to_val _ = _ => simpl; by rewrite ?to_of_val end.
   Qed.

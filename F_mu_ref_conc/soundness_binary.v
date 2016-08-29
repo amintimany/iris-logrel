@@ -4,79 +4,51 @@ From iris.program_logic Require Import ownership auth.
 From iris.proofmode Require Import tactics pviewshifts invariants.
 From iris.program_logic Require Import ownership adequacy.
 
-Section soundness.
-  Context `{authG lang Σ heapUR, authG lang Σ cfgUR}.
-  Notation D := (prodC valC valC -n> iPropG lang Σ).
-  Implicit Types Δ : listC D.
+Lemma basic_soundness Σ `{irisPreG lang Σ, authG Σ heapUR, authG Σ cfgUR}
+    e e' τ v thp hp :
+  (∀ `{cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
+  rtc step ([e], ∅) (of_val v :: thp, hp) →
+  (∃ thp' hp' v', rtc step ([e'], ∅) (of_val v' :: thp', hp')).
+Proof.
+  intros Hlog Hsteps.
+  cut (adequate e ∅ (λ _, ∃ thp' h v, rtc step ([e'], ∅) (of_val v :: thp', h))).
+  { destruct 1; naive_solver. }
+  eapply (wp_adequacy Σ); iIntros (?) "Hσ".
+  iVs (auth_alloc (ownP ∘ of_heap) heapN _ (to_heap ∅) with "[Hσ]")
+    as (γh) "[#Hh1 Hh2]".
+  { done. }
+  { rewrite /= (from_to_heap ∅); auto. }
+  iVs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
+    ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as (γc) "[Hcfg1 Hcfg2]".
+  { rewrite -auth_both_op auth_valid_discrete /= prod_included /= to_empty_heap.
+    eauto using to_cfg_valid. }
+  iVs (inv_alloc specN _ (auth.auth_inv γc (spec_inv ([e'], ∅)))
+    with "[Hcfg1]") as "#Hcfg"; trivial.
+  { iNext. iExists _. iIntros "{$Hcfg1} !%". rewrite from_to_cfg; constructor. }
+  rewrite -(empty_env_subst e).
+  iApply wp_pvs; iApply wp_wand_r; iSplitL; [iApply (bin_log_related_alt
+    (Hlog (CFGSG _ (HeapIG _ _ _ γh) _ γc)) [] [] ([e'], ∅) 0 [])|]; simpl.
+  { rewrite /heapI_ctx /spec_ctx /auth_ctx /tpool_mapsto /auth_own /=.
+    rewrite empty_env_subst -interp_env_nil. by iFrame "Hh1 Hcfg Hcfg2". }
+  iIntros (v1); iDestruct 1 as (v2) "[Hj #Hinterp]".
+  iInv specN as (ρ) ">[Hown Hsteps]" "Hclose"; iDestruct "Hsteps" as %Hsteps'.
+  rewrite /tpool_mapsto /auth.auth_own /=.
+  iCombine "Hj" "Hown" as "Hown".
+  iDestruct (own_valid with "#Hown") as %[[[tp h] Hρ] [Htp ?]]%auth_valid_discrete.
+  move: Hρ; rewrite /= right_id pair_op left_id leibniz_equiv_iff=> ?; simplify_eq/=.
+  iVs ("Hclose" with "[-]").
+  { iDestruct "Hown" as "[Ho1 Ho2]". rewrite /auth_inv; eauto. }
+  iIntros "!==> !%". exists (of_tpool tp), (of_heap h), v2.
+  destruct tp as [|[[]|]]; by inversion_clear Htp.
+Qed.
 
-  Local Opaque to_heap.
-
-  Lemma wp_basic_soundness e e' τ :
-    (∀ `{heapIG Σ, cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
-    ownP (Σ:=globalF Σ) ∅
-    ⊢ WP e {{ _, ■ ∃ thp' h v, rtc step ([e'], ∅) (of_val v :: thp', h) }}.
-  Proof.
-    iIntros {H1} "Hemp".
-    iPvs (heap_alloc with "Hemp") as {h} "[#Hheap _]"; first solve_ndisj.
-    iPvs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
-      ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as {γ} "[Hcfg1 Hcfg2]".
-    { constructor; eauto.
-      - intros n; simpl. exists ∅. unfold to_cfg; simpl. rewrite to_empty_heap.
-          by rewrite left_id right_id.
-      - repeat constructor; simpl; by auto. }
-    iAssert (@auth.auth_inv _ Σ _ _ γ (spec_inv ([e'], ∅)))
-      with "[Hcfg1]" as "Hinv".
-    { iExists _; iFrame "Hcfg1".
-      iPureIntro. rewrite from_to_cfg; constructor. }
-    iPvs (inv_alloc specN with "[Hinv]") as "#Hcfg"; trivial.
-    { iNext. iExact "Hinv". }
-    iPoseProof (bin_log_related_alt (H1 h (@CFGSG _ _ γ)) [] [] _ 0 [] with "[Hcfg2]") as "HBR".
-    { apply _. }
-    { rewrite /spec_ctx /auth_ctx /tpool_mapsto /auth_own empty_env_subst /=.
-      iFrame "Hheap Hcfg Hcfg2". by rewrite -interp_env_nil. }
-    rewrite /= empty_env_subst.
-    iApply wp_pvs. iApply wp_wand_l; iSplitR; [|iApply "HBR"].
-    iIntros {v}; iDestruct 1 as {v'} "[Hj #Hinterp]".
-    iInv> specN as {ρ} "[Hown #Hp]".
-    iDestruct "Hp" as %Hp.
-    unfold tpool_mapsto, auth.auth_own; simpl.
-    iCombine "Hj" "Hown" as "Hown".
-    iDestruct (@own_valid _ Σ (authR cfgUR) _ γ with "#Hown") as "#Hvalid".
-    iDestruct (auth_validI _ with "Hvalid") as "[Ha' #Hb]";
-      simpl; iClear "Hvalid".
-    iDestruct "Hb" as %Hb.
-    iDestruct "Ha'" as {ρ'} "Ha'"; iDestruct "Ha'" as %Ha'.
-    rewrite ->(right_id _ _) in Ha'; setoid_subst.
-    iPvsIntro; iSplitL.
-    - iDestruct "Hown" as "[Ho1 Ho2]". iExists _.
-      iSplitL; trivial.
-    - iPureIntro.
-      destruct ρ' as [th hp]; unfold op, cmra_op in *; simpl in *.
-      unfold prod_op, of_cfg in *; simpl in *.
-      destruct th as [|r th]; simpl in *; eauto.
-      destruct Hb as [Hx1 Hx2]. simpl in *.
-      destruct r as [q r|]; simpl in *; eauto.
-      inversion Hx1 as [|? ? Hx]; subst.
-      destruct q as [?|]. by move: Hx=> [/exclusive_r ??]. done.
-  Qed.
-
-  Lemma basic_soundness e e' τ v thp hp :
-    (∀ `{heapIG Σ, cfgSG Σ}, [] ⊨ e ≤log≤ e' : τ) →
-    rtc step ([e], ∅) (of_val v :: thp, hp) →
-    (∃ thp' hp' v', rtc step ([e'], ∅) (of_val v' :: thp', hp')).
-  Proof.
-    intros. eapply wp_adequacy_result; eauto using ucmra_unit_valid.
-    iIntros "[??]". by iApply wp_basic_soundness.
-  Qed.
-
-  Lemma binary_soundness Γ e e' τ :
-    (∀ f, e.[base.iter (length Γ) up f] = e) →
-    (∀ f, e'.[base.iter (length Γ) up f] = e') →
-    (∀ `{heapIG Σ, cfgSG Σ}, Γ ⊨ e ≤log≤ e' : τ) →
-    Γ ⊨ e ≤ctx≤ e' : τ.
-  Proof.
-    intros H1 K HK htp hp v Hstp Hc Hc'; eapply basic_soundness; eauto.
-    intros H' H'' N Δ HΔ.
-    eapply (bin_log_related_under_typed_ctx _ _ _ _ []); eauto.
-  Qed.
-End soundness.
+Lemma binary_soundness Σ `{irisPreG lang Σ, authG Σ heapUR, authG Σ cfgUR}
+    Γ e e' τ :
+  (∀ f, e.[upn (length Γ) f] = e) →
+  (∀ f, e'.[upn (length Γ) f] = e') →
+  (∀ `{cfgSG Σ}, Γ ⊨ e ≤log≤ e' : τ) →
+  Γ ⊨ e ≤ctx≤ e' : τ.
+Proof.
+  intros He He' Hlog K thp σ v ?. eapply (basic_soundness Σ)=> ?.
+  eapply (bin_log_related_under_typed_ctx _ _ _ _ []); eauto.
+Qed.
