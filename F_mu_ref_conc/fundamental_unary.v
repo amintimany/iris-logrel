@@ -1,7 +1,7 @@
 From iris_logrel.F_mu_ref_conc Require Export logrel_unary.
 From iris_logrel.F_mu_ref_conc Require Import rules.
-From iris.algebra Require Export upred_big_op.
-From iris.proofmode Require Import tactics pviewshifts invariants.
+From iris.base_logic Require Export big_op invariants.
+From iris.proofmode Require Import tactics.
 
 Definition log_typed `{heapIG Σ} (Γ : list type) (e : expr) (τ : type) := ∀ Δ vs,
   env_PersistentP Δ →
@@ -32,7 +32,7 @@ Section typed_interp.
       smart_wp_bind (BinOpLCtx _ e2.[env_subst vs]) v "#Hv" IHtyped1.
       smart_wp_bind (BinOpRCtx _ v) v' "# Hv'" IHtyped2.
       iDestruct "Hv" as (n) "%"; iDestruct "Hv'" as (n') "%"; simplify_eq/=.
-      iApply wp_nat_binop. iIntros "!> !==> {Hheap HΓ}".
+      iApply wp_nat_binop. iNext. iIntros "!> {Hheap HΓ}".
       destruct op; simpl; try destruct eq_nat_dec;
         try destruct le_dec; try destruct lt_dec; eauto 10.
     - (* pair *)
@@ -101,29 +101,31 @@ Section typed_interp.
       change (fixpoint _) with (⟦ TRec τ ⟧ Δ); simpl.
       iDestruct "Hv" as (w) "#[% Hw]"; subst.
       iApply wp_fold; cbn; auto using to_of_val.
-      iNext; iVsIntro. by iApply interp_subst.
+      iNext; iModIntro. by iApply interp_subst.
     - (* Fork *)
       iApply wp_fork. iNext; iSplitL; trivial.
       iApply wp_wand_l. iSplitL; [|iApply IHtyped; auto]; auto.
     - (* Alloc *)
-      smart_wp_bind AllocCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
-      iApply wp_alloc; auto 1 using to_of_val.
-      iIntros "{$Hheap} !>"; iIntros (l) "Hl".
-      iVs (inv_alloc _ with "[Hl]") as "HN";
-        [|iVsIntro; iExists _; iSplit; trivial]; eauto.
+      smart_wp_bind AllocCtx v "#Hv" IHtyped; cbn. iClear "HΓ". iApply wp_fupd.
+      iApply (wp_alloc with "Hheap []"); auto 1 using to_of_val.
+      iNext; iIntros (l) "Hl".
+      iMod (inv_alloc _ with "[Hl]") as "HN";
+        [| iModIntro; iExists _; iSplit; trivial]; eauto.
     - (* Load *)
       smart_wp_bind LoadCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
-      iDestruct "Hv" as (l) "[% #Hv]"; subst; simpl.
+      iDestruct "Hv" as (l) "[% #Hv]"; subst.
       iInv (logN .@ l) as (w) "[Hw1 #Hw2]" "Hclose".
-      iApply (wp_load _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
-      iIntros "{$Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
+      iApply ((wp_load _ _ 1) with "[Hw1] [Hclose]"); [|iFrame "Hheap"|];
+      trivial. solve_ndisj. iNext.
+      iIntros "Hw1". iMod ("Hclose" with "[-]"); eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHtyped2; cbn. iClear "HΓ".
       iDestruct "Hv" as (l) "[% #Hv]"; subst.
       iInv (logN .@ l) as (z) "[Hz1 #Hz2]" "Hclose".
-      iApply wp_store; auto using to_of_val. solve_ndisj.
-      iIntros "{$Hheap $Hz1} !> Hz1 !==>". iVs ("Hclose" with "[-]"); eauto.
+      iApply (wp_store with "[Hz1] [Hclose]"); [| |iFrame "Hheap Hz1"|].
+      by rewrite to_of_val. solve_ndisj. iNext.
+      iIntros "Hz1". iMod ("Hclose" with "[-]"); eauto.
     - (* CAS *)
       smart_wp_bind (CasLCtx _ _) v1 "#Hv1" IHtyped1; cbn.
       smart_wp_bind (CasMCtx _ _) v2 "#Hv2" IHtyped2; cbn.
@@ -131,9 +133,11 @@ Section typed_interp.
       iDestruct "Hv1" as (l) "[% Hinv]"; subst.
       iInv (logN .@ l) as (w) "[Hw1 #Hw2]" "Hclose".
       destruct (decide (v2 = w)) as [|Hneq]; subst.
-      + iApply wp_cas_suc; eauto using to_of_val. solve_ndisj.
-        iIntros "{$Hheap $Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
-      + iApply wp_cas_fail; eauto using to_of_val. solve_ndisj.
-        iIntros "{$Hheap $Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
+      + iApply (wp_cas_suc with "[Hw1] [Hclose]"); [| | |iFrame "Hheap Hw1"|];
+          eauto using to_of_val. solve_ndisj. iNext.
+        iIntros "Hw1". iMod ("Hclose" with "[-]"); eauto.
+      + iApply (wp_cas_fail with "[Hw1] [Hclose]"); [| | | |iFrame "Hheap Hw1"|];
+          eauto using to_of_val. solve_ndisj. iNext.
+        iIntros "Hw1". iMod ("Hclose" with "[-]"); eauto.
   Qed.
 End typed_interp.

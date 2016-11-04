@@ -1,7 +1,7 @@
-From iris.proofmode Require Import invariants ghost_ownership tactics.
+From iris.proofmode Require Import tactics.
 From iris_logrel.F_mu_ref_conc Require Import logrel_binary.
 From iris.algebra Require Import gmap dec_agree.
-From iris.program_logic Require Import auth.
+From iris.base_logic Require Import auth.
 Import uPred.
 
 Definition stackUR : ucmraT := gmapUR loc (dec_agreeR val).
@@ -38,7 +38,7 @@ Section Rules.
   Proof.
     iIntros "H".
     rewrite -own_op.
-    iDestruct (own_valid _ with "#H") as %Hvalid.
+    iDestruct (own_valid _ with "H") as %Hvalid.
     rewrite own_op. unfold stack_mapsto, auth_own.
     iDestruct "H" as "[$ $]".
     specialize (Hvalid l). rewrite lookup_op ?lookup_singleton in Hvalid.
@@ -77,9 +77,9 @@ Section Rules.
   Lemma StackLink_dup (Q : D) v `{∀ vw, PersistentP (Q vw)} :
     StackLink Q v ⊢ StackLink Q v ★ StackLink Q v.
   Proof.
-    iIntros "H". iLöb (v) as "Hlat". rewrite StackLink_unfold.
+    iIntros "H". iLöb as "Hlat" forall (v). rewrite StackLink_unfold.
     iDestruct "H" as (l w) "[% [Hl Hr]]"; subst.
-    iDestruct (stack_mapsto_dup with "[Hl]") as "[Hl1 Hl2]"; eauto.
+    iDestruct (stack_mapsto_dup with "[Hl]") as "[Hl1 Hl2]"; first eauto.
     iDestruct "Hr" as "[#Hr|Hr]".
     { iSplitL "Hl1".
       - iExists _, _; iFrame "Hl1"; eauto.
@@ -181,10 +181,10 @@ Section Rules.
 
   Lemma stack_owns_alloc E h l v :
     stack_owns h ★ l ↦ᵢ v
-      ={E}=> stack_owns (<[l := DecAgree v]> h) ★ l ↦ˢᵗᵏ v.
+      ⊢ |={E}=> stack_owns (<[l := DecAgree v]> h) ★ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[[Hown Hall] Hl]".
-    iDestruct (own_valid _ with "#Hown") as "Hvalid".
+    iDestruct (own_valid _ with "Hown") as "#Hvalid".
     iDestruct (auth_validI _ with "Hvalid") as "[Ha' Hb]";
       simpl; iClear "Hvalid".
     iDestruct "Hb" as %H1.
@@ -199,10 +199,10 @@ Section Rules.
       rewrite big_sepM_insert; [|apply lookup_delete_None; auto].
       iDestruct "Hall" as "[Hl' Hall]".
       iExFalso. iApply heap_mapsto_dup_invalid; by iFrame "Hl Hl'".
-    - iVs (own_update with "Hown") as "Hown".
+    - iMod (own_update with "Hown") as "Hown".
       by apply stackR_alloc.
       iDestruct "Hown" as "[Hown Hl']".
-      iVsIntro. iSplitR "Hl'"; [|unfold stack_mapsto, auth_own; trivial].
+      iModIntro. iSplitR "Hl'"; [|unfold stack_mapsto, auth_own; trivial].
       iCombine "Hl" "Hall" as "Hall".
       unfold stack_owns. iFrame "Hown".
       rewrite big_sepM_insert; trivial.
@@ -220,7 +220,7 @@ Section Rules.
     iIntros "[[Hown Hall] Hl]".
     unfold stack_mapsto, auth_own.
     iCombine "Hown" "Hl" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %Hvalid.
+    iDestruct (own_valid _ with "Hown") as %Hvalid.
     iDestruct "Hown" as "[Hown Hl]".
     assert (Heq : h !! l = Some (DecAgree v)).
     eapply stackR_auth_is_subheap; eauto using lookup_singleton.
@@ -241,7 +241,7 @@ Section Rules.
     iIntros "[Hown [Hall [Hl Hl']]]".
     unfold stack_mapsto, auth_own.
     iCombine "Hown" "Hl'" as "Hown".
-    iDestruct (own_valid _ with "#Hown") as %Hvalid.
+    iDestruct (own_valid _ with "Hown") as %Hvalid.
     iDestruct "Hown" as "[Hown Hl']".
     assert (Heq : h !! l = Some (DecAgree v)).
     eapply stackR_auth_is_subheap; eauto using lookup_singleton.
@@ -269,5 +269,5 @@ Section Rules.
   Lemma stack_owns_later_open_close h l v :
     ▷ stack_owns h ★ l ↦ˢᵗᵏ v
       ⊢ ▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))).
-  Proof. iIntros "H !>". by iApply stack_owns_open_close. Qed.
+  Proof. iIntros "H". by iNext; iApply stack_owns_open_close. Qed.
 End Rules.

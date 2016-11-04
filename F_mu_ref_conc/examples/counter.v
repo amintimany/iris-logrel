@@ -1,6 +1,7 @@
-From iris.proofmode Require Import invariants ghost_ownership tactics.
+From iris.proofmode Require Import tactics.
 From iris_logrel.F_mu_ref_conc Require Export examples.lock.
 From iris_logrel.F_mu_ref_conc Require Import soundness_binary.
+From iris.program_logic Require Import adequacy.
 
 Definition CG_increment (x : expr) : expr :=
   Rec (Store x.[ren (+ 2)] (BinOp Add (#n 1) (Load x.[ren (+ 2)]))).
@@ -60,23 +61,23 @@ Section CG_Counter.
   Lemma steps_CG_increment E ρ j K x n:
     nclose specN ⊆ E →
     spec_ctx ρ ★ x ↦ₛ (#nv n) ★ j ⤇ fill K (App (CG_increment (Loc x)) Unit)
-      ={E}=> j ⤇ fill K (Unit) ★ x ↦ₛ (#nv (S n)).
+      ⊢ |={E}=> j ⤇ fill K (Unit) ★ x ↦ₛ (#nv (S n)).
   Proof.
     iIntros (HNE) "[#Hspec [Hx Hj]]". unfold CG_increment.
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    iVs (step_load _ _ j (K ++ [StoreRCtx (LocV _); BinOpRCtx _ (#nv _)])
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iMod (step_load _ _ j (K ++ [StoreRCtx (LocV _); BinOpRCtx _ (#nv _)])
                     _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial.
     rewrite ?fill_app. simpl.
-    iVs (step_nat_binop _ _ j (K ++ [StoreRCtx (LocV _)])
+    iMod (step_nat_binop _ _ j (K ++ [StoreRCtx (LocV _)])
                           _ _ _  with "[Hj]") as "Hj"; eauto.
     rewrite ?fill_app. simpl.
     iFrame "Hspec Hj"; trivial. simpl.
     rewrite ?fill_app. simpl.
-    iVs (step_store _ _ j K _ _ _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
+    iMod (step_store _ _ j K _ _ _ _ _ with "[Hj Hx]") as "[Hj Hx]"; eauto.
     iFrame "Hspec Hj"; trivial.
-    iVsIntro.
+    iModIntro.
     iFrame "Hj Hx"; trivial.
     Unshelve. all: trivial.
   Qed.
@@ -121,10 +122,10 @@ Section CG_Counter.
     nclose specN ⊆ E →
     spec_ctx ρ ★ x ↦ₛ (#nv n) ★ l ↦ₛ (#♭v false)
       ★ j ⤇ fill K (App (CG_locked_increment (Loc x) (Loc l)) Unit)
-    ={E}=> j ⤇ fill K Unit ★ x ↦ₛ (#nv S n) ★ l ↦ₛ (#♭v false).
+    ⊢ |={E}=> j ⤇ fill K Unit ★ x ↦ₛ (#nv S n) ★ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]".
-    iVs (steps_with_lock
+    iMod (steps_with_lock
             _ _ j K _ _ _ _ UnitV UnitV _ _ with "[Hj Hx Hl]") as "Hj"; last done.
     - iIntros (K') "[#Hspec [Hx Hj]]".
       iApply steps_CG_increment; first done. iFrame "Hspec Hj Hx"; trivial.
@@ -161,14 +162,14 @@ Section CG_Counter.
     nclose specN ⊆ E →
     spec_ctx ρ ★ x ↦ₛ (#nv n)
                ★ j ⤇ fill K (App (counter_read (Loc x)) Unit)
-    ={E}=> j ⤇ fill K (#n n) ★ x ↦ₛ (#nv n).
+    ⊢ |={E}=> j ⤇ fill K (#n n) ★ x ↦ₛ (#nv n).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold counter_read.
-    iVs (step_rec _ _ j K _ Unit with "[Hj]") as "Hj"; eauto.
+    iMod (step_rec _ _ j K _ Unit with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iVs (step_load _ _ j K with "[Hj Hx]") as "[Hj Hx]"; eauto.
+    iMod (step_load _ _ j K with "[Hj Hx]") as "[Hj Hx]"; eauto.
     { by iFrame "Hspec Hj". }
-    iVsIntro. by iFrame "Hj Hx".
+    iModIntro. by iFrame "Hj Hx".
   Qed.
 
   Opaque counter_read.
@@ -260,18 +261,18 @@ Section CG_Counter.
     { iDestruct (interp_env_length with "HΓ") as %[=]. }
     iClear "HΓ". cbn -[FG_counter CG_counter].
     rewrite ?empty_env_subst /CG_counter /FG_counter.
-    iVs (steps_newlock _ _ j (K ++ [AppRCtx (RecV _)]) _ with "[Hj]")
+    iMod (steps_newlock _ _ j (K ++ [AppRCtx (RecV _)]) _ with "[Hj]")
       as (l) "[Hj Hl]"; eauto.
     { rewrite fill_app /=. by iFrame. }
     rewrite fill_app /=.
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite CG_locked_increment_subst /=.
     rewrite counter_read_subst /=.
-    iVs (step_alloc _ _ j (K ++ [AppRCtx (RecV _)]) _ _ _ _ with "[Hj]")
+    iMod (step_alloc _ _ j (K ++ [AppRCtx (RecV _)]) _ _ _ _ with "[Hj]")
       as (cnt') "[Hj Hcnt']"; eauto.
     { rewrite fill_app; simpl. by iFrame. }
     rewrite fill_app; simpl.
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite CG_locked_increment_subst /=.
     rewrite counter_read_subst /=.
     Unshelve.
@@ -279,13 +280,12 @@ Section CG_Counter.
     all: trivial.
     iApply (wp_bind [AppRCtx (RecV _)]);
       iApply wp_wand_l; iSplitR; [iIntros (v) "Hv"; iExact "Hv"|].
-    iApply wp_alloc; trivial; iFrame "Hheap"; iNext; iIntros (cnt) "Hcnt /=".
-    iVsIntro.
+    iApply (wp_alloc with "[]"); trivial; iFrame "#"; iNext; iIntros (cnt) "Hcnt /=".
     (* establishing the invariant *)
     iAssert ((∃ n, l ↦ₛ (#♭v false) ★ cnt ↦ᵢ (#nv n) ★ cnt' ↦ₛ (#nv n) )%I)
       with "[Hl Hcnt Hcnt']" as "Hinv".
     { iExists _. by iFrame. }
-    iVs (inv_alloc counterN with "[Hinv]") as "#Hinv"; trivial.
+    iMod (inv_alloc counterN with "[Hinv]") as "#Hinv"; trivial.
     { iNext; iExact "Hinv". }
     (* splitting increment and read *)
     iApply wp_rec; trivial. iNext. asimpl.
@@ -306,16 +306,16 @@ Section CG_Counter.
       iApply (wp_bind [AppRCtx (RecV _)]);
         iApply wp_wand_l; iSplitR; [iIntros (v) "Hv"; iExact "Hv"|].
       iInv counterN as (n) ">[Hl [Hcnt Hcnt']]" "Hclose".
-      iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
-      iIntros "!> {$Hcnt} Hcnt !==>".
-      iVs ("Hclose" with "[Hl Hcnt Hcnt']").
+      iApply (wp_load with "[Hcnt]"); [|iFrame; iFrame "#"|]. solve_ndisj.
+      iNext. iIntros "Hcnt".
+      iMod ("Hclose" with "[Hl Hcnt Hcnt']").
       { iNext. iExists _. iFrame "Hl Hcnt Hcnt'"; trivial. }
       iApply wp_rec; trivial. asimpl. iNext.
       (* fine-grained performs increment *)
       iApply (wp_bind [IfCtx _ _; CasRCtx (LocV _) (NatV _)]);
         iApply wp_wand_l; iSplitR; [iIntros (v) "Hv"; iExact "Hv"|].
       iApply wp_nat_binop; simpl.
-      iNext. iVsIntro.
+      iNext. iModIntro.
       iApply (wp_bind [IfCtx _ _]);
         iApply wp_wand_l; iSplitR; [iIntros (v) "Hv"; iExact "Hv"|].
       iInv counterN as (n') ">[Hl [Hcnt Hcnt']]" "Hclose".
@@ -323,21 +323,21 @@ Section CG_Counter.
       destruct (decide (n = n')) as [|Hneq]; subst.
       + (* CAS succeeds *)
         (* In this case, we perform increment in the coarse-grained one *)
-        iVs (steps_CG_locked_increment
+        iMod (steps_CG_locked_increment
                 _ _ _ _ _ _ _ _ with "[Hj Hl Hcnt']") as "[Hj [Hcnt' Hl]]".
         { iFrame "Hspec Hcnt' Hl Hj"; trivial. }
-        iApply wp_cas_suc; simpl; trivial; [|iFrame "Hheap"]. solve_ndisj.
-        iIntros "{$Hcnt} !> Hcnt !==>".
-        iVs ("Hclose" with "[Hl Hcnt Hcnt']").
+        iApply (wp_cas_suc with "[Hcnt]"); trivial; [|iFrame; iFrame "Hheap"|].
+         solve_ndisj. iNext. iIntros "Hcnt".
+        iMod ("Hclose" with "[Hl Hcnt Hcnt']").
         { iNext. iExists _. iFrame "Hl Hcnt Hcnt'"; trivial. }
         iApply wp_if_true. iNext. iApply wp_value; trivial.
         iExists UnitV; iFrame; auto.
       + (* CAS fails *)
         (* In this case, we perform a recursive call *)
-        iApply (wp_cas_fail _ _ _ (#nv n')); simpl; trivial;
-        [inversion 1; subst; auto | | iFrame "Hheap"]. solve_ndisj.
-        iIntros "{$Hcnt} !> Hcnt !==>".
-        iVs ("Hclose" with "[Hl Hcnt Hcnt']").
+        iApply (wp_cas_fail _ _ _ (#nv n') with "[Hcnt]"); simpl; trivial;
+        [inversion 1; subst; auto | | iFrame; iFrame "Hheap"|]. solve_ndisj.
+        iNext. iIntros "Hcnt".
+        iMod ("Hclose" with "[Hl Hcnt Hcnt']").
         { iNext. iExists _; iFrame "Hl Hcnt Hcnt'"; trivial. }
         iApply wp_if_false. iNext. by iApply "Hlat".
     - (* refinement of read *)
@@ -348,12 +348,12 @@ Section CG_Counter.
       unfold counter_read at 2.
       iApply wp_rec; trivial. simpl.
       iNext. iInv counterN as (n) ">[Hl [Hcnt Hcnt']]" "Hclose".
-      iVs (steps_counter_read with "[Hj Hcnt']") as "[Hj Hcnt']".
+      iMod (steps_counter_read with "[Hj Hcnt']") as "[Hj Hcnt']".
       { solve_ndisj. }
       { by iFrame "Hspec Hcnt' Hj". }
-      iApply wp_load; [|iFrame "Hheap"]. solve_ndisj.
-      iIntros "{$Hcnt} !> Hcnt !==>".
-      iVs ("Hclose" with "[Hl Hcnt Hcnt']").
+      iApply (wp_load with "[Hcnt]"); [|iFrame; iFrame "Hheap"|]. solve_ndisj.
+      iNext. iIntros "Hcnt".
+      iMod ("Hclose" with "[Hl Hcnt Hcnt']").
       { iNext. iExists _; iFrame "Hl Hcnt Hcnt'"; trivial. }
       iExists (#nv _); eauto.
       Unshelve. solve_ndisj.
@@ -364,7 +364,7 @@ Theorem counter_ctx_refinement :
   [] ⊨ FG_counter ≤ctx≤ CG_counter :
          TProd (TArrow TUnit TUnit) (TArrow TUnit TNat).
 Proof.
-  set (Σ := #[irisΣ lang; auth.authΣ heapUR; auth.authΣ cfgUR]).
+  set (Σ := #[irisΣ state; auth.authΣ heapUR; auth.authΣ cfgUR]).
   eapply (binary_soundness Σ);
     auto using FG_counter_closed, CG_counter_closed, FG_CG_counter_refinement.
 Qed.

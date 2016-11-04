@@ -12,7 +12,7 @@ Theorem soundness e τ e' thp :
   [] ⊢ₜ e : τ → rtc step ([e], ()) (thp, ()) → e' ∈ thp →
   is_Some (to_val e') ∨ reducible e' ().
 Proof.
-  intros. set (Σ := #[irisΣ lang]).
+  intros. set (Σ := #[irisΣ state]).
   cut (adequate e () (λ _, True)); first (intros [_ Hsafe]; eauto).
   eapply (wp_adequacy Σ); iIntros (?) "Hσ".
   iApply wp_wand_l; iSplitR; [|by iApply wp_soundness]; eauto.

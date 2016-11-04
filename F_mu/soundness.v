@@ -17,6 +17,6 @@ Corollary type_soundness e τ e' thp σ σ' :
   rtc step ([e], σ) (thp, σ') → e' ∈ thp →
   is_Some (to_val e') ∨ reducible e' σ'.
 Proof.
-  intros ??. set (Σ := #[irisΣ lang]).
+  intros ??. set (Σ := #[irisΣ state]).
   eapply (soundness Σ); eauto using fundamental.
 Qed.

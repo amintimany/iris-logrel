@@ -1,7 +1,7 @@
 From iris_logrel.stlc Require Export logrel.
 From iris.proofmode Require Import tactics.
 From iris_logrel.stlc Require Import rules.
-From iris.algebra Require Export upred_big_op.
+From iris.base_logic Require Export big_op.
 
 Section typed_interp.
   Context `{irisG lang Σ}.
@@ -16,7 +16,7 @@ Section typed_interp.
 
   Theorem fundamental Γ vs e τ :
     Γ ⊢ₜ e : τ → length Γ = length vs →
-    [∧] zip_with interp Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
+    [★] zip_with interp Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
   Proof.
     intros Htyped; revert vs.
     induction Htyped; iIntros (vs Hlen) "#Hctx /=".
@@ -24,7 +24,7 @@ Section typed_interp.
       destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
       { by rewrite -Hlen; apply lookup_lt_Some with τ. }
       rewrite /env_subst Hv. value_case.
-      iApply big_and_elem_of; eauto.
+      iApply big_sep_elem_of; eauto.
       apply elem_of_list_lookup_2 with x.
       rewrite lookup_zip_with; simplify_option_eq; trivial.
     - (* unit *) value_case.
@@ -50,16 +50,16 @@ Section typed_interp.
       + iApply wp_case_inl; auto 1 using to_of_val; asimpl.
         specialize (IHHtyped2 (w::vs)).
         erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto).
-        iNext; iApply IHHtyped2; cbn; auto.
+        iNext; iApply IHHtyped2; simpl; auto; iFrame "#".
       + iApply wp_case_inr; auto 1 using to_of_val; asimpl.
         specialize (IHHtyped3 (w::vs)).
         erewrite <- ?typed_subst_head_simpl in * by (cbn; eauto).
-        iNext; iApply IHHtyped3; cbn; auto.
+        iNext; iApply IHHtyped3; cbn; auto; iFrame "#".
     - (* lam *)
       value_case; iAlways; iIntros (w) "#Hw".
       iApply wp_lam; auto 1 using to_of_val.
       asimpl; erewrite typed_subst_head_simpl; [|eauto|cbn]; eauto.
-      iNext; iApply (IHHtyped (w :: vs)); cbn; auto.
+      iNext; iApply (IHHtyped (w :: vs)); cbn; auto; iFrame "#".
     - (* app *)
       smart_wp_bind (AppLCtx (e2.[env_subst vs])) v "#Hv" IHHtyped1.
       smart_wp_bind (AppRCtx v) w "#Hw" IHHtyped2.

@@ -1,7 +1,8 @@
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Export weakestpre.
 From iris_logrel.F_mu_ref Require Export rules typing.
-From iris.algebra Require Import list upred_big_op.
+From iris.algebra Require Import list.
+From iris.base_logic Require Import big_op.
 Import uPred.
 
 Definition logN : namespace := nroot .@ "logN".
@@ -83,7 +84,7 @@ Section logrel.
 
   Definition interp_env (Γ : list type)
       (Δ : listC D) (vs : list val) : iProp Σ :=
-    (length Γ = length vs ∧ [∧] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vs)%I.
+    (length Γ = length vs ★ [★] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vs)%I.
   Notation "⟦ Γ ⟧*" := (interp_env Γ).
 
   Definition interp_expr (τ : type) (Δ : listC D) (e : expr) : iProp Σ :=
@@ -159,7 +160,7 @@ Section logrel.
     iIntros (?) "[Hlen HΓ]"; iDestruct "Hlen" as %Hlen.
     destruct (lookup_lt_is_Some_2 vs x) as [v Hv].
     { by rewrite -Hlen; apply lookup_lt_Some with τ. }
-    iExists v; iSplit. done. iApply (big_and_elem_of with "HΓ").
+    iExists v; iSplit. done. iApply (big_sep_elem_of with "HΓ").
     apply elem_of_list_lookup_2 with x.
     rewrite lookup_zip_with; by simplify_option_eq.
   Qed.
@@ -167,18 +168,18 @@ Section logrel.
   Lemma interp_env_nil Δ : True ⊢ ⟦ [] ⟧* Δ [].
   Proof. iIntros ""; iSplit; auto. Qed.
   Lemma interp_env_cons Δ Γ vs τ v :
-    ⟦ τ :: Γ ⟧* Δ (v :: vs) ⊣⊢ ⟦ τ ⟧ Δ v ∧ ⟦ Γ ⟧* Δ vs.
+    ⟦ τ :: Γ ⟧* Δ (v :: vs) ⊣⊢ ⟦ τ ⟧ Δ v ★ ⟦ Γ ⟧* Δ vs.
   Proof.
     rewrite /interp_env /= (assoc _ (⟦ _ ⟧ _ _)) -(comm _ (_ = _)%I) -assoc.
-    by apply and_proper; [apply pure_proper; omega|].
+    by apply sep_proper; [apply pure_proper; omega|].
   Qed.
 
   Lemma interp_env_ren Δ (Γ : list type) (vs : list val) τi :
     ⟦ subst (ren (+1)) <$> Γ ⟧* (τi :: Δ) vs ⊣⊢ ⟦ Γ ⟧* Δ vs.
   Proof.
-    apply and_proper; [apply pure_proper; by rewrite fmap_length|].
+    apply sep_proper; [apply pure_proper; by rewrite fmap_length|].
     revert Δ vs τi; induction Γ=> Δ [|v vs] τi; csimpl; auto.
-    apply and_proper; auto. apply (interp_weaken [] [τi] Δ).
+    apply sep_proper; auto. apply (interp_weaken [] [τi] Δ).
   Qed.
 End logrel.
 

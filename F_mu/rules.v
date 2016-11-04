@@ -48,7 +48,7 @@ Section lang_rules.
   Proof.
     intros <-%of_to_val.
     rewrite -(wp_lift_pure_det_head_step' (Unfold _) (of_val v))
-      -?wp_value_pvs; eauto.
+      -?wp_value_fupd; eauto.
     intros; inv_head_step; eauto.
   Qed.
 
@@ -57,7 +57,7 @@ Section lang_rules.
     ▷ (|={E}=> Φ v1) ⊢ WP Fst (Pair e1 e2) @ E {{ Φ }}.
   Proof.
     intros ??. rewrite -(wp_lift_pure_det_head_step' (Fst _) e1)
-      -?wp_value_pvs; eauto.
+      -?wp_value_fupd; eauto.
     intros; inv_head_step; eauto.
   Qed.
 
@@ -66,7 +66,7 @@ Section lang_rules.
     ▷ (|={E}=> Φ v2) ⊢ WP Snd (Pair e1 e2) @ E {{ Φ }}.
   Proof.
     intros ??. rewrite -(wp_lift_pure_det_head_step' (Snd _) e2)
-      -?wp_value_pvs; eauto.
+      -?wp_value_fupd; eauto.
     intros; inv_head_step; eauto.
   Qed.
 

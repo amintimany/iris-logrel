@@ -1,5 +1,6 @@
-From iris.proofmode Require Import invariants ghost_ownership tactics.
+From iris.proofmode Require Import tactics.
 From iris_logrel.F_mu_ref_conc Require Export rules_binary typing.
+From iris.base_logic Require Import namespaces.
 
 Definition newlock : expr := Alloc (#♭ false).
 Definition acquire : expr :=
@@ -79,10 +80,10 @@ Section proof.
   Lemma steps_newlock E ρ j K :
     nclose specN ⊆ E →
     spec_ctx ρ ★ j ⤇ fill K newlock
-      ={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ (#♭v false).
+      ⊢ |={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec Hj]".
-    by iVs (step_alloc _ _ j K with "[Hj]") as "Hj"; eauto.
+    by iMod (step_alloc _ _ j K with "[Hj]") as "Hj"; eauto.
   Qed.
 
   Global Opaque newlock.
@@ -90,17 +91,17 @@ Section proof.
   Lemma steps_acquire E ρ j K l :
     nclose specN ⊆ E →
     spec_ctx ρ ★ l ↦ₛ (#♭v false) ★ j ⤇ fill K (App acquire (Loc l))
-      ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v true).
+      ⊢ |={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v true).
   Proof.
     iIntros (HNE) "[#Hspec [Hl Hj]]". unfold acquire.
-    iVs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto. done.
-    iVs (step_cas_suc _ _ j (K ++ [IfCtx _ _])
+    iMod (step_rec _ _ j K with "[Hj]") as "Hj"; eauto. done.
+    iMod (step_cas_suc _ _ j (K ++ [IfCtx _ _])
                        _ _ _ _ _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; trivial.
     { rewrite fill_app /=. iFrame "Hspec Hj Hl"; eauto. }
     rewrite fill_app /=.
-    iVs (step_if_true _ _ j K _ _ _ with "[Hj]") as "Hj"; trivial.
+    iMod (step_if_true _ _ j K _ _ _ with "[Hj]") as "Hj"; trivial.
     { by iFrame. }
-    by iIntros "!==> {$Hj $Hl}".
+    by iIntros "!> {$Hj $Hl}".
     Unshelve. all:trivial.
   Qed.
 
@@ -109,13 +110,13 @@ Section proof.
   Lemma steps_release E ρ j K l b:
     nclose specN ⊆ E →
     spec_ctx ρ ★ l ↦ₛ (#♭v b) ★ j ⤇ fill K (App release (Loc l))
-      ={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v false).
+      ⊢ |={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hl Hj]]". unfold release.
-    iVs (step_rec _ _ j K with "[Hj]") as "Hj"; eauto; try done.
-    iVs (step_store _ _ j K _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
+    iMod (step_rec _ _ j K with "[Hj]") as "Hj"; eauto; try done.
+    iMod (step_store _ _ j K _ _ _ _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     { by iFrame. }
-    by iIntros "!==> {$Hj $Hl}".
+    by iIntros "!> {$Hj $Hl}".
     Unshelve. all: trivial.
   Qed.
 
@@ -125,31 +126,31 @@ Section proof.
     nclose specN ⊆ E →
     (∀ f, e.[f] = e) (* e is a closed term *) →
     (∀ K', spec_ctx ρ ★ P ★ j ⤇ fill K' (App e (of_val w))
-            ={E}=> j ⤇ fill K' (of_val v) ★ Q) →
+            ⊢ |={E}=> j ⤇ fill K' (of_val v) ★ Q) →
     spec_ctx ρ ★ P ★ l ↦ₛ (#♭v false)
                 ★ j ⤇ fill K (App (with_lock e (Loc l)) (of_val w))
-      ={E}=> j ⤇ fill K (of_val v) ★ Q ★ l ↦ₛ (#♭v false).
+      ⊢ |={E}=> j ⤇ fill K (of_val v) ★ Q ★ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE H1 H2) "[#Hspec [HP [Hl Hj]]]".
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite H1.
-    iVs (steps_acquire _ _ j (K ++ [AppRCtx (RecV _)])
+    iMod (steps_acquire _ _ j (K ++ [AppRCtx (RecV _)])
                    _ _ with "[Hj Hl]") as "[Hj Hl]"; eauto.
     { rewrite fill_app /=. iFrame "Hspec Hj Hl"; eauto. }
     rewrite fill_app; simpl.
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl. rewrite H1.
-    iVs (H2 (K ++ [AppRCtx (RecV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
+    iMod (H2 (K ++ [AppRCtx (RecV _)]) with "[Hj HP]") as "[Hj HQ]"; eauto.
     { rewrite fill_app /=. iFrame "Hspec Hj HP"; eauto. }
     rewrite ?fill_app /=.
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
     asimpl.
-    iVs (steps_release _ _ j (K ++ [AppRCtx (RecV _)]) _ _ with "[Hj Hl]")
+    iMod (steps_release _ _ j (K ++ [AppRCtx (RecV _)]) _ _ with "[Hj Hl]")
       as "[Hj Hl]"; eauto.
     { rewrite fill_app /=. by iFrame. }
     rewrite ?fill_app /=.
-    iVs (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
-    asimpl. iVsIntro; by iFrame.
+    iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
+    asimpl. iModIntro; by iFrame.
     Unshelve.
     all: try match goal with |- to_val _ = _ => auto using to_of_val end.
     trivial.

@@ -1,8 +1,8 @@
 From iris_logrel.F_mu_ref_conc Require Export context_refinement.
-From iris.algebra Require Import upred_big_op frac dec_agree.
-From iris.program_logic Require Import ownership auth.
-From iris.proofmode Require Import tactics pviewshifts invariants.
-From iris.program_logic Require Import ownership adequacy.
+From iris.algebra Require Import frac dec_agree.
+From iris.base_logic Require Import big_op auth.
+From iris.proofmode Require Import tactics.
+From iris.program_logic Require Import adequacy.
 
 Lemma basic_soundness Σ `{irisPreG lang Σ, authG Σ heapUR, authG Σ cfgUR}
     e e' τ v thp hp :
@@ -14,19 +14,17 @@ Proof.
   cut (adequate e ∅ (λ _, ∃ thp' h v, rtc step ([e'], ∅) (of_val v :: thp', h))).
   { destruct 1; naive_solver. }
   eapply (wp_adequacy Σ); iIntros (?) "Hσ".
-  iVs (auth_alloc (ownP ∘ of_heap) heapN _ (to_heap ∅) with "[Hσ]")
-    as (γh) "[#Hh1 Hh2]".
-  { done. }
-  { rewrite /= (from_to_heap ∅); auto. }
-  iVs (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
+  iMod (auth_alloc to_heap ownP heapN _ ∅ with "[Hσ]")
+    as (γh) "[#Hh1 Hh2]"; auto; first done.
+  iMod (own_alloc (● (to_cfg ([e'], ∅) : cfgUR)
     ⋅ ◯ (({[ 0 := Excl' e' ]} : tpoolUR, ∅) : cfgUR))) as (γc) "[Hcfg1 Hcfg2]".
   { rewrite -auth_both_op auth_valid_discrete /= prod_included /= to_empty_heap.
     eauto using to_cfg_valid. }
-  iVs (inv_alloc specN _ (auth.auth_inv γc (spec_inv ([e'], ∅)))
+  iMod (inv_alloc specN _ (∃ ρ', own γc (● ρ') ★ (■ ([e'], ∅) →⋆ of_cfg ρ'))%I
     with "[Hcfg1]") as "#Hcfg"; trivial.
   { iNext. iExists _. iIntros "{$Hcfg1} !%". rewrite from_to_cfg; constructor. }
   rewrite -(empty_env_subst e).
-  iApply wp_pvs; iApply wp_wand_r; iSplitL; [iApply (bin_log_related_alt
+  iApply wp_fupd; iApply wp_wand_r; iSplitL; [iApply (bin_log_related_alt
     (Hlog (CFGSG _ (HeapIG _ _ _ γh) _ γc)) [] [] ([e'], ∅) 0 [])|]; simpl.
   { rewrite /heapI_ctx /spec_ctx /auth_ctx /tpool_mapsto /auth_own /=.
     rewrite empty_env_subst -interp_env_nil. by iFrame "Hh1 Hcfg Hcfg2". }
@@ -34,11 +32,11 @@ Proof.
   iInv specN as (ρ) ">[Hown Hsteps]" "Hclose"; iDestruct "Hsteps" as %Hsteps'.
   rewrite /tpool_mapsto /auth.auth_own /=.
   iCombine "Hj" "Hown" as "Hown".
-  iDestruct (own_valid with "#Hown") as %[[[tp h] Hρ] [Htp ?]]%auth_valid_discrete.
+  iDestruct (own_valid with "Hown") as %[[[tp h] Hρ] [Htp ?]]%auth_valid_discrete.
   move: Hρ; rewrite /= right_id pair_op left_id leibniz_equiv_iff=> ?; simplify_eq/=.
-  iVs ("Hclose" with "[-]").
+  iMod ("Hclose" with "[-]").
   { iDestruct "Hown" as "[Ho1 Ho2]". rewrite /auth_inv; eauto. }
-  iIntros "!==> !%". exists (of_tpool tp), (of_heap h), v2.
+  iIntros "!> !%". exists (of_tpool tp), (of_heap h), v2.
   destruct tp as [|[[]|]]; by inversion_clear Htp.
 Qed.
 

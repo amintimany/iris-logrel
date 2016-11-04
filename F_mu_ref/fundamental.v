@@ -1,7 +1,7 @@
 From iris_logrel.F_mu_ref Require Export logrel.
-From iris.proofmode Require Import tactics pviewshifts invariants.
+From iris.proofmode Require Import tactics.
 From iris_logrel.F_mu_ref Require Import rules.
-From iris.algebra Require Export upred_big_op.
+From iris.base_logic Require Export big_op.
 
 Definition log_typed `{heapG Σ} (Γ : list type) (e : expr) (τ : type) := ∀ Δ vs,
   env_PersistentP Δ →
@@ -85,25 +85,27 @@ Section fundamental.
       change (fixpoint _) with (interp  (TRec τ) Δ); simpl.
       iDestruct "Hv" as (w) "#[% Hw]"; subst.
       iApply wp_fold; cbn; auto using to_of_val.
-      iNext; iVsIntro. by rewrite -interp_subst.
+      iNext; iModIntro. by rewrite -interp_subst.
     - (* Alloc *)
-      smart_wp_bind AllocCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
-      iApply wp_alloc; auto 1 using to_of_val.
-      iIntros "{$Hheap} !>"; iIntros (l) "Hl".
-      iVs (inv_alloc _ with "[Hl]") as "HN";
-        [| iVsIntro; iExists _; iSplit; trivial]; eauto.
+      smart_wp_bind AllocCtx v "#Hv" IHtyped; cbn. iClear "HΓ". iApply wp_fupd.
+      iApply (wp_alloc with "Hheap []"); auto 1 using to_of_val.
+      iNext; iIntros (l) "Hl".
+      iMod (inv_alloc _ with "[Hl]") as "HN";
+        [| iModIntro; iExists _; iSplit; trivial]; eauto.
     - (* Load *)
       smart_wp_bind LoadCtx v "#Hv" IHtyped; cbn. iClear "HΓ".
       iDestruct "Hv" as (l) "[% #Hv]"; subst.
       iInv (logN .@ l) as (w) "[Hw1 #Hw2]" "Hclose".
-      iApply (wp_load _ _ 1); [|iFrame "Hheap"]; trivial. solve_ndisj.
-      iIntros "{$Hw1} !> Hw1 !==>". iVs ("Hclose" with "[-]"); eauto.
+      iApply ((wp_load _ _ 1) with "[Hw1] [Hclose]"); [|iFrame "Hheap"|];
+      trivial. solve_ndisj. iNext.
+      iIntros "Hw1". iMod ("Hclose" with "[-]"); eauto.
     - (* Store *)
       smart_wp_bind (StoreLCtx _) v "#Hv" IHtyped1; cbn.
       smart_wp_bind (StoreRCtx _) w "#Hw" IHtyped2; cbn. iClear "HΓ".
       iDestruct "Hv" as (l) "[% #Hv]"; subst.
       iInv (logN .@ l) as (z) "[Hz1 #Hz2]" "Hclose".
-      iApply wp_store. by rewrite to_of_val. solve_ndisj.
-      iIntros "{$Hheap $Hz1} !> Hz1 !==>". iVs ("Hclose" with "[-]"); eauto.
+      iApply (wp_store with "[Hz1] [Hclose]"); [| |iFrame "Hheap Hz1"|].
+      by rewrite to_of_val. solve_ndisj. iNext.
+      iIntros "Hz1". iMod ("Hclose" with "[-]"); eauto.
   Qed.
 End fundamental.

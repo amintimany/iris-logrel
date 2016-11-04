@@ -1,7 +1,7 @@
 From iris_logrel.F_mu Require Export logrel.
 From iris.proofmode Require Import tactics.
 From iris_logrel.F_mu Require Import rules.
-From iris.algebra Require Export upred_big_op.
+From iris.base_logic Require Export big_op.
 
 Definition log_typed `{irisG lang Σ} (Γ : list type) (e : expr) (τ : type) := ∀ Δ vs,
   env_PersistentP Δ →
