@@ -365,18 +365,18 @@ Section fundamental.
     rewrite {2}[⟦ τ ⟧ Δ (v, v')]interp_EqType_agree; trivial.
     iMod "Hv'" as %Hv'; subst.
     destruct (decide (v' = w)) as [|Hneq]; subst.
-    - iMod (step_cas_suc _ _ j K l' (of_val w') w' w (of_val u') u'
-            with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
-      { iIntros "{$Hs $Hu $Hv2} !>".
-        rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
+    - iAssert (▷ (w' = w))%I as ">%".
+      { rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
+      iMod (step_cas_suc _ _ j K l' (of_val w') w' w (of_val u') u'
+            with "[$Hs $Hu $Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
       iApply (wp_cas_suc with "[Hv1]"); eauto using to_of_val; first solve_ndisj.
       iNext. iIntros "Hv1". iMod ("Hclose" with "[Hv1 Hv2]").
       { iNext; iExists (_, _); by iFrame. }
       iExists (#♭v true); iFrame; eauto.
-    - iMod (step_cas_fail _ _ j K l' 1 v' (of_val w') w' (of_val u') u'
-            with "[Hu Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
-      { iIntros "{$Hs $Hu $Hv2} !>".
-        rewrite ?interp_EqType_agree; trivial. by iSimplifyEq. }
+    -iAssert (▷ ■ (v' ≠ w'))%I as ">%".
+      { rewrite ?interp_EqType_agree; trivial. iSimplifyEq. auto. } 
+      iMod (step_cas_fail _ _ j K l' 1 v' (of_val w') w' (of_val u') u'
+            with "[$Hs $Hu $Hv2]") as "[Hw Hv2]"; simpl; eauto; first solve_ndisj.
       iApply (wp_cas_fail with "[Hv1]"); eauto using to_of_val; first solve_ndisj.
       iNext. iIntros "Hv1". iMod ("Hclose" with "[Hv1 Hv2]").
       { iNext; iExists (_, _); by iFrame. }

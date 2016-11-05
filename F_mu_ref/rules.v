@@ -19,7 +19,6 @@ Class heapG Σ := HeapG {
 Definition heapΣ : gFunctors := authΣ heapUR.
 
 Definition to_heap : state → heapUR := fmap (λ v, (1%Qp, DecAgree v)).
-(* Definition of_heap : heapUR → state := omap (maybe DecAgree ∘ snd). *)
 
 Section definitions.
   Context `{heapG Σ}.
@@ -36,7 +35,6 @@ Section definitions.
   Proof. apply _. Qed.
   Global Instance heap_mapsto_timeless l q v : TimelessP (heap_mapsto l q v).
   Proof. rewrite heap_mapsto_eq /heap_mapsto_def. apply _. Qed.
-
 End definitions.
 Typeclasses Opaque heap_ctx heap_mapsto.
 
@@ -68,31 +66,10 @@ Section lang_rules.
   Local Hint Resolve to_of_val.
 
   (** Conversion to heaps and back *)
-  (* Global Instance of_heap_proper : Proper ((≡) ==> (=)) of_heap. *)
-  (* Proof. solve_proper. Qed. *)
-  (* Lemma from_to_heap σ : of_heap (to_heap σ) = σ. *)
-  (* Proof. *)
-  (*   apply map_eq=>l. rewrite lookup_omap lookup_fmap. by case (σ !! l). *)
-  (* Qed. *)
   Lemma to_heap_valid σ : ✓ to_heap σ.
   Proof. intros l. rewrite lookup_fmap. by case (σ !! l). Qed.
   Lemma lookup_to_heap_None σ l : σ !! l = None → to_heap σ !! l = None.
   Proof. by rewrite /to_heap lookup_fmap=> ->. Qed.
-  (* Lemma of_heap_insert l v h : *)
-  (*   of_heap (<[l:=(1%Qp, DecAgree v)]> h) = <[l:=v]> (of_heap h). *)
-  (* Proof. by rewrite /of_heap -(omap_insert _ _ _ (1%Qp, DecAgree v)). Qed. *)
-  (* Lemma of_heap_singleton_op l q v h : *)
-  (*   ✓ ({[l := (q, DecAgree v)]} ⋅ h) → *)
-  (*   of_heap ({[l := (q, DecAgree v)]} ⋅ h) = <[l:=v]> (of_heap h). *)
-  (* Proof. *)
-  (*   intros Hv. apply map_eq=> l'; destruct (decide (l' = l)) as [->|]. *)
-  (*   - move: (Hv l). rewrite /of_heap lookup_insert *)
-  (*                           lookup_omap (lookup_op _ h) lookup_singleton. *)
-  (*     case _:(h !! l)=>[[q' [v'|]]|] //=; last by move=> [??]. *)
-  (*     move=> [? /dec_agree_op_inv [->]]. by rewrite dec_agree_idemp. *)
-  (*   - rewrite /of_heap lookup_insert_ne // !lookup_omap. *)
-  (*     by rewrite (lookup_op _ h) lookup_singleton_ne // left_id_L. *)
-  (* Qed. *)
   Lemma heap_singleton_included σ l q v :
     {[l := (q, DecAgree v)]} ≼ to_heap σ → σ !! l = Some v.
   Proof.
@@ -105,28 +82,9 @@ Section lang_rules.
   Proof.
     intros Hl%heap_singleton_included. by rewrite /to_heap lookup_fmap Hl.
   Qed.
-
   Lemma to_heap_insert l v σ :
     to_heap (<[l:=v]> σ) = <[l:=(1%Qp, DecAgree v)]> (to_heap σ).
   Proof. by rewrite /to_heap -fmap_insert. Qed.
-  (* Lemma of_heap_None h l : ✓ h → of_heap h !! l = None → h !! l = None. *)
-  (* Proof. *)
-  (*   move=> /(_ l). rewrite /of_heap lookup_omap. *)
-  (*     by case: (h !! l)=> [[q [v|]]|] //=; destruct 1; auto. *)
-  (* Qed. *)
-  Lemma heap_store_valid l h v1 v2 :
-    ✓ ({[l := (1%Qp, DecAgree v1)]} ⋅ h) →
-    ✓ ({[l := (1%Qp, DecAgree v2)]} ⋅ h).
-  Proof.
-    intros Hv l'; move: (Hv l'). destruct (decide (l' = l)) as [->|].
-    - rewrite !lookup_op !lookup_singleton.
-      by case: (h !! l)=> [x|] // /Some_valid /exclusive_l.
-    - by rewrite !lookup_op !lookup_singleton_ne.
-  Qed.
-  Hint Resolve heap_store_valid.
-
-  (* Lemma of_empty_heap : of_heap ∅ = ∅. *)
-  (* Proof. unfold of_heap; apply map_eq => i; rewrite !lookup_omap; f_equal. Qed. *)
 
   (** General properties of mapsto *)
   Lemma heap_mapsto_op_eq l q1 q2 v : l ↦{q1} v ★ l ↦{q2} v ⊣⊢ l ↦{q1+q2} v.

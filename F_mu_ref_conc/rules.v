@@ -18,7 +18,6 @@ Class heapIG Σ := HeapIG {
 }.
 
 Definition to_heap : state → heapUR := fmap (λ v, (1%Qp, DecAgree v)).
-Definition of_heap : heapUR → state := omap (maybe DecAgree ∘ snd).
 
 Section definitionsI.
   Context `{heapIG Σ}.
@@ -69,13 +68,8 @@ Section lang_rules.
   (** Conversion to heaps and back *)
   Lemma to_heap_valid σ : ✓ to_heap σ.
   Proof. intros l. rewrite lookup_fmap. by case (σ !! l). Qed.
-  Lemma from_to_heap σ : of_heap (to_heap σ) = σ.
-  Proof.
-    apply map_eq=>l. rewrite lookup_omap lookup_fmap. by case (σ !! l).
-  Qed.
   Lemma lookup_to_heap_None σ l : σ !! l = None → to_heap σ !! l = None.
   Proof. by rewrite /to_heap lookup_fmap=> ->. Qed.
-
   Lemma heap_singleton_included σ l q v :
     {[l := (q, DecAgree v)]} ≼ to_heap σ → σ !! l = Some v.
   Proof.
@@ -91,19 +85,6 @@ Section lang_rules.
   Lemma to_heap_insert l v σ :
     to_heap (<[l:=v]> σ) = <[l:=(1%Qp, DecAgree v)]> (to_heap σ).
   Proof. by rewrite /to_heap -fmap_insert. Qed.
-  Lemma heap_store_valid l h v1 v2 :
-    ✓ ({[l := (1%Qp, DecAgree v1)]} ⋅ h) →
-    ✓ ({[l := (1%Qp, DecAgree v2)]} ⋅ h).
-  Proof.
-    intros Hv l'; move: (Hv l'). destruct (decide (l' = l)) as [->|].
-    - rewrite !lookup_op !lookup_singleton.
-      by case: (h !! l)=> [x|] // /Some_valid/exclusive_l.
-    - by rewrite !lookup_op !lookup_singleton_ne.
-  Qed.
-  Hint Resolve heap_store_valid.
-
-  Lemma to_empty_heap : to_heap ∅ ≡ ∅.
-  Proof. intros i. unfold to_heap. by rewrite lookup_fmap ?lookup_empty. Qed.
 
   (** General properties of mapsto *)
   Lemma heap_mapsto_op_eq l q1 q2 v : l ↦ᵢ{q1} v ★ l ↦ᵢ{q2} v ⊣⊢ l ↦ᵢ{q1+q2} v.
