@@ -60,8 +60,8 @@ Section CG_Counter.
 
   Lemma steps_CG_increment E ρ j K x n:
     nclose specN ⊆ E →
-    spec_ctx ρ ★ x ↦ₛ (#nv n) ★ j ⤇ fill K (App (CG_increment (Loc x)) Unit)
-      ⊢ |={E}=> j ⤇ fill K (Unit) ★ x ↦ₛ (#nv (S n)).
+    spec_ctx ρ ∗ x ↦ₛ (#nv n) ∗ j ⤇ fill K (App (CG_increment (Loc x)) Unit)
+      ⊢ |={E}=> j ⤇ fill K (Unit) ∗ x ↦ₛ (#nv (S n)).
   Proof.
     iIntros (HNE) "[#Hspec [Hx Hj]]". unfold CG_increment.
     iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -120,9 +120,9 @@ Section CG_Counter.
 
   Lemma steps_CG_locked_increment E ρ j K x n l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ x ↦ₛ (#nv n) ★ l ↦ₛ (#♭v false)
-      ★ j ⤇ fill K (App (CG_locked_increment (Loc x) (Loc l)) Unit)
-    ⊢ |={E}=> j ⤇ fill K Unit ★ x ↦ₛ (#nv S n) ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ x ↦ₛ (#nv n) ∗ l ↦ₛ (#♭v false)
+      ∗ j ⤇ fill K (App (CG_locked_increment (Loc x) (Loc l)) Unit)
+    ⊢ |={E}=> j ⤇ fill K Unit ∗ x ↦ₛ (#nv S n) ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]".
     iMod (steps_with_lock
@@ -160,9 +160,9 @@ Section CG_Counter.
 
   Lemma steps_counter_read E ρ j K x n :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ x ↦ₛ (#nv n)
-               ★ j ⤇ fill K (App (counter_read (Loc x)) Unit)
-    ⊢ |={E}=> j ⤇ fill K (#n n) ★ x ↦ₛ (#nv n).
+    spec_ctx ρ ∗ x ↦ₛ (#nv n)
+               ∗ j ⤇ fill K (App (counter_read (Loc x)) Unit)
+    ⊢ |={E}=> j ⤇ fill K (#n n) ∗ x ↦ₛ (#nv n).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold counter_read.
     iMod (step_rec _ _ j K _ Unit with "[Hj]") as "Hj"; eauto.
@@ -282,7 +282,7 @@ Section CG_Counter.
       iApply wp_wand_l; iSplitR; [iIntros (v) "Hv"; iExact "Hv"|].
     iApply (wp_alloc with "[]"); trivial; iFrame "#"; iNext; iIntros (cnt) "Hcnt /=".
     (* establishing the invariant *)
-    iAssert ((∃ n, l ↦ₛ (#♭v false) ★ cnt ↦ᵢ (#nv n) ★ cnt' ↦ₛ (#nv n) )%I)
+    iAssert ((∃ n, l ↦ₛ (#♭v false) ∗ cnt ↦ᵢ (#nv n) ∗ cnt' ↦ₛ (#nv n) )%I)
       with "[Hl Hcnt Hcnt']" as "Hinv".
     { iExists _. by iFrame. }
     iMod (inv_alloc counterN with "[Hinv]") as "#Hinv"; trivial.

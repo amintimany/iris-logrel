@@ -79,8 +79,8 @@ Section CG_Stack.
 
   Lemma steps_CG_push E ρ j K st v w :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ v ★ j ⤇ fill K (App (CG_push (Loc st)) (of_val w))
-    ⊢ |={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)).
+    spec_ctx ρ ∗ st ↦ₛ v ∗ j ⤇ fill K (App (CG_push (Loc st)) (of_val w))
+    ⊢ |={E}=> j ⤇ fill K Unit ∗ st ↦ₛ FoldV (InjRV (PairV w v)).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_push.
     iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -134,9 +134,9 @@ Section CG_Stack.
 
   Lemma steps_CG_locked_push E ρ j K st w v l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ v ★ l ↦ₛ (#♭v false)
-      ★ j ⤇ fill K (App (CG_locked_push (Loc st) (Loc l)) (of_val w))
-    ⊢ |={E}=> j ⤇ fill K Unit ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ st ↦ₛ v ∗ l ↦ₛ (#♭v false)
+      ∗ j ⤇ fill K (App (CG_locked_push (Loc st) (Loc l)) (of_val w))
+    ⊢ |={E}=> j ⤇ fill K Unit ∗ st ↦ₛ FoldV (InjRV (PairV w v)) ∗ l ↦ₛ (#♭v false).
   Proof.
     intros HNE. iIntros "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_push.
     iMod (steps_with_lock
@@ -175,9 +175,9 @@ Section CG_Stack.
 
   Lemma steps_CG_pop_suc E ρ j K st v w :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★
+    spec_ctx ρ ∗ st ↦ₛ FoldV (InjRV (PairV w v)) ∗
                j ⤇ fill K (App (CG_pop (Loc st)) Unit)
-      ⊢ |={E}=> j ⤇ fill K (InjR (of_val w)) ★ st ↦ₛ v.
+      ⊢ |={E}=> j ⤇ fill K (InjR (of_val w)) ∗ st ↦ₛ v.
   Proof.
     intros HNE. iIntros "[#Hspec [Hx Hj]]". unfold CG_pop.
     iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -218,9 +218,9 @@ Section CG_Stack.
 
   Lemma steps_CG_pop_fail E ρ j K st :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ FoldV (InjLV UnitV) ★
+    spec_ctx ρ ∗ st ↦ₛ FoldV (InjLV UnitV) ∗
                j ⤇ fill K (App (CG_pop (Loc st)) Unit)
-      ⊢ |={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV).
+      ⊢ |={E}=> j ⤇ fill K (InjL Unit) ∗ st ↦ₛ FoldV (InjLV UnitV).
   Proof.
     iIntros (HNE) "[#Hspec [Hx Hj]]". unfold CG_pop.
     iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.
@@ -278,9 +278,9 @@ Section CG_Stack.
 
   Lemma steps_CG_locked_pop_suc E ρ j K st v w l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ FoldV (InjRV (PairV w v)) ★ l ↦ₛ (#♭v false)
-               ★ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
-      ⊢ |={E}=> j ⤇ fill K (InjR (of_val w)) ★ st ↦ₛ v ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ st ↦ₛ FoldV (InjRV (PairV w v)) ∗ l ↦ₛ (#♭v false)
+               ∗ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
+      ⊢ |={E}=> j ⤇ fill K (InjR (of_val w)) ∗ st ↦ₛ v ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
     iMod (steps_with_lock _ _ j K _ _ _ _ (InjRV w) UnitV _ _
@@ -293,9 +293,9 @@ Section CG_Stack.
 
   Lemma steps_CG_locked_pop_fail E ρ j K st l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ FoldV (InjLV UnitV) ★ l ↦ₛ (#♭v false)
-               ★ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
-      ⊢ |={E}=> j ⤇ fill K (InjL Unit) ★ st ↦ₛ FoldV (InjLV UnitV) ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ st ↦ₛ FoldV (InjLV UnitV) ∗ l ↦ₛ (#♭v false)
+               ∗ j ⤇ fill K (App (CG_locked_pop (Loc st) (Loc l)) Unit)
+      ⊢ |={E}=> j ⤇ fill K (InjL Unit) ∗ st ↦ₛ FoldV (InjLV UnitV) ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]". unfold CG_locked_pop.
     iMod (steps_with_lock _ _ j K _ _ _ _ (InjLV UnitV) UnitV _ _
@@ -341,9 +341,9 @@ Section CG_Stack.
 
   Lemma steps_CG_snap E ρ j K st v l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ st ↦ₛ v ★ l ↦ₛ (#♭v false)
-               ★ j ⤇ fill K (App (CG_snap (Loc st) (Loc l)) Unit)
-      ⊢ |={E}=> j ⤇ (fill K (of_val v)) ★ st ↦ₛ v ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ st ↦ₛ v ∗ l ↦ₛ (#♭v false)
+               ∗ j ⤇ fill K (App (CG_snap (Loc st) (Loc l)) Unit)
+      ⊢ |={E}=> j ⤇ (fill K (of_val v)) ∗ st ↦ₛ v ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hx [Hl Hj]]]". unfold CG_snap.
     iMod (steps_with_lock _ _ j K _ _ _ _ v UnitV _ _
@@ -407,7 +407,7 @@ Section CG_Stack.
   Lemma steps_CG_iter E ρ j K f v w :
     nclose specN ⊆ E →
     spec_ctx ρ
-             ★ j ⤇ fill K (App (CG_iter (of_val f))
+             ∗ j ⤇ fill K (App (CG_iter (of_val f))
                                (Fold (InjR (Pair (of_val w) (of_val v)))))
       ⊢ |={E}=>
     j ⤇ fill K
@@ -441,7 +441,7 @@ Section CG_Stack.
 
   Lemma steps_CG_iter_end E ρ j K f :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ j ⤇ fill K (App (CG_iter (of_val f)) (Fold (InjL Unit)))
+    spec_ctx ρ ∗ j ⤇ fill K (App (CG_iter (of_val f)) (Fold (InjL Unit)))
       ⊢ |={E}=> j ⤇ fill K Unit.
   Proof.
     iIntros (HNE) "[#Hspec Hj]". unfold CG_iter.

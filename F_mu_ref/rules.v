@@ -87,13 +87,13 @@ Section lang_rules.
   Proof. by rewrite /to_heap -fmap_insert. Qed.
 
   (** General properties of mapsto *)
-  Lemma heap_mapsto_op_eq l q1 q2 v : l ↦{q1} v ★ l ↦{q2} v ⊣⊢ l ↦{q1+q2} v.
+  Lemma heap_mapsto_op_eq l q1 q2 v : l ↦{q1} v ∗ l ↦{q2} v ⊣⊢ l ↦{q1+q2} v.
   Proof.
     by rewrite heap_mapsto_eq -auth_own_op op_singleton pair_op dec_agree_idemp.
   Qed.
 
   Lemma heap_mapsto_op l q1 q2 v1 v2 :
-    l ↦{q1} v1 ★ l ↦{q2} v2 ⊣⊢ v1 = v2 ∧ l ↦{q1+q2} v1.
+    l ↦{q1} v1 ∗ l ↦{q2} v2 ⊣⊢ v1 = v2 ∧ l ↦{q1+q2} v1.
   Proof.
     destruct (decide (v1 = v2)) as [->|].
     { by rewrite heap_mapsto_op_eq pure_equiv // left_id. }
@@ -103,7 +103,7 @@ Section lang_rules.
     rewrite op_singleton pair_op dec_agree_ne // singleton_valid. by intros [].
   Qed.
 
-  Lemma heap_mapsto_op_split l q v : (l ↦{q} v)%I ≡ (l ↦{q/2} v ★ l ↦{q/2} v)%I.
+  Lemma heap_mapsto_op_split l q v : (l ↦{q} v)%I ≡ (l ↦{q/2} v ∗ l ↦{q/2} v)%I.
   Proof. by rewrite heap_mapsto_op_eq Qp_div_2. Qed.
 
   (** Base axioms for core primitives of the language: Stateful reductions. *)
@@ -151,7 +151,7 @@ Section lang_rules.
 
   Lemma wp_load E l q v :
     nclose heapN ⊆ E →
-    {{{ heap_ctx ★ ▷ l ↦{q} v }}} Load (Loc l) @ E {{{ RET v; l ↦{q} v }}}.
+    {{{ heap_ctx ∗ ▷ l ↦{q} v }}} Load (Loc l) @ E {{{ RET v; l ↦{q} v }}}.
   Proof.
     iIntros (? Φ) "[#Hinv >Hl] HΦ".
     rewrite /heap_ctx heap_mapsto_eq /heap_mapsto_def.
@@ -163,7 +163,7 @@ Section lang_rules.
 
   Lemma wp_store E l v' e v :
     to_val e = Some v → nclose heapN ⊆ E →
-    {{{ heap_ctx ★ ▷ l ↦ v' }}} Store (Loc l) e @ E
+    {{{ heap_ctx ∗ ▷ l ↦ v' }}} Store (Loc l) e @ E
     {{{ RET UnitV; l ↦ v }}}.
   Proof.
     iIntros (<-%of_to_val ? Φ) "[#Hinv >Hl] HΦ".

@@ -79,8 +79,8 @@ Section proof.
 
   Lemma steps_newlock E ρ j K :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ j ⤇ fill K newlock
-      ⊢ |={E}=> ∃ l, j ⤇ fill K (Loc l) ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ j ⤇ fill K newlock
+      ⊢ |={E}=> ∃ l, j ⤇ fill K (Loc l) ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec Hj]".
     by iMod (step_alloc _ _ j K with "[Hj]") as "Hj"; eauto.
@@ -90,8 +90,8 @@ Section proof.
 
   Lemma steps_acquire E ρ j K l :
     nclose specN ⊆ E →
-    spec_ctx ρ ★ l ↦ₛ (#♭v false) ★ j ⤇ fill K (App acquire (Loc l))
-      ⊢ |={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v true).
+    spec_ctx ρ ∗ l ↦ₛ (#♭v false) ∗ j ⤇ fill K (App acquire (Loc l))
+      ⊢ |={E}=> j ⤇ fill K Unit ∗ l ↦ₛ (#♭v true).
   Proof.
     iIntros (HNE) "[#Hspec [Hl Hj]]". unfold acquire.
     iMod (step_rec _ _ j K with "[Hj]") as "Hj"; eauto. done.
@@ -109,8 +109,8 @@ Section proof.
 
   Lemma steps_release E ρ j K l b:
     nclose specN ⊆ E →
-    spec_ctx ρ ★ l ↦ₛ (#♭v b) ★ j ⤇ fill K (App release (Loc l))
-      ⊢ |={E}=> j ⤇ fill K Unit ★ l ↦ₛ (#♭v false).
+    spec_ctx ρ ∗ l ↦ₛ (#♭v b) ∗ j ⤇ fill K (App release (Loc l))
+      ⊢ |={E}=> j ⤇ fill K Unit ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE) "[#Hspec [Hl Hj]]". unfold release.
     iMod (step_rec _ _ j K with "[Hj]") as "Hj"; eauto; try done.
@@ -125,11 +125,11 @@ Section proof.
   Lemma steps_with_lock E ρ j K e l P Q v w:
     nclose specN ⊆ E →
     (∀ f, e.[f] = e) (* e is a closed term *) →
-    (∀ K', spec_ctx ρ ★ P ★ j ⤇ fill K' (App e (of_val w))
-            ⊢ |={E}=> j ⤇ fill K' (of_val v) ★ Q) →
-    spec_ctx ρ ★ P ★ l ↦ₛ (#♭v false)
-                ★ j ⤇ fill K (App (with_lock e (Loc l)) (of_val w))
-      ⊢ |={E}=> j ⤇ fill K (of_val v) ★ Q ★ l ↦ₛ (#♭v false).
+    (∀ K', spec_ctx ρ ∗ P ∗ j ⤇ fill K' (App e (of_val w))
+            ⊢ |={E}=> j ⤇ fill K' (of_val v) ∗ Q) →
+    spec_ctx ρ ∗ P ∗ l ↦ₛ (#♭v false)
+                ∗ j ⤇ fill K (App (with_lock e (Loc l)) (of_val w))
+      ⊢ |={E}=> j ⤇ fill K (of_val v) ∗ Q ∗ l ↦ₛ (#♭v false).
   Proof.
     iIntros (HNE H1 H2) "[#Hspec [HP [Hl Hj]]]".
     iMod (step_rec _ _ j K _ _ _ _ with "[Hj]") as "Hj"; eauto.

@@ -73,10 +73,10 @@ Section Stack_refinement.
       iFrame "Hls". iLeft. iSplit; trivial.
     }
     iAssert ((∃ istk v h, (stack_owns h)
-                         ★ stk' ↦ₛ v
-                         ★ stk ↦ᵢ (FoldV (LocV istk))
-                         ★ StackLink τi (LocV istk, v)
-                         ★ l ↦ₛ (#♭v false)
+                         ∗ stk' ↦ₛ v
+                         ∗ stk ↦ᵢ (FoldV (LocV istk))
+                         ∗ StackLink τi (LocV istk, v)
+                         ∗ l ↦ₛ (#♭v false)
              )%I) with "[Hoe Hstk Hstk' HLK Hl]" as "Hinv".
     { iExists _, _, _. by iFrame "Hoe Hstk' Hstk Hl HLK". }
     iMod (inv_alloc stackN with "[Hinv]") as "#Hinv"; trivial.

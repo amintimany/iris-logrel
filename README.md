@@ -2,7 +2,7 @@
 
 This version is known to compile with:
 
- - Coq 8.5pl1
+ - Coq 8.5pl2
  - Ssreflect 1.6
  - Autosubst 1.5
- - Iris version https://gitlab.mpi-sws.org/FP/iris-coq/commit/6cb76aaa
+ - Iris version https://gitlab.mpi-sws.org/FP/iris-coq/commit/37cf94e2

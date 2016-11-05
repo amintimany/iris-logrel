@@ -37,9 +37,9 @@ Section fundamental.
   (* Put all quantifiers at the outer level *)
   Lemma bin_log_related_alt {Γ e e' τ} : Γ ⊨ e ≤log≤ e' : τ → ∀ Δ vvs ρ j K,
     env_PersistentP Δ →
-    heapI_ctx ★ spec_ctx ρ ★ ⟦ Γ ⟧* Δ vvs ★ j ⤇ fill K (e'.[env_subst (vvs.*2)])
+    heapI_ctx ∗ spec_ctx ρ ∗ ⟦ Γ ⟧* Δ vvs ∗ j ⤇ fill K (e'.[env_subst (vvs.*2)])
     ⊢ WP e.[env_subst (vvs.*1)] {{ v, ∃ v',
-        j ⤇ fill K (of_val v') ★ interp τ Δ (v, v') }}.
+        j ⤇ fill K (of_val v') ∗ interp τ Δ (v, v') }}.
   Proof.
     iIntros (Hlog Δ vvs ρ j K ?) "(#Hh & #Hs & HΓ & Hj)".
     iApply (Hlog with "[HΓ] *"); iFrame; eauto.
@@ -303,7 +303,7 @@ Section fundamental.
     iApply wp_fupd. iApply (wp_alloc with "[]"); auto.
     iIntros "!>"; iIntros (l) "Hl'".
     iMod (inv_alloc (logN .@ (l,l')) _ (∃ w : val * val,
-      l ↦ᵢ w.1 ★ l' ↦ₛ w.2 ★ interp τ Δ w)%I with "[Hl Hl']") as "HN"; eauto.
+      l ↦ᵢ w.1 ∗ l' ↦ₛ w.2 ∗ interp τ Δ w)%I with "[Hl Hl']") as "HN"; eauto.
     { iNext; iExists (v, v'); by iFrame. }
     iModIntro; iExists (LocV l'). iFrame "Hj". iExists (l, l'); eauto.
   Qed.

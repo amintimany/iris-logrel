@@ -16,7 +16,7 @@ Section typed_interp.
 
   Theorem fundamental Γ vs e τ :
     Γ ⊢ₜ e : τ → length Γ = length vs →
-    [★] zip_with interp Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
+    [∗] zip_with interp Γ vs ⊢ ⟦ τ ⟧ₑ e.[env_subst vs].
   Proof.
     intros Htyped; revert vs.
     induction Htyped; iIntros (vs Hlen) "#Hctx /=".

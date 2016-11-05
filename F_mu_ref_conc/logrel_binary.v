@@ -33,7 +33,7 @@ Section logrel.
   Definition interp_expr (τi : listC D -n> D) (Δ : listC D)
       (ee : expr * expr) : iProp Σ := (∀ j K,
     j ⤇ fill K (ee.2) →
-    WP ee.1 {{ v, ∃ v', j ⤇ fill K (of_val v') ★ τi Δ (v, v') }})%I.
+    WP ee.1 {{ v, ∃ v', j ⤇ fill K (of_val v') ∗ τi Δ (v, v') }})%I.
   Global Instance interp_expr_ne n :
     Proper (dist n ==> dist n ==> (=) ==> dist n) interp_expr.
   Proof. solve_proper. Qed.
@@ -101,7 +101,7 @@ Section logrel.
   Qed.
 
   Program Definition interp_ref_inv (ll : loc * loc) : D -n> iProp Σ := λne τi,
-    (∃ vv, ll.1 ↦ᵢ vv.1 ★ ll.2 ↦ₛ vv.2 ★ τi vv)%I.
+    (∃ vv, ll.1 ↦ᵢ vv.1 ∗ ll.2 ↦ₛ vv.2 ∗ τi vv)%I.
   Solve Obligations with solve_proper.
 
   Program Definition interp_ref
@@ -127,7 +127,7 @@ Section logrel.
 
   Definition interp_env (Γ : list type)
       (Δ : listC D) (vvs : list (val * val)) : iProp Σ :=
-    (length Γ = length vvs ★ [★] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vvs)%I.
+    (length Γ = length vvs ∗ [∗] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vvs)%I.
   Notation "⟦ Γ ⟧*" := (interp_env Γ).
 
   Class env_PersistentP Δ :=
@@ -217,7 +217,7 @@ Section logrel.
   Lemma interp_env_nil Δ : True ⊢ ⟦ [] ⟧* Δ [].
   Proof. iIntros ""; iSplit; auto. Qed.
   Lemma interp_env_cons Δ Γ vvs τ vv :
-    ⟦ τ :: Γ ⟧* Δ (vv :: vvs) ⊣⊢ ⟦ τ ⟧ Δ vv ★ ⟦ Γ ⟧* Δ vvs.
+    ⟦ τ :: Γ ⟧* Δ (vv :: vvs) ⊣⊢ ⟦ τ ⟧ Δ vv ∗ ⟦ Γ ⟧* Δ vvs.
   Proof.
     rewrite /interp_env /= (assoc _ (⟦ _ ⟧ _ _)) -(comm _ (_ = _)%I) -assoc.
     by apply sep_proper; [apply pure_proper; omega|].

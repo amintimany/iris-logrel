@@ -87,13 +87,13 @@ Section lang_rules.
   Proof. by rewrite /to_heap -fmap_insert. Qed.
 
   (** General properties of mapsto *)
-  Lemma heap_mapsto_op_eq l q1 q2 v : l ↦ᵢ{q1} v ★ l ↦ᵢ{q2} v ⊣⊢ l ↦ᵢ{q1+q2} v.
+  Lemma heap_mapsto_op_eq l q1 q2 v : l ↦ᵢ{q1} v ∗ l ↦ᵢ{q2} v ⊣⊢ l ↦ᵢ{q1+q2} v.
   Proof.
     by rewrite heapI_mapsto_eq -auth_own_op op_singleton pair_op dec_agree_idemp.
   Qed.
 
   Lemma heap_mapsto_op l q1 q2 v1 v2 :
-    l ↦ᵢ{q1} v1 ★ l ↦ᵢ{q2} v2 ⊣⊢ v1 = v2 ∧ l ↦ᵢ{q1+q2} v1.
+    l ↦ᵢ{q1} v1 ∗ l ↦ᵢ{q2} v2 ⊣⊢ v1 = v2 ∧ l ↦ᵢ{q1+q2} v1.
   Proof.
     destruct (decide (v1 = v2)) as [->|].
     { by rewrite heap_mapsto_op_eq pure_equiv // left_id. }
@@ -103,10 +103,10 @@ Section lang_rules.
     rewrite op_singleton pair_op dec_agree_ne // singleton_valid. by intros [].
   Qed.
 
-  Lemma heap_mapsto_op_split l q v : (l ↦ᵢ{q} v)%I ≡ (l ↦ᵢ{q/2} v ★ l ↦ᵢ{q/2} v)%I.
+  Lemma heap_mapsto_op_split l q v : (l ↦ᵢ{q} v)%I ≡ (l ↦ᵢ{q/2} v ∗ l ↦ᵢ{q/2} v)%I.
   Proof. by rewrite heap_mapsto_op_eq Qp_div_2. Qed.
 
-  Lemma heap_mapsto_dup_invalid l v1 v2 : l ↦ᵢ v1 ★ l ↦ᵢ v2 ⊢ False.
+  Lemma heap_mapsto_dup_invalid l v1 v2 : l ↦ᵢ v1 ∗ l ↦ᵢ v2 ⊢ False.
   Proof.
     rewrite heap_mapsto_op heapI_mapsto_eq /heapI_mapsto_def auth_own_valid.
     iIntros "[_ Hv]". iDestruct "Hv" as %Hv.
@@ -177,7 +177,7 @@ Section lang_rules.
 
   Lemma wp_load E l q v :
     nclose heapN ⊆ E →
-    {{{ heapI_ctx ★ ▷ l ↦ᵢ{q} v }}} Load (Loc l) @ E {{{ RET v; l ↦ᵢ{q} v }}}.
+    {{{ heapI_ctx ∗ ▷ l ↦ᵢ{q} v }}} Load (Loc l) @ E {{{ RET v; l ↦ᵢ{q} v }}}.
   Proof.
     iIntros (? Φ) "[#Hinv >Hl] HΦ".
     rewrite /heapI_ctx heapI_mapsto_eq /heapI_mapsto_def.
@@ -189,7 +189,7 @@ Section lang_rules.
 
   Lemma wp_store E l v' e v :
     to_val e = Some v → nclose heapN ⊆ E →
-    {{{ heapI_ctx ★ ▷ l ↦ᵢ v' }}} Store (Loc l) e @ E
+    {{{ heapI_ctx ∗ ▷ l ↦ᵢ v' }}} Store (Loc l) e @ E
     {{{ RET UnitV; l ↦ᵢ v }}}.
   Proof.
     iIntros (<-%of_to_val ? Φ) "[#Hinv >Hl] HΦ".
@@ -205,7 +205,7 @@ Section lang_rules.
 
   Lemma wp_cas_fail E l q v' e1 v1 e2 v2 :
     to_val e1 = Some v1 → to_val e2 = Some v2 → v' ≠ v1 → nclose heapN ⊆ E →
-    {{{ heapI_ctx ★ ▷ l ↦ᵢ{q} v' }}} CAS (Loc l) e1 e2 @ E
+    {{{ heapI_ctx ∗ ▷ l ↦ᵢ{q} v' }}} CAS (Loc l) e1 e2 @ E
     {{{ RET (BoolV false); l ↦ᵢ{q} v' }}}.
   Proof.
     iIntros (<-%of_to_val <-%of_to_val ?? Φ) "[#Hinv >Hl] HΦ".
@@ -218,7 +218,7 @@ Section lang_rules.
 
   Lemma wp_cas_suc E l e1 v1 e2 v2 :
     to_val e1 = Some v1 → to_val e2 = Some v2 → nclose heapN ⊆ E →
-    {{{ heapI_ctx ★ ▷ l ↦ᵢ v1 }}} CAS (Loc l) e1 e2 @ E
+    {{{ heapI_ctx ∗ ▷ l ↦ᵢ v1 }}} CAS (Loc l) e1 e2 @ E
     {{{ RET (BoolV true); l ↦ᵢ v2 }}}.
   Proof.
     iIntros (<-%of_to_val <-%of_to_val ? Φ) "[#Hinv >Hl] HΦ".
@@ -297,7 +297,7 @@ Section lang_rules.
   Qed.
 
   Lemma wp_fork E e Φ :
-    ▷ (|={E}=> Φ UnitV) ★ ▷ WP e {{ _, True }} ⊢ WP Fork e @ E {{ Φ }}.
+    ▷ (|={E}=> Φ UnitV) ∗ ▷ WP e {{ _, True }} ⊢ WP Fork e @ E {{ Φ }}.
   Proof.
   rewrite -(wp_lift_pure_det_head_step (Fork e) Unit [e]) //=; eauto.
   - by rewrite later_sep -(wp_value_fupd _ _ Unit) // big_sepL_singleton.

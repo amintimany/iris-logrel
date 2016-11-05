@@ -72,7 +72,7 @@ Section logrel.
 
   Definition interp_env (Γ : list type)
       (Δ : listC D) (vs : list val) : iProp Σ :=
-    (length Γ = length vs ★ [★] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vs)%I.
+    (length Γ = length vs ∗ [∗] zip_with (λ τ, ⟦ τ ⟧ Δ) Γ vs)%I.
   Notation "⟦ Γ ⟧*" := (interp_env Γ).
 
   Definition interp_expr (τ : type) (Δ : listC D) (e : expr) : iProp Σ :=
@@ -154,7 +154,7 @@ Section logrel.
   Lemma interp_env_nil Δ : True ⊢ ⟦ [] ⟧* Δ [].
   Proof. iIntros ""; iSplit; auto. Qed.
   Lemma interp_env_cons Δ Γ vs τ v :
-    ⟦ τ :: Γ ⟧* Δ (v :: vs) ⊣⊢ ⟦ τ ⟧ Δ v ★ ⟦ Γ ⟧* Δ vs.
+    ⟦ τ :: Γ ⟧* Δ (v :: vs) ⊣⊢ ⟦ τ ⟧ Δ v ∗ ⟦ Γ ⟧* Δ vs.
   Proof.
     rewrite /interp_env /= (assoc _ (⟦ _ ⟧ _ _)) -(comm _ (_ = _)%I) -assoc.
     by apply sep_proper; [apply pure_proper; omega|].

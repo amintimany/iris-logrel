@@ -28,13 +28,13 @@ Section Rules.
 
   Notation "l ↦ˢᵗᵏ v" := (stack_mapsto l v) (at level 20) : uPred_scope.
 
-  Lemma stack_mapsto_dup l v : l ↦ˢᵗᵏ v ⊢ l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ v.
+  Lemma stack_mapsto_dup l v : l ↦ˢᵗᵏ v ⊢ l ↦ˢᵗᵏ v ∗ l ↦ˢᵗᵏ v.
   Proof.
     by rewrite /stack_mapsto /auth_own -own_op -auth_frag_op -stackR_self_op.
   Qed.
 
   Lemma stack_mapstos_agree l v w:
-    l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ⊢ l ↦ˢᵗᵏ v ★ l ↦ˢᵗᵏ w ∧ v = w.
+    l ↦ˢᵗᵏ v ∗ l ↦ˢᵗᵏ w ⊢ l ↦ˢᵗᵏ v ∗ l ↦ˢᵗᵏ w ∧ v = w.
   Proof.
     iIntros "H".
     rewrite -own_op.
@@ -46,10 +46,10 @@ Section Rules.
   Qed.
 
   Program Definition StackLink_pre (Q : D) : D -n> D := λne P v,
-    (∃ l w, v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
+    (∃ l w, v.1 = LocV l ∗ l ↦ˢᵗᵏ w ∗
             ((w = InjLV UnitV ∧ v.2 = FoldV (InjLV UnitV)) ∨
-            (∃ y1 z1 y2 z2, w = InjRV (PairV y1 (FoldV z1)) ★
-              v.2 = FoldV (InjRV (PairV y2 z2)) ★ Q (y1, y2) ★ ▷ P(z1, z2))))%I.
+            (∃ y1 z1 y2 z2, w = InjRV (PairV y1 (FoldV z1)) ∗
+              v.2 = FoldV (InjRV (PairV y2 z2)) ∗ Q (y1, y2) ∗ ▷ P(z1, z2))))%I.
   Solve Obligations with solve_proper.
 
   Global Instance StackLink_pre_contractive Q : Contractive (StackLink_pre Q).
@@ -65,17 +65,17 @@ Section Rules.
 
   Lemma StackLink_unfold Q v :
     StackLink Q v ≡ (∃ l w,
-      v.1 = LocV l ★ l ↦ˢᵗᵏ w ★
+      v.1 = LocV l ∗ l ↦ˢᵗᵏ w ∗
       ((w = InjLV UnitV ∧ v.2 = FoldV (InjLV UnitV)) ∨
       (∃ y1 z1 y2 z2, w = InjRV (PairV y1 (FoldV z1))
-                      ★ v.2 = FoldV (InjRV (PairV y2 z2))
-                      ★ Q (y1, y2) ★ ▷ @StackLink Q (z1, z2))))%I.
+                      ∗ v.2 = FoldV (InjRV (PairV y2 z2))
+                      ∗ Q (y1, y2) ∗ ▷ @StackLink Q (z1, z2))))%I.
   Proof. by rewrite {1}/StackLink fixpoint_unfold. Qed.
 
   Global Opaque StackLink. (* So that we can only use the unfold above. *)
 
   Lemma StackLink_dup (Q : D) v `{∀ vw, PersistentP (Q vw)} :
-    StackLink Q v ⊢ StackLink Q v ★ StackLink Q v.
+    StackLink Q v ⊢ StackLink Q v ∗ StackLink Q v.
   Proof.
     iIntros "H". iLöb as "Hlat" forall (v). rewrite StackLink_unfold.
     iDestruct "H" as (l w) "[% [Hl Hr]]"; subst.
@@ -174,14 +174,14 @@ Section Rules.
 
   Definition stack_owns (h : stackUR) :=
     (own stack_name (● h)
-        ★ [★ map] l ↦ v ∈ h, match v with
+        ∗ [∗ map] l ↦ v ∈ h, match v with
                              | DecAgree v' => l ↦ᵢ v'
                              | _ => True
                              end)%I.
 
   Lemma stack_owns_alloc E h l v :
-    stack_owns h ★ l ↦ᵢ v
-      ⊢ |={E}=> stack_owns (<[l := DecAgree v]> h) ★ l ↦ˢᵗᵏ v.
+    stack_owns h ∗ l ↦ᵢ v
+      ⊢ |={E}=> stack_owns (<[l := DecAgree v]> h) ∗ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[[Hown Hall] Hl]".
     iDestruct (own_valid _ with "Hown") as "#Hvalid".
@@ -209,13 +209,13 @@ Section Rules.
   Qed.
 
   Lemma stack_owns_open h l v :
-    stack_owns h ★ l ↦ˢᵗᵏ v
+    stack_owns h ∗ l ↦ˢᵗᵏ v
       ⊢ own stack_name (● h)
-           ★ ([★ map] l ↦ v ∈ delete l h,
+           ∗ ([∗ map] l ↦ v ∈ delete l h,
             match v with
             | DecAgree v' => l ↦ᵢ v'
             | DecAgreeBot => True
-            end) ★ l ↦ᵢ v ★ l ↦ˢᵗᵏ v.
+            end) ∗ l ↦ᵢ v ∗ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[[Hown Hall] Hl]".
     unfold stack_mapsto, auth_own.
@@ -231,12 +231,12 @@ Section Rules.
 
   Lemma stack_owns_close h l v :
     own stack_name (● h)
-       ★ ([★ map] l ↦ v ∈ delete l h,
+       ∗ ([∗ map] l ↦ v ∈ delete l h,
         match v with
         | DecAgree v' => l ↦ᵢ v'
         | DecAgreeBot => True
         end)
-       ★ l ↦ᵢ v ★ l ↦ˢᵗᵏ v ⊢ stack_owns h ★ l ↦ˢᵗᵏ v.
+       ∗ l ↦ᵢ v ∗ l ↦ˢᵗᵏ v ⊢ stack_owns h ∗ l ↦ˢᵗᵏ v.
   Proof.
     iIntros "[Hown [Hall [Hl Hl']]]".
     unfold stack_mapsto, auth_own.
@@ -256,8 +256,8 @@ Section Rules.
   Qed.
 
   Lemma stack_owns_open_close h l v :
-    stack_owns h ★ l ↦ˢᵗᵏ v
-      ⊢ l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v)).
+    stack_owns h ∗ l ↦ˢᵗᵏ v
+      ⊢ l ↦ᵢ v ∗ (l ↦ᵢ v -∗ (stack_owns h ∗ l ↦ˢᵗᵏ v)).
   Proof.
     iIntros "[Howns Hls]".
     iDestruct (stack_owns_open with "[Howns Hls]") as "[Hh [Hm [Hl Hls]]]".
@@ -267,7 +267,7 @@ Section Rules.
   Qed.
 
   Lemma stack_owns_later_open_close h l v :
-    ▷ stack_owns h ★ l ↦ˢᵗᵏ v
-      ⊢ ▷ (l ↦ᵢ v ★ (l ↦ᵢ v -★ (stack_owns h ★ l ↦ˢᵗᵏ v))).
+    ▷ stack_owns h ∗ l ↦ˢᵗᵏ v
+      ⊢ ▷ (l ↦ᵢ v ∗ (l ↦ᵢ v -∗ (stack_owns h ∗ l ↦ˢᵗᵏ v))).
   Proof. iIntros "H". by iNext; iApply stack_owns_open_close. Qed.
 End Rules.
