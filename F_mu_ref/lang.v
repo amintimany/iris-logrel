@@ -124,8 +124,6 @@ Module lang.
     | StoreRCtx v1 => Store (of_val v1) e
     end.
 
-  Definition fill (K : ectx) (e : expr) : expr := fold_right fill_item e K.
-
   Definition state : Type := gmap loc val.
 
   Inductive head_step : expr → state → expr → state → list expr → Prop :=
@@ -247,4 +245,4 @@ Ltac solve_atomic :=
     rewrite ?to_of_val; eapply mk_is_Some; fast_done.
 
 Hint Extern 0 (language.atomic _) => solve_atomic.
-Hint Extern 0 (language.atomic _) => solve_atomic : typeclass_instances.
+Hint Extern 0 (language.atomic _) => solve_atomic : atomic.

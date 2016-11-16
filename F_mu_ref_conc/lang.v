@@ -312,4 +312,4 @@ Ltac solve_atomic :=
     rewrite ?to_of_val; eapply mk_is_Some; fast_done.
 
 Hint Extern 0 (language.atomic _) => solve_atomic.
-Hint Extern 0 (language.atomic _) => solve_atomic : typeclass_instances.
+Hint Extern 0 (language.atomic _) => solve_atomic : atomic.

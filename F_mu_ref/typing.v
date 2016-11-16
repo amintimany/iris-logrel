@@ -54,18 +54,114 @@ Proof.
   induction Htyped => s1 s2 Hs; f_equal/=; eauto using lookup_lt_Some with omega.
 Qed.
 
+Lemma n_closed_invariant n (e : expr) s1 s2 :
+  (∀ f, e.[upn n f] = e) → (∀ x, x < n → s1 x = s2 x) → e.[s1] = e.[s2].
+Proof.
+  intros Hnc. specialize (Hnc (ren (+1))).
+  revert n Hnc s1 s2.
+  induction e => m Hmc s1 s2 H1; asimpl in *; try f_equal;
+    try (match goal with H : _ |- _ => eapply H end; eauto;
+         try inversion Hmc; try match goal with H : _ |- _ => by rewrite H end;
+         fail).
+  - apply H1. rewrite iter_up in Hmc. destruct lt_dec; try omega.
+    asimpl in *. cbv in x. replace (m + (x - m)) with x in Hmc by omega.
+    inversion Hmc; omega.
+  - unfold upn in *.
+    change (e.[up (upn m (ren (+1)))]) with
+    (e.[iter (S m) up (ren (+1))]) in *.
+    apply (IHe (S m)).
+    + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
+    + intros [|[|x]] H2; [by cbv| |].
+      asimpl; rewrite H1; auto with omega.
+      asimpl; rewrite H1; auto with omega.
+  - change (e1.[up (upn m (ren (+1)))]) with
+    (e1.[iter (S m) up (ren (+1))]) in *.
+    apply (IHe0 (S m)).
+    + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
+    + intros [|x] H2; [by cbv |].
+      asimpl; rewrite H1; auto with omega.
+  - change (e2.[up (upn m (ren (+1)))]) with
+    (e2.[upn (S m) (ren (+1))]) in *.
+    apply (IHe1 (S m)).
+    + inversion Hmc; match goal with H : _ |- _ => (by rewrite H) end.
+    + intros [|x] H2; [by cbv |].
+      asimpl; rewrite H1; auto with omega.
+Qed.
+
 Definition env_subst (vs : list val) (x : var) : expr :=
   from_option id (Var x) (of_val <$> vs !! x).
 
+Lemma typed_n_closed Γ τ e : Γ ⊢ₜ e : τ → (∀ f, e.[upn (length Γ) f] = e).
+Proof.
+  intros H. induction H => f; asimpl; simpl in *; auto with f_equal.
+  - apply lookup_lt_Some in H. rewrite iter_up. destruct lt_dec; auto with omega.
+  - by f_equal; rewrite map_length in IHtyped.
+Qed.
+
+Lemma n_closed_subst_head_simpl n e w ws :
+  (∀ f, e.[upn n f] = e) →
+  S (length ws) = n →
+  e.[of_val w .: env_subst ws] = e.[env_subst (w :: ws)].
+Proof.
+  intros H1 H2.
+  rewrite /env_subst. eapply n_closed_invariant; eauto=> /= -[|x] ? //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
+  by rewrite Hv.
+Qed.
+
 Lemma typed_subst_head_simpl Δ τ e w ws :
   Δ ⊢ₜ e : τ → length Δ = S (length ws) →
-  e.[# w .: env_subst ws] = e.[env_subst (w :: ws)].
+  e.[of_val w .: env_subst ws] = e.[env_subst (w :: ws)].
+Proof. eauto using n_closed_subst_head_simpl, typed_n_closed. Qed.
+
+Lemma n_closed_subst_head_simpl_2 n e w w' ws :
+  (∀ f, e.[upn n f] = e) → (S (S (length ws))) = n →
+  e.[of_val w .: of_val w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
 Proof.
-  intros H1 H2. rewrite /env_subst.
-  eapply typed_subst_invariant; eauto=> /= -[|x] ? //=.
-  destruct (lookup_lt_is_Some_2 ws x) as [v' ?]; first omega.
-  by simplify_option_eq.
+  intros H1 H2.
+  rewrite /env_subst. eapply n_closed_invariant; eauto => /= -[|[|x]] H3 //=.
+  destruct (lookup_lt_is_Some_2 ws x) as [v' Hv]; first omega; simpl.
+  by rewrite Hv.
 Qed.
+
+Lemma typed_subst_head_simpl_2 Δ τ e w w' ws :
+  Δ ⊢ₜ e : τ → length Δ = 2 + length ws →
+  e.[of_val w .: of_val w' .: env_subst ws] = e.[env_subst (w :: w' :: ws)].
+Proof. eauto using n_closed_subst_head_simpl_2, typed_n_closed. Qed.
 
 Lemma empty_env_subst e : e.[env_subst []] = e.
 Proof. change (env_subst []) with (@ids expr _). by asimpl. Qed.
+
+(** Weakening *)
+Lemma context_gen_weakening ξ Γ' Γ e τ :
+  Γ' ++ Γ ⊢ₜ e : τ →
+  Γ' ++ ξ ++ Γ ⊢ₜ e.[upn (length Γ') (ren (+ (length ξ)))] : τ.
+Proof.
+  intros H1.
+  remember (Γ' ++ Γ) as Ξ. revert Γ' Γ ξ HeqΞ.
+  induction H1 => Γ1 Γ2 ξ HeqΞ; subst; asimpl in *; eauto using typed.
+  - rewrite iter_up; destruct lt_dec as [Hl | Hl].
+    + constructor. rewrite lookup_app_l; trivial. by rewrite lookup_app_l in H.
+    + asimpl. constructor. rewrite lookup_app_r; auto with omega.
+      rewrite lookup_app_r; auto with omega.
+      rewrite lookup_app_r in H; auto with omega.
+      match goal with
+        |- _ !! ?A = _ => by replace A with (x - length Γ1) by omega
+      end.
+  - econstructor; eauto. by apply (IHtyped2 (_::_)). by apply (IHtyped3 (_::_)).
+  - constructor. by apply (IHtyped (_ :: _)).
+  - constructor.
+    specialize (IHtyped
+      (subst (ren (+1)) <$> Γ1) (subst (ren (+1)) <$> Γ2) (subst (ren (+1)) <$> ξ)).
+    asimpl in *. rewrite ?map_length in IHtyped.
+    repeat rewrite fmap_app. apply IHtyped.
+    by repeat rewrite fmap_app.
+Qed.
+
+Lemma context_weakening ξ Γ e τ :
+  Γ ⊢ₜ e : τ → ξ ++ Γ ⊢ₜ e.[(ren (+ (length ξ)))] : τ.
+Proof. eapply (context_gen_weakening _ []). Qed.
+
+Lemma closed_context_weakening ξ Γ e τ :
+  (∀ f, e.[f] = e) → Γ ⊢ₜ e : τ → ξ ++ Γ ⊢ₜ e : τ.
+Proof. intros H1 H2. erewrite <- H1. by eapply context_weakening. Qed.

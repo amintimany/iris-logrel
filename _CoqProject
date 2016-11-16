@@ -15,9 +15,14 @@ F_mu/soundness.v
 F_mu_ref/lang.v
 F_mu_ref/typing.v
 F_mu_ref/rules.v
+F_mu_ref/rules_binary.v
 F_mu_ref/logrel.v
+F_mu_ref/logrel_binary.v
 F_mu_ref/fundamental.v
+F_mu_ref/fundamental_binary.v
 F_mu_ref/soundness.v
+F_mu_ref/context_refinement.v
+F_mu_ref/soundness_binary.v
 F_mu_ref_conc/lang.v
 F_mu_ref_conc/rules.v
 F_mu_ref_conc/typing.v
