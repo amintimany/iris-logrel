@@ -31,7 +31,7 @@ Proof.
   iInv specN as ">Hinv" "Hclose". iDestruct "Hinv" as (e'' σ) "[Hown Hsteps]".
   iDestruct "Hsteps" as %Hsteps'.
   rewrite /tpool_mapsto /auth.auth_own /=.
-  iDestruct (own_valid_2 with "[$Hown $Hj]") as %Hvalid.
+  iDestruct (own_valid_2 with "Hown Hj") as %Hvalid.
   move: Hvalid=> /auth_valid_discrete_2
     [/prod_included [Hv2 _] _]. apply Excl_included, leibniz_equiv in Hv2. subst.
   iMod ("Hclose" with "[-]") as "_"; [iExists _, σ; auto|].

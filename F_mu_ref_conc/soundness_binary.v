@@ -30,7 +30,7 @@ Proof.
   iIntros (v1); iDestruct 1 as (v2) "[Hj #Hinterp]".
   iInv specN as (tp σ) ">[Hown Hsteps]" "Hclose"; iDestruct "Hsteps" as %Hsteps'.
   rewrite /tpool_mapsto /auth.auth_own /=.
-  iDestruct (own_valid_2 with "[$Hown $Hj]") as %Hvalid.
+  iDestruct (own_valid_2 with "Hown Hj") as %Hvalid.
   move: Hvalid=> /auth_valid_discrete_2
     [/prod_included [/tpool_singleton_included Hv2 _] _].
   destruct tp as [|? tp']; simplify_eq/=.
